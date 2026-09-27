@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\TenantStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Tenant extends Model
 {
@@ -17,5 +18,10 @@ class Tenant extends Model
         return [
             'status' => TenantStatus::class,
         ];
+    }
+
+    public function domains(): HasMany
+    {
+        return $this->hasMany(TenantDomain::class);
     }
 }
