@@ -3,6 +3,7 @@
 use App\Enums\DomainType;
 use App\Models\Tenant;
 use App\Models\TenantDomain;
+use Illuminate\Database\QueryException;
 
 test('a tenant domain belongs to a tenant', function () {
     $tenant = Tenant::factory()->create();
@@ -27,5 +28,5 @@ test('domain type casts to the DomainType enum', function () {
 test('a tenant cannot be deleted while a domain still references it', function () {
     $domain = TenantDomain::factory()->create();
 
-    expect(fn () => $domain->tenant->delete())->toThrow(\Illuminate\Database\QueryException::class);
+    expect(fn () => $domain->tenant->delete())->toThrow(QueryException::class);
 });

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\PlatformAdmin;
 use App\Models\User;
 
 return [
@@ -74,7 +75,7 @@ return [
 
         'platform_admins' => [
             'driver' => 'eloquent',
-            'model' => App\Models\PlatformAdmin::class,
+            'model' => PlatformAdmin::class,
         ],
 
         // 'users' => [
