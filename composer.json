@@ -12,12 +12,15 @@
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
+        "larastan/larastan": "^3.12",
         "laravel/pail": "^1.2.5",
         "laravel/pao": "^1.0.6",
         "laravel/pint": "^1.27",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
-        "phpunit/phpunit": "^12.5.12"
+        "pestphp/pest": "^4.7.8",
+        "pestphp/pest-plugin-laravel": "^4",
+        "phpunit/phpunit": "12.5.33"
     },
     "autoload": {
         "psr-4": {
@@ -46,8 +49,14 @@
         ],
         "test": [
             "@php artisan config:clear --ansi @no_additional_args",
-            "@php artisan test"
+            "@php vendor/bin/pest"
         ],
+        "test:mysql": [
+            "@php artisan config:clear --ansi @no_additional_args",
+            "@php vendor/bin/pest --configuration=phpunit.mysql.xml"
+        ],
+        "lint": "@php vendor/bin/pint",
+        "analyse": "@php vendor/bin/phpstan analyse --memory-limit=1G",
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"

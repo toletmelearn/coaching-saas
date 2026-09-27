@@ -1,58 +1,72 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Coaching-SaaS
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Multi-tenant SaaS for coaching institutes, built on Laravel 13 / PHP 8.3. Single codebase,
+single database, tenant isolation enforced at the schema and application layer. See
+[ARCHITECTURE.md](ARCHITECTURE.md), [TENANCY.md](TENANCY.md), [SECURITY.md](SECURITY.md),
+[VIDEO.md](VIDEO.md), [PAYMENTS.md](PAYMENTS.md), [PRIVACY.md](PRIVACY.md) and
+[ROADMAP.md](ROADMAP.md) for the rest of the design.
 
-## About Laravel
+## Local setup (Windows / XAMPP)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Prerequisites: XAMPP with PHP 8.3, MySQL/MariaDB, and Apache; Composer; Node.js 18+.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+1. Clone the repo into `C:\xampp\htdocs\coaching-saas`.
+2. `composer install`
+3. `copy .env.example .env` then `php artisan key:generate`
+4. Create two MySQL databases: `coaching_saas` (app) and `coaching_saas_test` (MySQL test
+   suite). Both use `root` with no password by default in XAMPP — adjust `.env` if yours
+   differs.
+5. `php artisan migrate`
+6. `npm install && npm run build` (or `npm run dev` while working on frontend)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Hosts file (subdomain tenants)
 
-## Learning Laravel
+Tenants are resolved by subdomain (see [TENANCY.md](TENANCY.md)), so add entries to
+`C:\Windows\System32\drivers\etc\hosts` (edit as Administrator) for every tenant you test
+locally, plus the central/platform host:
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```
+127.0.0.1 coaching.test
+127.0.0.1 platform.coaching.test
+127.0.0.1 friend.coaching.test
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Add one line per tenant subdomain you need. Wildcard entries are not supported by the
+Windows hosts file, so each subdomain needs its own line.
 
-## Contributing
+### Apache vhost
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Add to `C:\xampp\apache\conf\extra\httpd-vhosts.conf`:
 
-## Code of Conduct
+```apacheconf
+<VirtualHost *:80>
+    ServerName coaching.test
+    ServerAlias *.coaching.test
+    DocumentRoot "C:/xampp/htdocs/coaching-saas/public"
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+    <Directory "C:/xampp/htdocs/coaching-saas/public">
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+```
 
-## Security Vulnerabilities
+Restart Apache after editing. Visit `http://coaching.test` or any tenant subdomain added to
+the hosts file.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Commands
 
-## License
+| Command                 | Purpose                                                          |
+|--------------------------|-------------------------------------------------------------------|
+| `composer test`          | Run the full Pest suite against an in-memory SQLite database.     |
+| `composer test:mysql`    | Run `tests/Feature/Tenancy` against the `coaching_saas_test` MySQL database (set `DB_TEST_*` in `.env`). |
+| `composer lint`          | Format code with Laravel Pint.                                    |
+| `composer analyse`       | Static analysis with Larastan (PHPStan) at level 5.                |
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Testing philosophy
+
+Most tests run against in-memory SQLite for speed. Anything that depends on MySQL-specific
+behavior — composite foreign keys, collation, or the tenancy isolation guarantees in
+[TENANCY.md](TENANCY.md) — belongs in `tests/Feature/Tenancy` and must also pass under
+`composer test:mysql`, since SQLite does not enforce composite foreign keys the same way
+MySQL does.
