@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\RequireTenant;
 use App\Http\Middleware\ResolveTenant;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -19,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'resolve.tenant' => ResolveTenant::class,
+            'require.tenant' => RequireTenant::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
