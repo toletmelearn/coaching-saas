@@ -11,7 +11,7 @@ class DashboardController extends Controller
     {
         $user = Auth::guard('tenant')->user();
 
-        $view = in_array($user->role, ['owner', 'staff'], true)
+        $view = $user->role->canManageUsers()
             ? 'dashboard.staff'
             : 'dashboard.student';
 

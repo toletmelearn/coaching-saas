@@ -51,8 +51,9 @@ test('platform admin cannot log in on tenant domain', function () {
         'password' => 'admin-password',
     ]);
 
-    // Should not work on tenant domain
-    $response->assertSessionHasErrors();
+    // The route itself is registered only on central domains; a tenant subdomain
+    // attempt has no matching route at all.
+    $response->assertNotFound();
     $this->assertGuest('platform_admin');
 });
 

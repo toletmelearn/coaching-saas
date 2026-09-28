@@ -8,3 +8,10 @@ parameters:
     level: 5
 
     tmpDir: storage/framework/phpstan
+
+    # Model casts are declared via the `casts()` method (Laravel 11+ style), not the
+    # legacy `$casts` property — Larastan only statically parses the method body (rather
+    # than just its declared `array` return type, which carries no per-key information)
+    # when this is enabled. Without it, cast-derived property types like Model's enum
+    # casts silently fall back to their raw DB column type.
+    parseModelCastsMethod: true

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserStatus;
 use App\Models\Tenant;
 use App\Models\User;
 
@@ -322,7 +323,7 @@ test('cannot mass-assign status via request when creating', function () {
 
     $user = inTenant($tenant, fn () => User::where('email', 'test@example.com')->first());
 
-    expect($user->status)->toBe('active');
+    expect($user->status)->toBe(UserStatus::Active);
 });
 
 test('cannot mass-assign must_change_password via request', function () {

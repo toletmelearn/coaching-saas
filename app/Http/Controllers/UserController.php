@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserRole;
+use App\Enums\UserStatus;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -9,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Enum;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -22,8 +25,8 @@ class UserController extends Controller
 
         $query = User::query();
 
-        if ($actor->role === 'staff') {
-            $query->where('role', 'student');
+        if ($actor->role === UserRole::Staff) {
+            $query->where('role', UserRole::Student);
         }
 
         $users = $query->orderBy('name')->paginate(20);
@@ -46,7 +49,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:20'],
-            'role' => ['nullable', 'in:owner,staff,student'],
+            'role' => ['nullable', new Enum(UserRole::class)],
         ]);
 
         if (empty($data['email']) && empty($data['phone'])) {
@@ -56,7 +59,7 @@ class UserController extends Controller
             ]);
         }
 
-        $role = $data['role'] ?? 'student';
+        $role = isset($data['role']) ? UserRole::from($data['role']) : UserRole::Student;
 
         Gate::authorize('createWithRole', [User::class, $role]);
 
@@ -70,7 +73,7 @@ class UserController extends Controller
 
         $user->forceFill([
             'role' => $role,
-            'status' => 'active',
+            'status' => UserStatus::Active,
             'must_change_password' => true,
             'password' => Hash::make($temporaryPassword),
         ]);
@@ -93,12 +96,16 @@ class UserController extends Controller
 
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
-            'role' => ['sometimes', 'in:owner,staff,student'],
+            'role' => ['sometimes', new Enum(UserRole::class)],
         ]);
 
-        if (array_key_exists('role', $data) && $data['role'] !== $user->role) {
-            Gate::authorize('changeRole', $user);
-            $user->forceFill(['role' => $data['role']]);
+        if (array_key_exists('role', $data)) {
+            $newRole = UserRole::from($data['role']);
+
+            if ($newRole !== $user->role) {
+                Gate::authorize('changeRole', $user);
+                $user->forceFill(['role' => $newRole]);
+            }
         }
 
         if (array_key_exists('name', $data)) {
@@ -114,7 +121,7 @@ class UserController extends Controller
     {
         Gate::authorize('disable', $user);
 
-        $user->forceFill(['status' => 'disabled'])->save();
+        $user->forceFill(['status' => UserStatus::Disabled])->save();
 
         return redirect()->route('users.index');
     }
@@ -123,7 +130,7 @@ class UserController extends Controller
     {
         Gate::authorize('enable', $user);
 
-        $user->forceFill(['status' => 'active'])->save();
+        $user->forceFill(['status' => UserStatus::Active])->save();
 
         return redirect()->route('users.index');
     }

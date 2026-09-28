@@ -56,18 +56,24 @@ the hosts file.
 
 ### Local credentials
 
-`php artisan migrate:fresh --seed` creates a demo tenant with a ready-to-use owner account:
+`php artisan migrate:fresh --seed` creates a demo tenant with ready-to-use owner and student
+accounts:
 
-| Field           | Value                          |
-|-----------------|---------------------------------|
-| Tenant domain   | `demo.coaching.test` (add it to your hosts file, see above) |
-| Email           | `owner@demo.coaching.test`     |
-| Password        | `password`                     |
+| Field           | Owner                           | Student                           |
+|-----------------|----------------------------------|------------------------------------|
+| Tenant domain   | `demo.coaching.test` (add it to your hosts file, see above) | same |
+| Email           | `owner@demo.coaching.test`      | `student@demo.coaching.test`      |
+| Password        | `password`                      | `password`                        |
 
-Log in at `http://demo.coaching.test/login`. This seeded owner does **not** require a
-password change on first login (unlike a user created through the app's "add person" flow,
-which always generates a temporary password and forces a change — see
+Log in at `http://demo.coaching.test/login`. Neither seeded account requires a password
+change on first login (unlike a user created through the app's "add person" flow, which
+always generates a temporary password and forces a change — see
 [docs/specs/phase-3-tenant-auth.md](docs/specs/phase-3-tenant-auth.md)).
+
+**These demo credentials are local development only.** `TenantSeeder` only creates the demo
+owner/student when `APP_ENV` is `local` or `testing`; in any other environment (including
+`production`) it seeds the tenant/domain but skips the users entirely and prints a console
+warning instead. Never add real password seeding to a production deploy.
 
 There is no seeded platform admin account; create one via `php artisan tinker`:
 

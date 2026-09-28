@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\TenantContext;
@@ -38,7 +39,7 @@ class TenantLoginController extends Controller
             ? User::query()->where('email', strtolower($identifier))->first()
             : User::query()->where('phone', User::normalizePhone($identifier))->first();
 
-        if ($user === null || $user->status !== 'active' || ! Hash::check($data['password'], $user->password)) {
+        if ($user === null || $user->status !== UserStatus::Active || ! Hash::check($data['password'], $user->password)) {
             RateLimiter::hit($key, 60);
 
             return back()->withErrors(['identifier' => __('auth.failed')]);

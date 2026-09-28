@@ -28,12 +28,6 @@ foreach (config('tenancy.central_domains', []) as $centralDomain) {
     });
 }
 
-// Fallback POST /admin/login with no domain restriction: a tenant-subdomain attempt
-// must still get a real response (session validation error), not a bare 404 — the
-// domain-restricted registration above already wins on a genuine central domain, so
-// this only ever matches when the host isn't a central domain.
-Route::post('admin/login', [PlatformAdminLoginController::class, 'store']);
-
 // Tenant-scoped routes.
 Route::middleware('require.tenant')->group(function () {
     Route::get('login', [TenantLoginController::class, 'show'])->name('login');

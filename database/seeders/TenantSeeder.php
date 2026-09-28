@@ -4,6 +4,8 @@ namespace Database\Seeders;
 
 use App\Enums\DomainType;
 use App\Enums\TenantStatus;
+use App\Enums\UserRole;
+use App\Enums\UserStatus;
 use App\Models\Tenant;
 use App\Models\TenantDomain;
 use App\Models\User;
@@ -30,13 +32,28 @@ class TenantSeeder extends Seeder
             ],
         );
 
-        // Local dev/demo credentials — see README "Local credentials".
+        if (! app()->environment(['local', 'testing'])) {
+            $this->command?->warn(
+                'Skipping demo user seeding: local-only credentials are never seeded outside local/testing environments.'
+            );
+
+            return;
+        }
+
+        // Local dev/demo credentials — see README "Local credentials". Never seeded
+        // outside local/testing (guarded above).
         app(TenantContext::class)->runAs($tenant, function () {
             $owner = User::query()->firstOrCreate(
                 ['email' => 'owner@demo.coaching.test'],
                 ['name' => 'Demo Owner', 'password' => Hash::make('password')],
             );
-            $owner->forceFill(['role' => 'owner', 'status' => 'active', 'must_change_password' => false])->save();
+            $owner->forceFill(['role' => UserRole::Owner, 'status' => UserStatus::Active, 'must_change_password' => false])->save();
+
+            $student = User::query()->firstOrCreate(
+                ['email' => 'student@demo.coaching.test'],
+                ['name' => 'Demo Student', 'password' => Hash::make('password')],
+            );
+            $student->forceFill(['role' => UserRole::Student, 'status' => UserStatus::Active, 'must_change_password' => false])->save();
         });
     }
 }

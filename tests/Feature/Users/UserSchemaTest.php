@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\UserRole;
+use App\Enums\UserStatus;
 use App\Exceptions\MissingTenantContextException;
 use App\Models\Tenant;
 use App\Models\User;
@@ -190,9 +192,9 @@ test('role accepts only owner, staff, student values', function () {
     $staff = inTenant($tenant, fn () => User::factory()->staff()->create());
     $student = inTenant($tenant, fn () => User::factory()->student()->create());
 
-    expect($owner->role)->toBe('owner')
-        ->and($staff->role)->toBe('staff')
-        ->and($student->role)->toBe('student');
+    expect($owner->role)->toBe(UserRole::Owner)
+        ->and($staff->role)->toBe(UserRole::Staff)
+        ->and($student->role)->toBe(UserRole::Student);
 });
 
 test('status accepts only active, disabled values', function () {
@@ -201,8 +203,8 @@ test('status accepts only active, disabled values', function () {
     $active = inTenant($tenant, fn () => User::factory()->active()->create());
     $disabled = inTenant($tenant, fn () => User::factory()->disabled()->create());
 
-    expect($active->status)->toBe('active')
-        ->and($disabled->status)->toBe('disabled');
+    expect($active->status)->toBe(UserStatus::Active)
+        ->and($disabled->status)->toBe(UserStatus::Disabled);
 });
 
 // === Schema Fields ===
@@ -280,7 +282,7 @@ test('role is not mass-assignable via create', function () {
 
     // Positive control: role CAN be set through the approved path (factory state -> forceFill)
     $viaState = inTenant($tenant, fn () => User::factory()->owner()->create());
-    expect($viaState->role)->toBe('owner');
+    expect($viaState->role)->toBe(UserRole::Owner);
 
     // Negative: raw mass-assignment must not set role
     $viaMassAssignment = inTenant($tenant, fn () => User::create([
@@ -294,7 +296,7 @@ test('role is not mass-assignable via create', function () {
     // The User model declares $attributes defaults of role=student; mass-assignment
     // of a guarded field is silently discarded (no shouldBeStrict() is configured),
     // so the model default is what actually lands, not null.
-    expect($viaMassAssignment->role)->toBe('student');
+    expect($viaMassAssignment->role)->toBe(UserRole::Student);
 });
 
 test('status is not mass-assignable via create', function () {
@@ -302,7 +304,7 @@ test('status is not mass-assignable via create', function () {
 
     // Positive control: status CAN be set through the approved path (factory state -> forceFill)
     $viaState = inTenant($tenant, fn () => User::factory()->disabled()->create());
-    expect($viaState->status)->toBe('disabled');
+    expect($viaState->status)->toBe(UserStatus::Disabled);
 
     // Negative: raw mass-assignment must not set status
     $viaMassAssignment = inTenant($tenant, fn () => User::create([
@@ -315,7 +317,7 @@ test('status is not mass-assignable via create', function () {
 
     // The User model declares $attributes defaults of status=active; mass-assignment
     // of a guarded field is silently discarded, so the model default is what lands.
-    expect($viaMassAssignment->status)->toBe('active');
+    expect($viaMassAssignment->status)->toBe(UserStatus::Active);
 });
 
 test('must_change_password is not mass-assignable via create', function () {

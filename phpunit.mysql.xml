@@ -8,6 +8,12 @@
         <testsuite name="Tenancy">
             <directory>tests/Feature/Tenancy</directory>
         </testsuite>
+        <testsuite name="Auth">
+            <directory>tests/Feature/Auth</directory>
+        </testsuite>
+        <testsuite name="Users">
+            <directory>tests/Feature/Users</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\UserStatus;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,7 +14,7 @@ class EnsureActiveTenantUser
     {
         $user = Auth::guard('tenant')->user();
 
-        if ($user !== null && $user->status !== 'active') {
+        if ($user !== null && $user->status !== UserStatus::Active) {
             Auth::guard('tenant')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();

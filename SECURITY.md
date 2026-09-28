@@ -17,6 +17,22 @@
   not to a global users table. A successful replay is treated as a critical bug, not an edge
   case.
 
+## Contact-required CHECK constraint: minimum database version
+
+- `users.email IS NOT NULL OR users.phone IS NOT NULL` is enforced by a native `CHECK`
+  constraint on MySQL/MariaDB (a trigger-based equivalent is used on SQLite — see the
+  migration for details). This is only actually *enforced* on:
+  - **MySQL 8.0.16+** — earlier 8.0.x releases and all of MySQL 5.7 parse `CHECK` syntax
+    without error but silently ignore it (a documented MySQL behavior prior to 8.0.16), so a
+    row violating the constraint would be accepted with no error.
+  - **MariaDB 10.2.1+** — MariaDB has enforced `CHECK` constraints since 10.2.1.
+  - Local development and the MySQL test suite (`composer test:mysql`) run against
+    **MariaDB 10.4.32** (bundled with XAMPP), which enforces the constraint correctly.
+  - Before deploying to any MySQL host, confirm the server version is 8.0.16 or later —
+    otherwise the CHECK constraint becomes a no-op and only the HTTP-layer validation in
+    `UserController::store()` (see [docs/specs/phase-3-tenant-auth.md](docs/specs/phase-3-tenant-auth.md))
+    protects the invariant.
+
 ## password_reset_tokens is not yet tenant-scoped
 
 - Phase 3 does not implement self-service ("forgot password") reset — password changes

@@ -11,7 +11,7 @@
             <tr>
                 <td>{{ $user->name }}</td>
                 <td>{{ $user->email ?? $user->phone }}</td>
-                <td>{{ __('users.roles.'.$user->role) }}</td>
+                <td>{{ __('users.roles.'.$user->role->value) }}</td>
             </tr>
         @empty
             <tr>

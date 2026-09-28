@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\UserRole;
+use App\Enums\UserStatus;
 use App\Models\Tenant;
 use App\Models\User;
 
@@ -24,7 +26,7 @@ test('owner can create staff accounts', function () {
     $response->assertRedirect();
 
     $staff = inTenant($tenant, fn () => User::where('email', 'staff@example.com')->first());
-    expect($staff->role)->toBe('staff');
+    expect($staff->role)->toBe(UserRole::Staff);
 });
 
 test('owner can create student accounts', function () {
@@ -46,7 +48,7 @@ test('owner can create student accounts', function () {
     $response->assertRedirect();
 
     $student = inTenant($tenant, fn () => User::where('email', 'student@example.com')->first());
-    expect($student->role)->toBe('student');
+    expect($student->role)->toBe(UserRole::Student);
 });
 
 test('staff can create student accounts', function () {
@@ -68,7 +70,7 @@ test('staff can create student accounts', function () {
     $response->assertRedirect();
 
     $student = inTenant($tenant, fn () => User::where('email', 'student@example.com')->first());
-    expect($student->role)->toBe('student');
+    expect($student->role)->toBe(UserRole::Student);
 });
 
 test('staff cannot create staff accounts', function () {
@@ -211,7 +213,7 @@ test('non-last owner can be disabled', function () {
     $response->assertRedirect();
 
     inTenant($tenant, fn () => $owner2->refresh());
-    expect($owner2->status)->toBe('disabled');
+    expect($owner2->status)->toBe(UserStatus::Disabled);
 });
 
 test('owner can re-enable a disabled user', function () {
@@ -224,7 +226,7 @@ test('owner can re-enable a disabled user', function () {
     $staff = inTenant($tenant, fn () => User::factory()->staff()->disabled()->create());
 
     // Positive control: the disabled user really is disabled beforehand
-    expect($staff->status)->toBe('disabled');
+    expect($staff->status)->toBe(UserStatus::Disabled);
 
     $response = $this->actingAs($owner, 'tenant')
         ->post("http://{$domain}/users/{$staff->id}/enable");
@@ -232,7 +234,7 @@ test('owner can re-enable a disabled user', function () {
     $response->assertRedirect();
 
     inTenant($tenant, fn () => $staff->refresh());
-    expect($staff->status)->toBe('active');
+    expect($staff->status)->toBe(UserStatus::Active);
 });
 
 test('non-last owner can be demoted', function () {
@@ -252,7 +254,7 @@ test('non-last owner can be demoted', function () {
     $response->assertRedirect();
 
     inTenant($tenant, fn () => $owner2->refresh());
-    expect($owner2->role)->toBe('staff');
+    expect($owner2->role)->toBe(UserRole::Staff);
 });
 
 // === Staff Management Permissions ===
@@ -313,6 +315,163 @@ test('staff cannot reset staff password', function () {
         ]);
 
     $response->assertForbidden();
+});
+
+test('staff cannot reset owner password', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    $staff = inTenant($tenant, fn () => User::factory()->staff()->create());
+    $owner = inTenant($tenant, fn () => User::factory()->owner()->create());
+    $student = inTenant($tenant, fn () => User::factory()->student()->create());
+
+    // Positive control: staff CAN reset a student's password
+    $this->actingAs($staff, 'tenant')
+        ->post("http://{$domain}/users/{$student->id}/reset-password", [
+            'password' => 'newpassword123',
+        ])->assertRedirect();
+
+    $response = $this->actingAs($staff, 'tenant')
+        ->post("http://{$domain}/users/{$owner->id}/reset-password", [
+            'password' => 'newpassword123',
+        ]);
+
+    $response->assertForbidden();
+});
+
+// === Staff Disable/Enable: Students Only ===
+
+test('staff can disable a student', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    $staff = inTenant($tenant, fn () => User::factory()->staff()->create());
+    $student = inTenant($tenant, fn () => User::factory()->student()->create());
+
+    $response = $this->actingAs($staff, 'tenant')
+        ->post("http://{$domain}/users/{$student->id}/disable");
+
+    $response->assertRedirect();
+
+    inTenant($tenant, fn () => $student->refresh());
+    expect($student->status)->toBe(UserStatus::Disabled);
+});
+
+test('staff cannot disable another staff member', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    $staff1 = inTenant($tenant, fn () => User::factory()->staff()->create());
+    $staff2 = inTenant($tenant, fn () => User::factory()->staff()->create());
+    $student = inTenant($tenant, fn () => User::factory()->student()->create());
+
+    // Positive control: staff CAN disable a student
+    $this->actingAs($staff1, 'tenant')
+        ->post("http://{$domain}/users/{$student->id}/disable")
+        ->assertRedirect();
+
+    $response = $this->actingAs($staff1, 'tenant')
+        ->post("http://{$domain}/users/{$staff2->id}/disable");
+
+    $response->assertForbidden();
+    inTenant($tenant, fn () => $staff2->refresh());
+    expect($staff2->status)->toBe(UserStatus::Active);
+});
+
+test('staff cannot disable an owner', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    $staff = inTenant($tenant, fn () => User::factory()->staff()->create());
+    $owner = inTenant($tenant, fn () => User::factory()->owner()->create());
+    $student = inTenant($tenant, fn () => User::factory()->student()->create());
+
+    // Positive control: staff CAN disable a student
+    $this->actingAs($staff, 'tenant')
+        ->post("http://{$domain}/users/{$student->id}/disable")
+        ->assertRedirect();
+
+    $response = $this->actingAs($staff, 'tenant')
+        ->post("http://{$domain}/users/{$owner->id}/disable");
+
+    $response->assertForbidden();
+    inTenant($tenant, fn () => $owner->refresh());
+    expect($owner->status)->toBe(UserStatus::Active);
+});
+
+test('staff can re-enable a disabled student', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    $staff = inTenant($tenant, fn () => User::factory()->staff()->create());
+    $student = inTenant($tenant, fn () => User::factory()->student()->disabled()->create());
+
+    $response = $this->actingAs($staff, 'tenant')
+        ->post("http://{$domain}/users/{$student->id}/enable");
+
+    $response->assertRedirect();
+
+    inTenant($tenant, fn () => $student->refresh());
+    expect($student->status)->toBe(UserStatus::Active);
+});
+
+test('staff cannot re-enable a disabled staff member', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    $staff1 = inTenant($tenant, fn () => User::factory()->staff()->create());
+    $staff2 = inTenant($tenant, fn () => User::factory()->staff()->disabled()->create());
+    $student = inTenant($tenant, fn () => User::factory()->student()->disabled()->create());
+
+    // Positive control: staff CAN re-enable a disabled student
+    $this->actingAs($staff1, 'tenant')
+        ->post("http://{$domain}/users/{$student->id}/enable")
+        ->assertRedirect();
+
+    $response = $this->actingAs($staff1, 'tenant')
+        ->post("http://{$domain}/users/{$staff2->id}/enable");
+
+    $response->assertForbidden();
+    inTenant($tenant, fn () => $staff2->refresh());
+    expect($staff2->status)->toBe(UserStatus::Disabled);
+});
+
+test('staff cannot re-enable a disabled owner', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    // A second, active owner exists so disabling the first owner doesn't violate
+    // the last-owner rule when setting up this fixture.
+    $activeOwner = inTenant($tenant, fn () => User::factory()->owner()->create());
+    $disabledOwner = inTenant($tenant, fn () => User::factory()->owner()->disabled()->create());
+    $staff = inTenant($tenant, fn () => User::factory()->staff()->create());
+    $student = inTenant($tenant, fn () => User::factory()->student()->disabled()->create());
+
+    // Positive control: staff CAN re-enable a disabled student
+    $this->actingAs($staff, 'tenant')
+        ->post("http://{$domain}/users/{$student->id}/enable")
+        ->assertRedirect();
+
+    $response = $this->actingAs($staff, 'tenant')
+        ->post("http://{$domain}/users/{$disabledOwner->id}/enable");
+
+    $response->assertForbidden();
+    inTenant($tenant, fn () => $disabledOwner->refresh());
+    expect($disabledOwner->status)->toBe(UserStatus::Disabled);
 });
 
 // === Student Self-Management ===

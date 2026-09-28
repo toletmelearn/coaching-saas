@@ -2,18 +2,20 @@
 
 namespace App\Policies;
 
+use App\Enums\UserRole;
+use App\Enums\UserStatus;
 use App\Models\User;
 
 class UserPolicy
 {
     public function viewAny(User $actor): bool
     {
-        return in_array($actor->role, ['owner', 'staff'], true);
+        return $actor->role->canManageUsers();
     }
 
     public function view(User $actor, User $target): bool
     {
-        if (in_array($actor->role, ['owner', 'staff'], true)) {
+        if ($actor->role->canManageUsers()) {
             return true;
         }
 
@@ -22,21 +24,21 @@ class UserPolicy
 
     public function create(User $actor): bool
     {
-        return in_array($actor->role, ['owner', 'staff'], true);
+        return $actor->role->canManageUsers();
     }
 
     /**
      * Whether the actor may create a user with the given target role.
      * Owners may create any role; staff may only create students.
      */
-    public function createWithRole(User $actor, string $role): bool
+    public function createWithRole(User $actor, UserRole $role): bool
     {
-        if ($actor->role === 'owner') {
+        if ($actor->role === UserRole::Owner) {
             return true;
         }
 
-        if ($actor->role === 'staff') {
-            return $role === 'student';
+        if ($actor->role === UserRole::Staff) {
+            return $role === UserRole::Student;
         }
 
         return false;
@@ -48,7 +50,7 @@ class UserPolicy
             return true;
         }
 
-        return $actor->role === 'owner';
+        return $actor->role === UserRole::Owner;
     }
 
     /**
@@ -56,20 +58,7 @@ class UserPolicy
      */
     public function changeRole(User $actor, User $target): bool
     {
-        if ($target->role === 'owner' && $this->activeOwnerCount($target) <= 1) {
-            return false;
-        }
-
-        return true;
-    }
-
-    public function disable(User $actor, User $target): bool
-    {
-        if ($actor->role !== 'owner') {
-            return false;
-        }
-
-        if ($target->role === 'owner' && $this->activeOwnerCount($target) <= 1) {
+        if ($target->role === UserRole::Owner && $this->activeOwnerCount($target) <= 1) {
             return false;
         }
 
@@ -77,22 +66,52 @@ class UserPolicy
     }
 
     /**
+     * Owner may disable anyone (subject to the last-owner rule below). Staff may only
+     * disable students — never other staff, and never an owner.
+     */
+    public function disable(User $actor, User $target): bool
+    {
+        if ($actor->role === UserRole::Owner) {
+            if ($target->role === UserRole::Owner && $this->activeOwnerCount($target) <= 1) {
+                return false;
+            }
+
+            return true;
+        }
+
+        if ($actor->role === UserRole::Staff) {
+            return $target->role === UserRole::Student;
+        }
+
+        return false;
+    }
+
+    /**
      * Re-activating a disabled user only ever increases the active-owner count, so
-     * (unlike disable()) the last-owner rule never applies here.
+     * (unlike disable()) the last-owner rule never applies here. Staff may only
+     * re-enable students — never other staff, and never an owner.
      */
     public function enable(User $actor, User $target): bool
     {
-        return $actor->role === 'owner';
+        if ($actor->role === UserRole::Owner) {
+            return true;
+        }
+
+        if ($actor->role === UserRole::Staff) {
+            return $target->role === UserRole::Student;
+        }
+
+        return false;
     }
 
     public function resetPassword(User $actor, User $target): bool
     {
-        if ($actor->role === 'owner') {
+        if ($actor->role === UserRole::Owner) {
             return true;
         }
 
-        if ($actor->role === 'staff') {
-            return $target->role === 'student';
+        if ($actor->role === UserRole::Staff) {
+            return $target->role === UserRole::Student;
         }
 
         return false;
@@ -101,8 +120,8 @@ class UserPolicy
     private function activeOwnerCount(User $target): int
     {
         return User::query()
-            ->where('role', 'owner')
-            ->where('status', 'active')
+            ->where('role', UserRole::Owner)
+            ->where('status', UserStatus::Active)
             ->count();
     }
 }
