@@ -75,6 +75,14 @@ owner/student when `APP_ENV` is `local` or `testing`; in any other environment (
 `production`) it seeds the tenant/domain but skips the users entirely and prints a console
 warning instead. Never add real password seeding to a production deploy.
 
+The same seeder also creates demo course content (only in local/testing, guarded the same
+way): a **published** course "Physics – Class 11" with 2 chapters and 4 lessons — one
+free-preview lesson with a YouTube video, one draft lesson, and two paid lessons each with a
+sample PDF note — plus the demo student enrolled in it with no end date. A second course,
+"Chemistry – Class 11", is seeded as a **draft** (visible only to the owner/staff, useful for
+testing the "draft course is invisible" behavior). See
+[docs/specs/phase-4-courses.md](docs/specs/phase-4-courses.md).
+
 There is no seeded platform admin account; create one via `php artisan tinker`:
 
 ```php

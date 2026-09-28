@@ -5,7 +5,15 @@ use App\Http\Controllers\Auth\PlatformAdminLoginController;
 use App\Http\Controllers\Auth\PlatformAdminLogoutController;
 use App\Http\Controllers\Auth\TenantLoginController;
 use App\Http\Controllers\Auth\TenantLogoutController;
+use App\Http\Controllers\CourseController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LessonAttachmentController;
+use App\Http\Controllers\LessonController;
+use App\Http\Controllers\Manage\ChapterController as ManageChapterController;
+use App\Http\Controllers\Manage\CourseController as ManageCourseController;
+use App\Http\Controllers\Manage\EnrolmentController as ManageEnrolmentController;
+use App\Http\Controllers\Manage\LessonAttachmentController as ManageLessonAttachmentController;
+use App\Http\Controllers\Manage\LessonController as ManageLessonController;
 use App\Http\Controllers\PlatformAdminDashboardController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -33,6 +41,12 @@ Route::middleware('require.tenant')->group(function () {
     Route::get('login', [TenantLoginController::class, 'show'])->name('login');
     Route::post('login', [TenantLoginController::class, 'store']);
 
+    // Public catalogue and free-preview lessons — no login required.
+    Route::get('courses', [CourseController::class, 'index']);
+    Route::get('courses/{course:slug}', [CourseController::class, 'show']);
+    Route::get('courses/{course:slug}/lessons/{lesson}', [LessonController::class, 'show'])->scopeBindings();
+    Route::get('courses/{course:slug}/lessons/{lesson}/attachments/{attachment}', [LessonAttachmentController::class, 'show'])->scopeBindings();
+
     Route::middleware('auth:tenant')->group(function () {
         Route::post('logout', [TenantLogoutController::class, 'store']);
 
@@ -51,6 +65,38 @@ Route::middleware('require.tenant')->group(function () {
                 Route::post('users/{user}/disable', [UserController::class, 'disable']);
                 Route::post('users/{user}/enable', [UserController::class, 'enable']);
                 Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword']);
+
+                Route::prefix('manage')->group(function () {
+                    Route::get('courses', [ManageCourseController::class, 'index']);
+                    Route::get('courses/create', [ManageCourseController::class, 'create']);
+                    Route::post('courses', [ManageCourseController::class, 'store']);
+                    Route::get('courses/{course}', [ManageCourseController::class, 'edit']);
+                    Route::patch('courses/{course}', [ManageCourseController::class, 'update']);
+                    Route::post('courses/{course}/publish', [ManageCourseController::class, 'publish']);
+                    Route::post('courses/{course}/unpublish', [ManageCourseController::class, 'unpublish']);
+                    Route::post('courses/{course}/archive', [ManageCourseController::class, 'archive']);
+
+                    Route::post('courses/{course}/chapters', [ManageChapterController::class, 'store']);
+                    Route::post('chapters/{chapter}/move-up', [ManageChapterController::class, 'moveUp']);
+                    Route::post('chapters/{chapter}/move-down', [ManageChapterController::class, 'moveDown']);
+                    Route::delete('chapters/{chapter}', [ManageChapterController::class, 'destroy']);
+
+                    Route::post('chapters/{chapter}/lessons', [ManageLessonController::class, 'store']);
+                    Route::patch('lessons/{lesson}', [ManageLessonController::class, 'update']);
+                    Route::post('lessons/{lesson}/publish', [ManageLessonController::class, 'publish']);
+                    Route::post('lessons/{lesson}/unpublish', [ManageLessonController::class, 'unpublish']);
+                    Route::post('lessons/{lesson}/move-up', [ManageLessonController::class, 'moveUp']);
+                    Route::post('lessons/{lesson}/move-down', [ManageLessonController::class, 'moveDown']);
+                    Route::delete('lessons/{lesson}', [ManageLessonController::class, 'destroy']);
+
+                    Route::post('lessons/{lesson}/attachments', [ManageLessonAttachmentController::class, 'store']);
+                    Route::delete('attachments/{attachment}', [ManageLessonAttachmentController::class, 'destroy']);
+
+                    Route::get('courses/{course}/enrolments', [ManageEnrolmentController::class, 'index']);
+                    Route::post('courses/{course}/enrolments', [ManageEnrolmentController::class, 'store']);
+                    Route::post('enrolments/{enrolment}/revoke', [ManageEnrolmentController::class, 'revoke']);
+                    Route::post('enrolments/{enrolment}/reenrol', [ManageEnrolmentController::class, 'reenrol']);
+                });
             });
         });
     });

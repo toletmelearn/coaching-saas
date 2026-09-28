@@ -154,7 +154,7 @@ test('course status, published_at, tenant_id and created_by are not mass-assigna
     $tenant = Tenant::factory()->create();
     $otherTenant = Tenant::factory()->create();
 
-    inTenant($tenant, function () use ($otherTenant) {
+    inTenant($tenant, function () use ($tenant, $otherTenant) {
         $owner = User::factory()->owner()->create();
 
         // Positive control: the approved path (factory state -> forceFill) can set these

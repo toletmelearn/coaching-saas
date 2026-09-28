@@ -22,7 +22,7 @@ test('the seeder creates a published demo course with chapters, lessons and an e
         $lessons = Lesson::where('course_id', $course->id)->get();
         $freePreview = $lessons->where('is_free_preview', true)->first();
         $draftLesson = $lessons->firstWhere('status', LessonStatus::Draft);
-        $paidLessons = $lessons->where('is_free_preview', false);
+        $paidLessons = $lessons->filter(fn ($lesson) => ! $lesson->is_free_preview && $lesson->attachments()->exists());
 
         $student = User::where('email', 'student@demo.coaching.test')->firstOrFail();
         $enrolment = Enrolment::where('course_id', $course->id)->where('user_id', $student->id)->first();

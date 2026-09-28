@@ -14,6 +14,12 @@
         <testsuite name="Users">
             <directory>tests/Feature/Users</directory>
         </testsuite>
+        <testsuite name="Courses">
+            <directory>tests/Feature/Courses</directory>
+        </testsuite>
+        <testsuite name="Enrolments">
+            <directory>tests/Feature/Enrolments</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

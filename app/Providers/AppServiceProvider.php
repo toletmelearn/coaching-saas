@@ -4,7 +4,11 @@ namespace App\Providers;
 
 use App\Auth\TenantUserProvider;
 use App\Macros\BlueprintTenancyMacro;
+use App\Models\Course;
+use App\Models\Enrolment;
 use App\Models\User;
+use App\Policies\CoursePolicy;
+use App\Policies\EnrolmentPolicy;
 use App\Policies\UserPolicy;
 use App\Support\TenantContext;
 use Illuminate\Support\Facades\Auth;
@@ -33,5 +37,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::policy(User::class, UserPolicy::class);
+        Gate::policy(Course::class, CoursePolicy::class);
+        Gate::policy(Enrolment::class, EnrolmentPolicy::class);
     }
 }
