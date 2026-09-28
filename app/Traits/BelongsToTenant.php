@@ -2,11 +2,13 @@
 
 namespace App\Traits;
 
+use App\Database\TenantBuilder;
 use App\Exceptions\InvalidTenantException;
 use App\Exceptions\MissingTenantContextException;
 use App\Models\Tenant;
 use App\Scopes\TenantScope;
 use App\Support\TenantContext;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 trait BelongsToTenant
@@ -117,5 +119,10 @@ trait BelongsToTenant
     public function getTenantIdColumn(): string
     {
         return 'tenant_id';
+    }
+
+    public function newEloquentBuilder($query): Builder
+    {
+        return new TenantBuilder($query);
     }
 }

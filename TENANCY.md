@@ -109,6 +109,31 @@ foreach ($allTenants as $tenant) {
 
 ---
 
+## Query Builder Security
+
+**Critical rule:** Eloquent's `update()` and `upsert()` methods call `toBase()`, which bypass model lifecycle hooks. Models using `BelongsToTenant` use `TenantBuilder` (custom Eloquent builder) that blocks bulk updates of `tenant_id`:
+
+```php
+// ❌ FORBIDDEN: throws InvalidTenantException
+TenancyTestParent::query()->update(['tenant_id' => $other_tenant->id]);
+
+// ❌ FORBIDDEN: throws InvalidTenantException
+TenancyTestParent::query()->upsert(
+    [['id' => 1, 'tenant_id' => $other_tenant->id, ...]],
+    'id',
+    ['name']
+);
+
+// ✅ CORRECT: model instance respects BelongsToTenant hooks
+$model = TenancyTestParent::find(1);
+$model->update(['name' => 'New name']); // Works (tenant_id not touched)
+// Trying to set tenant_id throws InvalidTenantException via updating hook
+```
+
+Query builder updates without `tenant_id` still work and respect the global tenant scope (only affect current tenant's rows).
+
+---
+
 ## Database queries and raw SQL
 
 **Critical rule:** `DB::table()` and raw SQL queries bypass global scopes.
@@ -246,18 +271,26 @@ not a reliable stand-in for this specific guarantee.
 
 ### Test Fixtures & RefreshDatabase
 
-Test fixture migrations must NOT be run in `beforeEach()` hooks. The `beforeEach(Artisan::call('migrate'))` pattern is unsafe:
+Test fixture migrations live **exclusively in `tests/Fixtures/migrations/`**, with timestamp prefix `2099_` to sort after main migrations. They are registered by `tests/TestCase.php` via `createApplication()` override.
 
-1. On MySQL, DDL statements (CREATE TABLE, etc.) inside the RefreshDatabase transaction cause implicit commits, breaking rollback isolation and test reliability.
-2. Each beforeEach call re-runs all migrations sequentially, slowing down tests significantly.
+**Forbidden patterns:**
+1. **Never run fixtures in `beforeEach(Artisan::call('migrate'))`** – On MySQL, DDL inside RefreshDatabase's transaction causes implicit commits, breaking rollback isolation and test reliability. Each beforeEach call re-runs all migrations, slowing tests dramatically.
+2. **Never place fixtures in `database/migrations/`** – They would deploy to production, creating unwanted test tables in production databases.
 
-**Correct approach:** Fixture migrations are placed in `database/migrations/` with timestamps that execute after main migrations. They run once per test suite lifecycle via RefreshDatabase, not per test.
+**Correct approach:**
+- Fixture migrations: `tests/Fixtures/migrations/2099_01_01_000001_create_tenancy_test_*.php`
+- Registration: `tests/TestCase.php` overrides `createApplication()` to call `$app->make('migrator')->path(base_path('tests/Fixtures/migrations'))`
+- Behavior: Migrations run once when RefreshDatabase sets up the test database, before the test's transaction
+- Cleanup: All fixture tables rollback with RefreshDatabase, no explicit cleanup needed
 
-- Fixture tables are created when the test database is refreshed (before the test's transaction).
-- Each test runs within a transaction that can safely roll back (no DDL mid-transaction).
-- No explicit migration calls needed in tests.
+**Verification:**
+```bash
+# Test database: fixture tables exist (tests pass)
+composer test
 
-**Verification:** `composer test` and `composer test:mysql` should both run fast (~2–5 seconds) and pass without warnings.
+# Production database: NO fixture tables (php artisan migrate:status shows none)
+php artisan migrate:status
+```
 
 ## Tenant-aware user provider
 
