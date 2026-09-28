@@ -146,6 +146,38 @@ test('wrong password and unknown identifier return same error message', function
     expect($wrongMsg)->toBe($unknownMsg);
 });
 
+test('tenant A user cannot log in on tenant B domain with same identifier and password', function () {
+    $tenantA = Tenant::factory()->create();
+    $domainA = 'tenant-a.coaching.test';
+    $tenantA->domains()->create(['domain' => $domainA, 'type' => 'subdomain']);
+
+    $tenantB = Tenant::factory()->create();
+    $domainB = 'tenant-b.coaching.test';
+    $tenantB->domains()->create(['domain' => $domainB, 'type' => 'subdomain']);
+
+    inTenant($tenantA, fn () => User::factory()->active()->create([
+        'email' => 'shared@example.com',
+        'password' => Hash::make('password123'),
+    ]));
+
+    // Positive control: works on tenant A's own domain
+    $this->post("http://{$domainA}/login", [
+        'identifier' => 'shared@example.com',
+        'password' => 'password123',
+    ])->assertRedirect();
+    $this->assertAuthenticated('tenant');
+    auth('tenant')->logout();
+
+    // Same identifier + password, tenant B's domain: identifier doesn't exist under tenant B
+    $response = $this->post("http://{$domainB}/login", [
+        'identifier' => 'shared@example.com',
+        'password' => 'password123',
+    ]);
+
+    $response->assertSessionHasErrors();
+    $this->assertGuest('tenant');
+});
+
 test('disabled user cannot log in', function () {
     $tenant = Tenant::factory()->create();
     $domain = 'tenant-a.coaching.test';
