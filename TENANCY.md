@@ -132,6 +132,27 @@ $model->update(['name' => 'New name']); // Works (tenant_id not touched)
 
 Query builder updates without `tenant_id` still work and respect the global tenant scope (only affect current tenant's rows).
 
+**Remaining bypasses (require explicit checks):**
+
+Only three patterns bypass Eloquent entirely and require manual tenant_id filtering:
+
+1. **`DB::table()`** – Raw query builder (not Eloquent). Must add explicit `WHERE tenant_id = <context>` filter + inline comment.
+2. **`->toBase()`** – Converts Eloquent query to base query builder. Bypasses Eloquent lifecycle and scope. Rare; use only when Eloquent Builder is insufficient and include comment + explicit tenant_id filter.
+3. **Raw SQL** – Database-level queries. Forbidden unless filtered by tenant_id in SQL + comment + PR review.
+
+Example (forbidden, bypasses all protections):
+```php
+// ❌ FORBIDDEN: no tenant_id filter
+DB::table('tenancy_test_parents')->update(['name' => 'Hacked']);
+
+// ✅ REQUIRED: explicit tenant_id filter + comment
+$tenantId = app(TenantContext::class)->id();
+DB::table('tenancy_test_parents')
+    ->where('tenant_id', $tenantId)
+    ->update(['name' => 'Updated']);
+// Comment: raw query for [reason]; verified to filter by tenant_id
+```
+
 ---
 
 ## Database queries and raw SQL
@@ -281,7 +302,7 @@ Test fixture migrations live **exclusively in `tests/Fixtures/migrations/`**, wi
 - Fixture migrations: `tests/Fixtures/migrations/2099_01_01_000001_create_tenancy_test_*.php`
 - Registration: `tests/TestCase.php` overrides `createApplication()` to call `$app->make('migrator')->path(base_path('tests/Fixtures/migrations'))`
 - Behavior: Migrations run once when RefreshDatabase sets up the test database, before the test's transaction
-- Cleanup: All fixture tables rollback with RefreshDatabase, no explicit cleanup needed
+- Cleanup: Fixture table **structures persist** between tests (migrations are not rolled back); only **data** rolls back via transaction
 
 **Verification:**
 ```bash

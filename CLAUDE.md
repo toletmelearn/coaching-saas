@@ -14,3 +14,10 @@ passes tests that don't happen to check for it.
 See also [ARCHITECTURE.md](ARCHITECTURE.md), [VIDEO.md](VIDEO.md),
 [PAYMENTS.md](PAYMENTS.md), [PRIVACY.md](PRIVACY.md), and [ROADMAP.md](ROADMAP.md) for the
 rest of the system design.
+
+## Correction Passes
+
+For iterative corrections and small focused changes (e.g. "Phase 2 correction pass #4"), do not use
+plan mode or spawn subagents unless explicitly asked. Edit directly, test, commit, and report results.
+Plan mode and agents are for exploratory or complex tasks; correction passes are tactical refinements
+that benefit from direct execution.
