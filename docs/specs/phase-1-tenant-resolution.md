@@ -205,8 +205,8 @@ Hostnames in this list bypass tenant resolution. They are where the platform mar
 **Test Suite Location:** `tests/Feature/Tenancy/`
 
 **Test Count:**
-- SQLite (composer test): 29 tests total (27 Tenancy + 2 Example)
-- MySQL (composer test:mysql): 27 Tenancy tests only
+- SQLite (composer test): 30 tests total (28 Tenancy + 2 Example)
+- MySQL (composer test:mysql): 28 Tenancy tests (runs all tenancy tests)
 
 ### ResolveTenant Tests
 
@@ -230,7 +230,7 @@ Hostnames in this list bypass tenant resolution. They are where the platform mar
 12. ✅ `set()` stores tenant and `has()`/`get()`/`id()` reflect it
 13. ✅ `set()` throws if called twice (immutability enforced)
 14. ✅ Scoped binding: fresh instance from container has no tenant (after `forgetScopedInstances()`)
-15. ✅ **Queue isolation:** TenantContext is empty in a queued job (not carried from request)
+15. ✅ **Container scoped reset:** Confirms `forgetScopedInstances()` resets TenantContext (simulates job boundary)
 
 ### Tenant Seeder Tests
 
@@ -346,10 +346,13 @@ This phase implements the core fail-closed guarantee:
 
 ## Next: Phase 2
 
-Phase 2 introduces:
-- Tenant-owned models and the `BelongsToTenant` trait (automatic tenant scoping)
-- Composite foreign keys (`tenant_id, parent_id` pattern) on child tables
+Phase 2 introduces the **BelongsToTenant isolation framework**:
+- `TenantContext` service (already in Phase 1, integrated here)
+- `BelongsToTenant` trait (automatic tenant scoping on models)
+- Composite foreign keys (`tenant_id, parent_id` pattern) established on first child tables
 - Tenant-aware route model binding
-- First tenant-owned tables (e.g., `courses`)
+- First tenant-owned tables for infrastructure (may not be user-facing yet)
+
+Phase 3 follows with tenant users and authentication — the first concrete use of `BelongsToTenant` on user-owned models.
 
 See [ROADMAP.md](../../ROADMAP.md) and [TENANCY.md](../../TENANCY.md) for details.

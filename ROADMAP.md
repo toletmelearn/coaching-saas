@@ -8,9 +8,10 @@ milestones.
 - Phase 0: repository foundation, tooling, documentation (this phase).
 - Phase 1: central tables (`tenants`, `tenant_domains`, `platform_admins`,
   `system_settings`) and hostname-based tenant resolution.
-- Phase 2: `TenantContext`, `BelongsToTenant` trait, tenant-aware route model binding,
-  composite foreign key convention established (see [TENANCY.md](TENANCY.md)).
-- Phase 3: tenant-aware user provider and auth (roles: owner/staff/student).
+- Phase 2: `BelongsToTenant` isolation framework — `TenantContext`, `BelongsToTenant` trait,
+  tenant-aware route model binding, composite foreign key convention (see [TENANCY.md](TENANCY.md)).
+- Phase 3: tenant users and authentication — the first tenant-owned models using `BelongsToTenant`
+  (roles: owner/staff/student; tenant-aware user provider).
 
 Stage A is done when tenant isolation is provably enforced (schema + tests), before any
 product feature is built on top of it.

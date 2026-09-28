@@ -40,6 +40,12 @@
   the HTTP request. Every job constructor takes an explicit `tenant_id` (or the tenant-owned
   model, which carries its own `tenant_id`), and the job sets `TenantContext` from that value
   when it runs.
+- **Scoped binding reset:** Laravel's queue service provider calls `forgetScopedInstances()` at
+  the job execution boundary, resetting all scoped services. This prevents a request's
+  `TenantContext` from leaking into a queued job. However, this is a framework safety mechanism,
+  not a substitute for explicit job design: each job must still carry its own `tenant_id` and
+  re-set `TenantContext` to it (Phase 13: queues at scale will add a job middleware to enforce
+  this pattern).
 
 ## Composite foreign keys (schema-enforced isolation)
 

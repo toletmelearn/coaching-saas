@@ -44,7 +44,7 @@ test('a fresh instance from the container has no tenant, proving the binding is 
         ->and($fresh->has())->toBeFalse();
 });
 
-test('TenantContext is empty in a queued job (scoped binding resets between requests and jobs)', function () {
+test('container scoped binding resets when forgetScopedInstances is called (simulating job boundary)', function () {
     $tenant = Tenant::factory()->create();
     $context = app(TenantContext::class);
     $context->set($tenant);
