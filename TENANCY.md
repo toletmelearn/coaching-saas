@@ -55,6 +55,23 @@ This prevents accidental or malicious `fill(['tenant_id' => ...])` attacks.
   `BelongsToTenant` global scope), so `/courses/{course}` for tenant A can never resolve a
   course belonging to tenant B, even if the ID is guessed or enumerated.
 
+## TenantContext reset at request boundaries
+
+- `ResolveTenant` middleware calls `TenantContext::reset()` at the **start** of every
+  request (before resolving the host) and again in a `finally` block at the **end** of
+  every request (after the response is built), not just once. In the traditional
+  one-process-per-request model this is a no-op — a fresh container means a fresh,
+  empty `TenantContext` regardless. It matters wherever the container persists across
+  more than one unit of work: Octane workers, and this project's test suite, where a
+  single test process handles multiple simulated HTTP requests.
+- **Consequence: nothing that runs after the response has no tenant context.**
+  `afterResponse()` closures, terminable middleware's `terminate()`, and anything else
+  that executes once the HTTP response has already been sent runs with `TenantContext`
+  already cleared. Such code must not assume an ambient tenant — if it needs one, it
+  must capture the tenant/`tenant_id` explicitly before the response is sent (a local
+  variable, a job payload) and set `TenantContext` from that captured value itself,
+  exactly as jobs already do (see below).
+
 ## Jobs and queues
 
 - Queued jobs never rely on an ambient "current tenant" — there isn't one once a job leaves

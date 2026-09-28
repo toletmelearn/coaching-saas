@@ -54,6 +54,33 @@ Add to `C:\xampp\apache\conf\extra\httpd-vhosts.conf`:
 Restart Apache after editing. Visit `http://coaching.test` or any tenant subdomain added to
 the hosts file.
 
+### Local credentials
+
+`php artisan migrate:fresh --seed` creates a demo tenant with a ready-to-use owner account:
+
+| Field           | Value                          |
+|-----------------|---------------------------------|
+| Tenant domain   | `demo.coaching.test` (add it to your hosts file, see above) |
+| Email           | `owner@demo.coaching.test`     |
+| Password        | `password`                     |
+
+Log in at `http://demo.coaching.test/login`. This seeded owner does **not** require a
+password change on first login (unlike a user created through the app's "add person" flow,
+which always generates a temporary password and forces a change — see
+[docs/specs/phase-3-tenant-auth.md](docs/specs/phase-3-tenant-auth.md)).
+
+There is no seeded platform admin account; create one via `php artisan tinker`:
+
+```php
+\App\Models\PlatformAdmin::create([
+    'name' => 'Local Admin',
+    'email' => 'admin@coaching.test',
+    'password' => Hash::make('password'),
+]);
+```
+
+Log in at `http://coaching.test/admin/login`.
+
 ## Commands
 
 | Command                 | Purpose                                                          |

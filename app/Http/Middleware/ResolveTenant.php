@@ -12,20 +12,32 @@ class ResolveTenant
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $host = rtrim(strtolower($request->getHost()), '.');
+        $context = app(TenantContext::class);
+        $context->reset();
 
-        if (in_array($host, config('tenancy.central_domains', []), true)) {
+        try {
+            $host = rtrim(strtolower($request->getHost()), '.');
+
+            if (in_array($host, config('tenancy.central_domains', []), true)) {
+                return $next($request);
+            }
+
+            $tenantDomain = TenantDomain::query()->where('domain', $host)->first();
+
+            if ($tenantDomain === null) {
+                abort(404);
+            }
+
+            $context->set($tenantDomain->tenant);
+
             return $next($request);
+        } finally {
+            // Bracket the context tightly to this single request's lifecycle. In
+            // production (one process per request) this is a no-op; it matters when
+            // the container persists across requests (Octane, and this test suite's
+            // HTTP client), so the next request — or a test's direct inTenant() call —
+            // never inherits this request's tenant.
+            $context->reset();
         }
-
-        $tenantDomain = TenantDomain::query()->where('domain', $host)->first();
-
-        if ($tenantDomain === null) {
-            abort(404);
-        }
-
-        app(TenantContext::class)->set($tenantDomain->tenant);
-
-        return $next($request);
     }
 }

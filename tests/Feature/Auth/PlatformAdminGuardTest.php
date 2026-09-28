@@ -157,6 +157,8 @@ test('tenant user cannot access admin routes', function () {
         ->get('http://coaching.test/admin/dashboard')
         ->assertOk();
 
+    freshRequestCycle();
+
     $user = inTenant($tenant, fn () => User::factory()->create());
 
     $response = $this->actingAs($user, 'tenant')
@@ -172,6 +174,8 @@ test('unauthenticated user cannot access admin routes', function () {
     $this->actingAs($admin, 'platform_admin')
         ->get('http://coaching.test/admin/dashboard')
         ->assertOk();
+
+    freshRequestCycle();
 
     $response = $this->get('http://coaching.test/admin/dashboard');
 
@@ -206,6 +210,8 @@ test('platform admin cannot access tenant routes', function () {
         ->get("http://{$domain}/dashboard")
         ->assertOk();
 
+    freshRequestCycle();
+
     $admin = PlatformAdmin::factory()->create();
 
     $response = $this->actingAs($admin, 'platform_admin')
@@ -227,9 +233,73 @@ test('unauthenticated user cannot access tenant routes', function () {
         ->get("http://{$domain}/dashboard")
         ->assertOk();
 
+    freshRequestCycle();
+
     $response = $this->get("http://{$domain}/dashboard");
 
     $response->assertRedirect("http://{$domain}/login");
+});
+
+// === Platform Admin Login Rate Limiting ===
+
+test('platform admin login is rate limited after 5 failed attempts', function () {
+    $admin = PlatformAdmin::factory()->create([
+        'email' => 'admin@coaching.test',
+        'password' => Hash::make('admin-password'),
+    ]);
+
+    // Positive control: a single failed attempt is not throttled
+    $this->post('http://coaching.test/admin/login', [
+        'email' => 'admin@coaching.test',
+        'password' => 'wrong',
+    ])->assertSessionHasErrors();
+
+    // 4 more failed attempts (5 total)
+    for ($i = 0; $i < 4; $i++) {
+        $this->post('http://coaching.test/admin/login', [
+            'email' => 'admin@coaching.test',
+            'password' => 'wrong',
+        ]);
+    }
+
+    // 6th attempt should be throttled
+    $response = $this->post('http://coaching.test/admin/login', [
+        'email' => 'admin@coaching.test',
+        'password' => 'wrong',
+    ]);
+
+    $response->assertStatus(429);
+});
+
+test('platform admin rate limit is keyed by email and IP, a different IP is not throttled', function () {
+    PlatformAdmin::factory()->create([
+        'email' => 'admin@coaching.test',
+        'password' => Hash::make('admin-password'),
+    ]);
+
+    for ($i = 0; $i < 5; $i++) {
+        $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])
+            ->post('http://coaching.test/admin/login', [
+                'email' => 'admin@coaching.test',
+                'password' => 'wrong',
+            ]);
+    }
+
+    $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.1'])
+        ->post('http://coaching.test/admin/login', [
+            'email' => 'admin@coaching.test',
+            'password' => 'wrong',
+        ])->assertStatus(429);
+
+    // Same email from a different IP must NOT be throttled
+    $response = $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.2'])
+        ->post('http://coaching.test/admin/login', [
+            'email' => 'admin@coaching.test',
+            'password' => 'wrong',
+        ]);
+
+    $response->assertSessionHasErrors();
+    $response->assertStatus(302);
 });
 
 // === Guard Separation ===

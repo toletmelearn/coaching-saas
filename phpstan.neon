@@ -8,8 +8,3 @@ parameters:
     level: 5
 
     tmpDir: storage/framework/phpstan
-
-    ignoreErrors:
-        # BelongsToTenant trait is used only by test fixtures until Phase 3 when product models are introduced
-        - identifier: trait.unused
-          path: app/Traits/BelongsToTenant.php

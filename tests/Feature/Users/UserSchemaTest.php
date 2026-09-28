@@ -141,19 +141,24 @@ test('phone +91 with spaces normalizes to 10 digits', function () {
 });
 
 test('all phone formats normalize to same canonical value', function () {
-    $tenant = Tenant::factory()->create();
+    // Each variant needs its own tenant: they all normalize to the same phone number,
+    // and phone is unique per tenant (see "duplicate phone within same tenant is
+    // rejected" above), so they can't coexist in one tenant.
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+    $tenantC = Tenant::factory()->create();
 
-    $user1 = inTenant($tenant, fn () => User::factory()->create([
+    $user1 = inTenant($tenantA, fn () => User::factory()->create([
         'email' => 'u1@example.com',
         'phone' => '+919876543210',
     ]));
 
-    $user2 = inTenant($tenant, fn () => User::factory()->create([
+    $user2 = inTenant($tenantB, fn () => User::factory()->create([
         'email' => 'u2@example.com',
         'phone' => '09876543210',
     ]));
 
-    $user3 = inTenant($tenant, fn () => User::factory()->create([
+    $user3 = inTenant($tenantC, fn () => User::factory()->create([
         'email' => 'u3@example.com',
         'phone' => '9876543210',
     ]));

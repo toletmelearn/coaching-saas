@@ -44,6 +44,11 @@ return [
             'provider' => 'users',
         ],
 
+        'tenant' => [
+            'driver' => 'session',
+            'provider' => 'tenant_users',
+        ],
+
         'platform_admin' => [
             'driver' => 'session',
             'provider' => 'platform_admins',
@@ -71,6 +76,11 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
+        ],
+
+        'tenant_users' => [
+            'driver' => 'tenant_eloquent',
+            'model' => User::class,
         ],
 
         'platform_admins' => [

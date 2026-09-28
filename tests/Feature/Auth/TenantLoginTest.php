@@ -24,7 +24,8 @@ test('login with email succeeds on correct tenant domain', function () {
     ]);
 
     $response->assertRedirect();
-    $this->assertAuthenticatedAs(User::where('email', 'login@example.com')->first(), 'tenant');
+    $loggedInUser = inTenant($tenant, fn () => User::where('email', 'login@example.com')->first());
+    $this->assertAuthenticatedAs($loggedInUser, 'tenant');
 });
 
 test('login with phone succeeds on correct tenant domain', function () {
@@ -123,18 +124,23 @@ test('wrong password and unknown identifier return same error message', function
     $this->assertAuthenticated('tenant');
     auth('tenant')->logout();
 
+    // Read each response's flashed session errors immediately after its own request —
+    // the next request's flash would otherwise overwrite the previous one's. Calling
+    // assertSessionHasErrors() first (rather than TestResponse::session(), which is
+    // protected) is what actually resolves the flashed ViewErrorBag correctly here.
     $wrongPassword = $this->post("http://{$domain}/login", [
         'identifier' => 'exists@example.com',
         'password' => 'wrong',
     ]);
+    $wrongPassword->assertSessionHasErrors();
+    $wrongMsg = app('session.store')->get('errors')->first();
 
     $unknownEmail = $this->post("http://{$domain}/login", [
         'identifier' => 'nonexistent@example.com',
         'password' => 'any',
     ]);
-
-    $wrongMsg = $wrongPassword->session()->errors()->first();
-    $unknownMsg = $unknownEmail->session()->errors()->first();
+    $unknownEmail->assertSessionHasErrors();
+    $unknownMsg = app('session.store')->get('errors')->first();
 
     expect($wrongMsg)->not->toBeNull();
     expect($wrongMsg)->toBe($unknownMsg);

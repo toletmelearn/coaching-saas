@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EnsureActiveTenantUser;
+use App\Http\Middleware\RedirectIfMustChangePassword;
 use App\Http\Middleware\RequireTenant;
 use App\Http\Middleware\ResolveTenant;
 use Illuminate\Foundation\Application;
@@ -21,7 +23,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'resolve.tenant' => ResolveTenant::class,
             'require.tenant' => RequireTenant::class,
+            'active.tenant.user' => EnsureActiveTenantUser::class,
+            'must.change.password' => RedirectIfMustChangePassword::class,
         ]);
+
+        $middleware->redirectGuestsTo(
+            fn (Request $request) => $request->is('admin/*') ? '/admin/login' : '/login',
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

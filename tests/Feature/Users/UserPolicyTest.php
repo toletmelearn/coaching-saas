@@ -214,6 +214,27 @@ test('non-last owner can be disabled', function () {
     expect($owner2->status)->toBe('disabled');
 });
 
+test('owner can re-enable a disabled user', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    $owner = inTenant($tenant, fn () => User::factory()->owner()->create());
+    $staff = inTenant($tenant, fn () => User::factory()->staff()->disabled()->create());
+
+    // Positive control: the disabled user really is disabled beforehand
+    expect($staff->status)->toBe('disabled');
+
+    $response = $this->actingAs($owner, 'tenant')
+        ->post("http://{$domain}/users/{$staff->id}/enable");
+
+    $response->assertRedirect();
+
+    inTenant($tenant, fn () => $staff->refresh());
+    expect($staff->status)->toBe('active');
+});
+
 test('non-last owner can be demoted', function () {
     $tenant = Tenant::factory()->create();
     $domain = 'tenant-a.coaching.test';

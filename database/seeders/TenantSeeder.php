@@ -6,7 +6,10 @@ use App\Enums\DomainType;
 use App\Enums\TenantStatus;
 use App\Models\Tenant;
 use App\Models\TenantDomain;
+use App\Models\User;
+use App\Support\TenantContext;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class TenantSeeder extends Seeder
 {
@@ -26,5 +29,14 @@ class TenantSeeder extends Seeder
                 'verified_at' => now(),
             ],
         );
+
+        // Local dev/demo credentials — see README "Local credentials".
+        app(TenantContext::class)->runAs($tenant, function () {
+            $owner = User::query()->firstOrCreate(
+                ['email' => 'owner@demo.coaching.test'],
+                ['name' => 'Demo Owner', 'password' => Hash::make('password')],
+            );
+            $owner->forceFill(['role' => 'owner', 'status' => 'active', 'must_change_password' => false])->save();
+        });
     }
 }

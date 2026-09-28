@@ -26,6 +26,21 @@ final class TenantContext
         return $this->set && $this->tenant !== null;
     }
 
+    /**
+     * Clear the context so a new top-level request starts clean.
+     *
+     * Outside of tests, this is a no-op in practice: each HTTP request gets a fresh
+     * container in the traditional one-process-per-request model. It exists so that
+     * environments where the container persists across requests (the test HTTP client,
+     * Octane) don't leak one request's tenant into the next. Only ResolveTenant, at the
+     * very start of the middleware pipeline, should call this — never application code.
+     */
+    public function reset(): void
+    {
+        $this->tenant = null;
+        $this->set = false;
+    }
+
     public function get(): Tenant
     {
         if (! $this->has()) {

@@ -77,6 +77,10 @@ test('session from tenant A cannot access user from tenant B', function () {
 
     $this->assertAuthenticatedAs($userA, 'tenant');
 
+    // Simulate the boundary to a new, separate request: only the guard's in-memory
+    // cache is cleared (as a fresh process would have) — session data is untouched.
+    freshRequestCycle();
+
     // Try to access tenant B with same session
     $this->get("http://{$domainB}/dashboard");
 
@@ -103,6 +107,8 @@ test('session from tenant A resolves to guest on tenant B domain', function () {
         ->assertOk();
     $this->assertAuthenticatedAs($userA, 'tenant');
 
+    freshRequestCycle();
+
     // Request to tenant B should resolve to guest, even with the same forged key
     $this->get("http://{$domainB}/dashboard");
 
@@ -125,6 +131,8 @@ test('tenant user id in central domain session returns guest without exception',
         ->get("http://{$domain}/dashboard")
         ->assertOk();
     $this->assertAuthenticatedAs($user, 'tenant');
+
+    freshRequestCycle();
 
     // Request to central domain should return guest, not throw exception
     $this->get('http://coaching.test/');
@@ -198,6 +206,8 @@ test('session cookie is not shared across tenant subdomains', function () {
     // Positive control: the login succeeded and authenticated on tenant A
     $responseA->assertRedirect();
     $this->assertAuthenticatedAs($userA, 'tenant');
+
+    freshRequestCycle();
 
     // The test client keeps the session between requests; hitting tenant B's
     // domain with that same session must not carry the tenant A authentication over

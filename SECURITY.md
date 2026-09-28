@@ -17,6 +17,23 @@
   not to a global users table. A successful replay is treated as a critical bug, not an edge
   case.
 
+## password_reset_tokens is not yet tenant-scoped
+
+- Phase 3 does not implement self-service ("forgot password") reset — password changes
+  are either the user's own first-login `must_change_password` flow, or an owner/staff
+  explicitly resetting another user's password through the app (both scoped to the
+  authenticated tenant session already). The stock `password_reset_tokens` table (primary
+  key: `email`, no `tenant_id`) is present but unused.
+- **This is a flagged risk for whoever implements self-service reset later.** Since Phase 3
+  made `email` unique only per-tenant (not globally — see "same email can exist in two
+  different tenants" above), a `password_reset_tokens` row keyed only by `email` cannot
+  distinguish which tenant's user the token belongs to. A token generated for
+  `student@example.com` in tenant A would be indistinguishable from one for
+  `student@example.com` in tenant B. Before adding self-service reset, this table needs a
+  `tenant_id` column and a composite key (or a separate token store keyed by
+  `(tenant_id, email)`), following the same pattern as every other tenant-owned table in
+  [TENANCY.md](TENANCY.md).
+
 ## Never trust client-supplied ownership or pricing
 
 - `tenant_id`, price, and course ownership are never taken from the request body, query
