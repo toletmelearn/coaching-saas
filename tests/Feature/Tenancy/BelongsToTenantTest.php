@@ -4,19 +4,8 @@ use App\Exceptions\InvalidTenantException;
 use App\Exceptions\MissingTenantContextException;
 use App\Models\Tenant;
 use App\Support\TenantContext;
-use Illuminate\Support\Facades\Artisan;
 use Tests\Fixtures\Models\TenancyTestChild;
 use Tests\Fixtures\Models\TenancyTestParent;
-
-beforeEach(function () {
-    // Run test fixture migrations. These are run AFTER RefreshDatabase has already refreshed
-    // the main database, so they execute outside the transaction boundary.
-    // This is safe even on MySQL because we're adding to an already-fresh database.
-    Artisan::call('migrate', [
-        '--path' => 'tests/Fixtures/migrations',
-        '--realpath' => true,
-    ]);
-});
 
 // === Tenant Isolation Tests ===
 

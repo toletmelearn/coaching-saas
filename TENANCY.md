@@ -101,7 +101,7 @@ Example (system maintenance):
 
 ```php
 // Console command: audit tenant configuration across all tenants
-$allTenants = Tenant::withoutGlobalScope(TenantScope::class)->get();
+$allTenants = Tenant::all();  // Tenant is not a tenant-owned model, no scope to remove
 foreach ($allTenants as $tenant) {
     app(TenantContext::class)->runAs($tenant, fn () => $this->auditTenant());
 }
@@ -246,25 +246,18 @@ not a reliable stand-in for this specific guarantee.
 
 ### Test Fixtures & RefreshDatabase
 
-Test fixture migrations are run in a `beforeEach()` hook **after** RefreshDatabase has refreshed the main database. This is safe because:
+Test fixture migrations must NOT be run in `beforeEach()` hooks. The `beforeEach(Artisan::call('migrate'))` pattern is unsafe:
 
-1. RefreshDatabase first creates a fresh database with all main migrations
-2. The beforeEach hook runs next, adding fixture migrations to that fresh state
-3. Each test then runs in its own transaction, with both main and fixture tables available
-4. Rollback discards all changes (both main data and fixture data)
+1. On MySQL, DDL statements (CREATE TABLE, etc.) inside the RefreshDatabase transaction cause implicit commits, breaking rollback isolation and test reliability.
+2. Each beforeEach call re-runs all migrations sequentially, slowing down tests significantly.
 
-**Pattern:**
+**Correct approach:** Fixture migrations are placed in `database/migrations/` with timestamps that execute after main migrations. They run once per test suite lifecycle via RefreshDatabase, not per test.
 
-```php
-beforeEach(function () {
-    Artisan::call('migrate', [
-        '--path' => 'tests/Fixtures/migrations',
-        '--realpath' => true,
-    ]);
-});
-```
+- Fixture tables are created when the test database is refreshed (before the test's transaction).
+- Each test runs within a transaction that can safely roll back (no DDL mid-transaction).
+- No explicit migration calls needed in tests.
 
-This avoids running DDL inside the test's transaction (which on MySQL causes implicit commits and breaks rollback isolation).
+**Verification:** `composer test` and `composer test:mysql` should both run fast (~2–5 seconds) and pass without warnings.
 
 ## Tenant-aware user provider
 

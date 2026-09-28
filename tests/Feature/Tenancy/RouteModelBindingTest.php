@@ -1,16 +1,10 @@
 <?php
 
 use App\Models\Tenant;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 use Tests\Fixtures\Models\TenancyTestParent;
 
 beforeEach(function () {
-    Artisan::call('migrate', [
-        '--path' => 'tests/Fixtures/migrations',
-        '--realpath' => true,
-    ]);
-
     Route::get('/parents/{parent}', function (TenancyTestParent $parent) {
         return response()->json(['id' => $parent->id, 'name' => $parent->name]);
     })->middleware('web', 'require.tenant');

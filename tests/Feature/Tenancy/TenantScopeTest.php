@@ -2,15 +2,7 @@
 
 use App\Exceptions\MissingTenantContextException;
 use App\Models\Tenant;
-use Illuminate\Support\Facades\Artisan;
 use Tests\Fixtures\Models\TenancyTestParent;
-
-beforeEach(function () {
-    Artisan::call('migrate', [
-        '--path' => 'tests/Fixtures/migrations',
-        '--realpath' => true,
-    ]);
-});
 
 test('querying without tenant context throws MissingTenantContextException', function () {
     expect(fn () => TenancyTestParent::all())->toThrow(MissingTenantContextException::class);
