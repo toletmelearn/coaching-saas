@@ -23,10 +23,31 @@
 ## BelongsToTenant trait
 
 - Tenant-owned Eloquent models use a `BelongsToTenant` trait that:
-  - Adds a global scope filtering all queries to the current `TenantContext` tenant.
+  - Adds a global scope (TenantScope) filtering all queries to the current `TenantContext` tenant.
+    **If no tenant is in context, the scope throws `MissingTenantContextException`** — never returns
+    all rows or an empty set.
   - Auto-fills `tenant_id` on creation from the current context.
-  - Refuses to save a model whose `tenant_id` doesn't match the current context (defense in
-    depth against a stray mass-assignment or `withoutGlobalScope` call).
+  - Makes `tenant_id` immutable: attempting to change it throws `InvalidTenantException`.
+  - Refuses to save or delete a model whose `tenant_id` doesn't match the current context.
+  - **Never mass-assigns `tenant_id`** — add to `$guarded` on all tenant-owned models (see below).
+
+### tenant_id is not mass-assignable
+
+Every tenant-owned model must guard `tenant_id` from mass assignment. Use either:
+
+```php
+protected $guarded = ['tenant_id'];
+protected $fillable = ['name', 'slug', /* ... other fields ... */];
+```
+
+Or:
+
+```php
+protected $fillable = ['name', 'slug', /* ... other fields ... */];
+// tenant_id is guarded by default if not in $fillable
+```
+
+This prevents accidental or malicious `fill(['tenant_id' => ...])` attacks.
 
 ## Tenant-aware route model binding
 
@@ -47,22 +68,144 @@
   re-set `TenantContext` to it (Phase 13: queues at scale will add a job middleware to enforce
   this pattern).
 
+## Escape hatches: runAs() and withoutGlobalScope
+
+### TenantContext::runAs(Tenant $t, Closure $fn)
+
+Used only in console commands, queued jobs, and platform-admin code to temporarily set context:
+
+```php
+// Console command: backfill data for a specific tenant
+$tenantContext->runAs($tenant, function () {
+    Course::factory()->count(100)->create();
+});
+```
+
+**Rules:**
+- Only allowed when the ambient context is empty (throws if a tenant is already set).
+- Always clears context in a `finally` block, even if the closure throws.
+- Every use must be justified in a code comment and reviewed in PR.
+
+### Model::withoutGlobalScope() or withoutTenancy()
+
+Used only in:
+- Platform admin endpoints (not tenant-owned data).
+- System-level operations: migrations, seeders, admin console commands.
+- Auditing or analytics requiring cross-tenant visibility.
+
+**Rules:**
+- Every use must include an inline comment explaining why.
+- Every use must be reviewed and approved as an exception to tenant scoping.
+- Pattern: search for `withoutGlobalScope.*TenantScope` or custom `withoutTenancy()` method.
+
+Example (admin only):
+
+```php
+// Admin: enumerate all users by role across tenants (not exposed to regular routes)
+$allOwners = User::withoutGlobalScope(TenantScope::class)->where('role', 'owner')->get();
+```
+
+---
+
+## Database queries and raw SQL
+
+**Critical rule:** `DB::table()` and raw SQL queries bypass global scopes.
+
+- **Forbidden** on tenant-owned tables unless `tenant_id` is explicitly filtered in the WHERE clause.
+- Any raw query on a tenant-owned table must:
+  1. Include a WHERE clause filtering by the current tenant's ID.
+  2. Include an inline code comment documenting the filter.
+  3. Be reviewed and approved as an exception (prefer Eloquent queries).
+
+Example:
+
+```php
+// ❌ FORBIDDEN: bypasses tenant scope entirely
+DB::table('courses')->where('status', 'active')->get();
+
+// ✅ REQUIRED: explicit tenant_id filter
+$courses = DB::table('courses')
+    ->where('tenant_id', app(TenantContext::class)->id())
+    ->where('status', 'active')
+    ->get();
+// Comment: raw query for performance-critical reporting; verified to filter by tenant_id
+```
+
+Prefer Eloquent:
+
+```php
+// ✅ PREFERRED: Eloquent applies TenantScope automatically
+$courses = Course::where('status', 'active')->get();
+```
+
+---
+
 ## Composite foreign keys (schema-enforced isolation)
 
 This is the core mechanical rule that makes cross-tenant links a database constraint
 violation, not just an application bug:
 
+### Pattern
+
 - Every tenant-owned parent table has a **unique constraint on `(tenant_id, id)`**, in
   addition to its primary key on `id`.
-- Every tenant-owned child table that references that parent stores **both** `tenant_id`
-  and the parent's id, and its foreign key references the parent's `(tenant_id, id)` unique
-  constraint — not just the parent's `id`.
-- Effect: a child row can only ever point at a parent row that shares its own `tenant_id`.
-  Inserting a child with a mismatched `tenant_id`/parent-id pair fails at the database
-  level, regardless of what application code did or didn't check.
-- This rule must be enforced identically on MySQL (production) and validated by
-  `tests/Feature/Tenancy` run under `composer test:mysql` — SQLite's foreign key handling is
-  not a reliable stand-in for this specific guarantee.
+- Every tenant-owned child table that references that parent:
+  1. Stores **both** `tenant_id` and the parent's id.
+  2. Has a foreign key on `(tenant_id, parent_id)` that references the parent's `(tenant_id, id)` unique constraint.
+  3. **Never** has a foreign key on just the parent's `id` alone.
+
+### Effect
+
+A child row can only ever point at a parent row that shares its own `tenant_id`. Inserting
+a child with a mismatched `tenant_id`/parent-id pair fails at the database level, regardless
+of what application code did or didn't check.
+
+### Migration example
+
+```php
+// Parent table
+Schema::create('courses', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('tenant_id')->constrained('tenants')->restrictOnDelete();
+    $table->string('name');
+    $table->timestamps();
+
+    $table->unique(['tenant_id', 'id']);  // Composite unique
+});
+
+// Child table
+Schema::create('lessons', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('tenant_id');
+    $table->foreignId('course_id');
+    $table->string('title');
+    $table->timestamps();
+
+    // Composite FK: (tenant_id, course_id) must match parent's (tenant_id, id)
+    $table->foreign(['tenant_id', 'course_id'])
+        ->references(['tenant_id', 'id'])
+        ->on('courses')
+        ->restrictOnDelete();
+});
+```
+
+### Unique indexes must include tenant_id
+
+Every unique index on a tenant-owned table **must include `tenant_id`**:
+
+```php
+// ❌ WRONG: allows same slug across different tenants in same table
+$table->unique(['slug']);
+
+// ✅ CORRECT: allows same slug only within different tenants
+$table->unique(['tenant_id', 'slug']);
+```
+
+### Testing
+
+This rule must be enforced identically on MySQL (production) and validated by
+`tests/Feature/Tenancy` run under `composer test:mysql` — SQLite's foreign key handling is
+not a reliable stand-in for this specific guarantee.
 
 ## Tenant-aware user provider
 

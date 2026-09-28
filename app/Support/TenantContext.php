@@ -39,4 +39,20 @@ final class TenantContext
     {
         return $this->get()->id;
     }
+
+    public function runAs(Tenant $tenant, callable $fn): mixed
+    {
+        if ($this->set) {
+            throw new RuntimeException('Cannot runAs() when a tenant is already set.');
+        }
+
+        $this->set($tenant);
+
+        try {
+            return $fn();
+        } finally {
+            $this->tenant = null;
+            $this->set = false;
+        }
+    }
 }
