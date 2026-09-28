@@ -1,6 +1,6 @@
 # Phase 3: Tenant Users & Authentication
 
-**Status:** Complete
+**Status:** Complete (includes the Phase 3.1 correction pass — see "Phase 3.1 changes" below)
 **Phase Goal:** The first tenant-owned product model (`User`), tenant-scoped authentication,
 role-based user management, and platform-admin auth — all under `BelongsToTenant`.
 
@@ -40,9 +40,12 @@ since `users` is created before `tenants` exists in migration order):
 - `email` — changed to **nullable** (was `unique()` globally; now `unique(tenant_id, email)`,
   so the same email may exist across different tenants but not twice within one).
 - `phone` — new, nullable, `unique(tenant_id, phone)`.
-- `role` — string, default `student`. One of `owner` / `staff` / `student`. Not a DB enum
-  (kept as a plain string column so app-level role expansion doesn't need a migration).
-- `status` — string, default `active`. One of `active` / `disabled`.
+- `role` — string column, default `student`, one of `owner` / `staff` / `student`. Not a DB
+  enum (kept as a plain `string` column so app-level role expansion doesn't need a
+  migration) — but cast to the PHP-level string-backed `App\Enums\UserRole` enum on the
+  `User` model (see "User model" below).
+- `status` — string column, default `active`, one of `active` / `disabled`. Cast to
+  `App\Enums\UserStatus` on the model, same reasoning as `role`.
 - `must_change_password` — boolean, default `false`.
 - `last_login_at` — nullable timestamp.
 - **CHECK constraint: `email IS NOT NULL OR phone IS NOT NULL`.** Laravel's schema builder
@@ -65,7 +68,15 @@ since `users` is created before `tenants` exists in migration order):
   `UserFactory`'s named states for tests, and in `UserController`/`ChangePasswordController`
   for the app) — never accepted directly from request input.
 - `protected $attributes = ['role' => 'student', 'status' => 'active', 'must_change_password'
-  => false]` — model-level defaults, matching the DB column defaults.
+  => false]` — model-level defaults, matching the DB column defaults. These are the raw
+  string/scalar values the columns actually hold; the enum cast (next point) converts them
+  to enum instances on read.
+- `role` and `status` are cast (via the `casts()` method) to `App\Enums\UserRole` and
+  `App\Enums\UserStatus` respectively — both string-backed PHP enums. Every comparison
+  against a role or status anywhere in `app/` and `resources/` uses the enum cases
+  (`UserRole::Owner`, `UserStatus::Active`, etc.), never a raw string. `UserRole` carries
+  helper methods used throughout the policy and controllers: `isOwner()`,
+  `canManageUsers()`, `canManageCourses()`, `canManageBilling()`.
 - A `saving` hook lowercases `email` and normalizes `phone` (via `User::normalizePhone()`) —
   strips a leading `+91`/`91` country code or a leading trunk `0`, and all non-digit
   characters, down to a canonical 10-digit form.
@@ -119,12 +130,11 @@ two simulated requests when the second one must resolve auth fresh from the sess
   `/auth/change-password` if the flag is set) for everything except the change-password
   routes themselves.
 - **Platform admin routes** (`/admin/login`, `/admin/dashboard`, `/admin/logout`) are
-  registered via `Route::domain($centralDomain)` for each configured central domain
-  (`config('tenancy.central_domains')`) — routing-level restriction, not just an in-controller
-  check. `POST /admin/login` is *also* registered once more with no domain restriction, as a
-  fallback: a tenant-subdomain attempt still needs a real response (a session validation
-  error, per the test contract) rather than a bare 404, and the domain-restricted
-  registration always wins when the host genuinely is a central domain.
+  registered only via `Route::domain($centralDomain)` for each configured central domain
+  (`config('tenancy.central_domains')`) — routing-level restriction, not just an
+  in-controller check. There is no unrestricted fallback registration (removed in Phase
+  3.1): a tenant-subdomain `POST /admin/login` attempt has no matching route at all and gets
+  a genuine 404, per the test contract.
 - Unauthenticated redirects are guard-aware without route-name collisions: `bootstrap/app.php`
   uses `$middleware->redirectGuestsTo(fn ($request) => $request->is('admin/*') ? '/admin/login'
   : '/login')`.
@@ -138,9 +148,9 @@ two simulated requests when the second one must resolve auth fresh from the sess
 | `view` | owner/staff: any user in tenant. anyone: self |
 | `update` | owner: any user. anyone: self (name only) |
 | `changeRole` | blocks demoting the last active owner (`role=owner`, `status=active`, count ≤ 1) |
-| `disable` | owner only; blocks disabling the last active owner |
-| `enable` | owner only; **not** subject to the last-owner rule (re-activating only ever increases the active-owner count) |
-| `resetPassword` | owner: anyone. staff: students only |
+| `disable` | owner: anyone, but blocks disabling the last active owner. staff: students only — never staff or owners |
+| `enable` | owner: anyone; **not** subject to the last-owner rule (re-activating only ever increases the active-owner count). staff: students only — never staff or owners |
+| `resetPassword` | owner: anyone. staff: students only — never staff or owners |
 
 **Temporary passwords.** Owner/staff creating a user never supply a password. `UserController
 ::store()` generates one (`Str::password(12)`), flashes it once to the redirect under the
@@ -217,6 +227,48 @@ Also approved in the same pass: rate limiting for platform admin login (key: nor
 action (owner-only, not subject to the last-owner rule), and routing-level central-domain
 restriction for `/admin/*` (see Routing above) — each with its own test.
 
+## Seeding
+
+`database/seeders/TenantSeeder.php` seeds the demo tenant (`demo.coaching.test`) and, only
+when `app()->environment(['local', 'testing'])` is true, a demo **owner**
+(`owner@demo.coaching.test`) and demo **student** (`student@demo.coaching.test`), both with
+password `password` and no forced password change. In any other environment (including
+`production`) the tenant/domain are still seeded, but user seeding is skipped entirely and a
+console warning is printed instead — local-only credentials are never created outside
+local/testing. See README "Local credentials".
+
+## Test suites
+
+- The default suite (`composer test`, `phpunit.xml`, SQLite) runs `tests/Unit` and all of
+  `tests/Feature`, including `tests/Feature/Auth` and `tests/Feature/Users`.
+- The MySQL suite (`composer test:mysql`, `phpunit.mysql.xml`) runs against a real
+  MySQL/MariaDB connection (`mysql_testing`) and covers `tests/Feature/Tenancy`,
+  `tests/Feature/Auth`, and `tests/Feature/Users` — i.e. every DB-behavior-sensitive Phase
+  1–3 test, so the CHECK constraint, composite unique indexes, and enum-cast columns are all
+  exercised against the actual database engine, not just SQLite's emulation. It intentionally
+  excludes the two generic scaffold tests (`tests/Feature/ExampleTest.php` and
+  `tests/Unit/ExampleTest.php`), which assert nothing tenancy- or auth-specific.
+
+## Phase 3.1 changes (correction pass, after this spec's initial "Complete" status)
+
+- Added `App\Enums\UserRole` / `UserStatus` and cast `role`/`status` on `User` (see "User
+  model" above) — the code previously compared raw strings everywhere; this spec has been
+  updated to reflect the enum cast rather than describing the historical string-only state.
+- Restricted `UserPolicy::disable()`/`enable()` so staff may only disable/enable students
+  (never staff or owners) — previously these two abilities were owner-only, which was
+  narrower than the brief's "staff can create/manage students only" rule; `resetPassword()`
+  already had the student-only restriction and was unchanged.
+- `TenantSeeder` demo users are now guarded to local/testing only, and a demo student was
+  added (see "Seeding" above).
+- `tests/Feature/Auth` and `tests/Feature/Users` were added to the MySQL suite (see "Test
+  suites" above).
+- Removed the unrestricted fallback `POST /admin/login` route; a tenant-domain attempt now
+  gets a genuine 404 (the route is registered only on central domains).
+- Fixed a latent PHPStan/Larastan config gap (`parseModelCastsMethod` was never set), found
+  while adding the role/status enum casts: without it, Larastan never statically parses a
+  method-style `casts()` body, so any model using that style (not just `User`) had its
+  cast-derived property types silently fall back to the raw DB column type.
+
 ---
 
 ## Files changed (Step 2 implementation)
@@ -243,3 +295,27 @@ Test changes: see `git diff --stat` in the Step 2 completion report for the exac
 the Step 1 commit — every change there is one of the 5 approved corrections above, plus 3 new
 tests for new functionality (re-enable, admin rate limiting ×2) and the `freshRequestCycle()`
 helper in `tests/Pest.php`.
+
+### Files changed (Phase 3.1 correction pass)
+
+Application code: `app/Enums/{UserRole,UserStatus}.php` (new), `app/Models/User.php` (cast
+role/status), `app/Policies/UserPolicy.php` (enum comparisons + staff disable/enable
+restriction), `app/Http/Controllers/{DashboardController,UserController}.php`,
+`app/Http/Controllers/Auth/TenantLoginController.php`,
+`app/Http/Middleware/EnsureActiveTenantUser.php` (enum comparisons),
+`resources/views/users/{index,show}.blade.php` (`$user->role->value`), `routes/web.php`
+(removed fallback admin-login route), `database/seeders/TenantSeeder.php` (environment
+guard + demo student).
+
+Config: `phpunit.mysql.xml` (added `Auth`/`Users` test suites), `phpstan.neon`
+(`parseModelCastsMethod: true`).
+
+Documentation: `SECURITY.md` (CHECK constraint minimum version), `README.md` (demo student
+credentials, seeder environment guard), `docs/specs/phase-3-brief.md` (new — the original
+brief, committed separately), this file.
+
+Test changes: `tests/Feature/Auth/PlatformAdminGuardTest.php` (404 for the removed fallback
+route — approved), `tests/Feature/Tenancy/TenantSeederTest.php` (2 new seeder-environment
+tests), `tests/Feature/Users/{UserManagementTest,UserPolicyTest,UserSchemaTest}.php`
+(raw string → enum comparisons — approved; `UserPolicyTest` also gained 7 new tests for the
+staff disable/enable/reset-password-on-students-only rule, each with a positive control).
