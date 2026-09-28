@@ -49,8 +49,16 @@ class TenantBuilder extends Builder
 
         $contextTenantId = $context->id();
 
-        foreach ($values as &$row) {
+        // Normalize single associative row to list of rows
+        if (! $this->isListOfArrays($values)) {
+            $values = [$values];
+        }
+
+        $normalizedValues = [];
+        foreach ($values as $row) {
             if (! is_array($row)) {
+                $normalizedValues[] = $row;
+
                 continue;
             }
 
@@ -64,9 +72,25 @@ class TenantBuilder extends Builder
             } else {
                 $row['tenant_id'] = $contextTenantId;
             }
+
+            $normalizedValues[] = $row;
         }
 
-        return parent::insert($values);
+        return parent::insert($normalizedValues);
+    }
+
+    public function insertUsing(array $columns, $query)
+    {
+        throw new InvalidTenantException(
+            'Cannot insertUsing on tenant-owned models — use model factory or insert() with explicit tenant_id'
+        );
+    }
+
+    public function insertOrIgnoreUsing(array $columns, $query)
+    {
+        throw new InvalidTenantException(
+            'Cannot insertOrIgnoreUsing on tenant-owned models — use model factory or insertOrIgnore() with explicit tenant_id'
+        );
     }
 
     public function insertGetId(array $values, $sequence = null)
@@ -107,8 +131,16 @@ class TenantBuilder extends Builder
 
         $contextTenantId = $context->id();
 
-        foreach ($values as &$row) {
+        // Normalize single associative row to list of rows
+        if (! $this->isListOfArrays($values)) {
+            $values = [$values];
+        }
+
+        $normalizedValues = [];
+        foreach ($values as $row) {
             if (! is_array($row)) {
+                $normalizedValues[] = $row;
+
                 continue;
             }
 
@@ -122,9 +154,11 @@ class TenantBuilder extends Builder
             } else {
                 $row['tenant_id'] = $contextTenantId;
             }
+
+            $normalizedValues[] = $row;
         }
 
-        return parent::insertOrIgnore($values);
+        return parent::insertOrIgnore($normalizedValues);
     }
 
     public function increment($column, $amount = 1, array $extra = [])
@@ -186,8 +220,14 @@ class TenantBuilder extends Builder
     private function normalisedKey(string $key): string
     {
         $lower = strtolower($key);
+        $lower = trim($lower, '`"');
 
-        return substr($lower, strrpos($lower, '.') + 1);
+        $pos = strrpos($lower, '.');
+        if ($pos === false) {
+            return $lower;
+        }
+
+        return substr($lower, $pos + 1);
     }
 
     private function containsNormalisedKey(string $key, array $values): bool
@@ -238,5 +278,17 @@ class TenantBuilder extends Builder
         }
 
         return false;
+    }
+
+    private function isListOfArrays(array $values): bool
+    {
+        // Check if this is a list (sequential numeric keys starting from 0)
+        // vs an associative array
+        $keys = array_keys($values);
+        if (empty($keys)) {
+            return true;
+        }
+
+        return $keys === range(0, count($keys) - 1);
     }
 }

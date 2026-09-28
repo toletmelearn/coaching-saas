@@ -13,6 +13,7 @@ return new class extends Migration
             $table->foreignId('tenant_id')->constrained('tenants')->restrictOnDelete();
             $table->string('name');
             $table->string('slug');
+            $table->integer('views')->default(0);
             $table->timestamps();
 
             $table->tenantKeys();

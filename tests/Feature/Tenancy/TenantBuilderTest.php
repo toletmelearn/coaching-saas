@@ -5,6 +5,47 @@ use App\Exceptions\MissingTenantContextException;
 use App\Models\Tenant;
 use Tests\Fixtures\Models\TenancyTestParent;
 
+// === Key Normalisation Tests (covers uppercase, qualified, quoted keys) ===
+
+test('update with uppercase TENANT_ID throws InvalidTenantException', function () {
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+
+    inTenant($tenantA, fn () => TenancyTestParent::factory()->create());
+
+    expect(function () use ($tenantA, $tenantB) {
+        inTenant($tenantA, function () use ($tenantB) {
+            TenancyTestParent::query()->update(['TENANT_ID' => $tenantB->id]);
+        });
+    })->toThrow(InvalidTenantException::class);
+});
+
+test('update with qualified tenant_id (table.tenant_id) throws InvalidTenantException', function () {
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+
+    inTenant($tenantA, fn () => TenancyTestParent::factory()->create());
+
+    expect(function () use ($tenantA, $tenantB) {
+        inTenant($tenantA, function () use ($tenantB) {
+            TenancyTestParent::query()->update(['tenancy_test_parents.tenant_id' => $tenantB->id]);
+        });
+    })->toThrow(InvalidTenantException::class);
+});
+
+test('update with backtick-quoted tenant_id throws InvalidTenantException', function () {
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+
+    inTenant($tenantA, fn () => TenancyTestParent::factory()->create());
+
+    expect(function () use ($tenantA, $tenantB) {
+        inTenant($tenantA, function () use ($tenantB) {
+            TenancyTestParent::query()->update(['`tenant_id`' => $tenantB->id]);
+        });
+    })->toThrow(InvalidTenantException::class);
+});
+
 // === Update/Upsert Guards ===
 
 test('query builder update with tenant_id throws InvalidTenantException', function () {
@@ -112,6 +153,29 @@ test('insert without tenant_id auto-fills from context', function () {
         ->and($model->tenant_id)->toBe($tenant->id);
 });
 
+test('insert single row (associative) with foreign tenant_id throws InvalidTenantException', function () {
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+
+    expect(function () use ($tenantA, $tenantB) {
+        inTenant($tenantA, function () use ($tenantB) {
+            TenancyTestParent::query()->insert(['tenant_id' => $tenantB->id, 'name' => 'X', 'slug' => 'x']);
+        });
+    })->toThrow(InvalidTenantException::class);
+});
+
+test('insert single row (associative) without tenant_id auto-fills from context', function () {
+    $tenant = Tenant::factory()->create();
+
+    inTenant($tenant, function () {
+        TenancyTestParent::query()->insert(['name' => 'Single', 'slug' => 'single']);
+    });
+
+    $model = inTenant($tenant, fn () => TenancyTestParent::where('name', 'Single')->first());
+
+    expect($model->tenant_id)->toBe($tenant->id);
+});
+
 test('insertGetId auto-fills tenant_id from context', function () {
     $tenant = Tenant::factory()->create();
 
@@ -145,33 +209,58 @@ test('insertOrIgnore auto-fills tenant_id from context', function () {
 
 test('increment with tenant_id in extra throws InvalidTenantException', function () {
     $tenant = Tenant::factory()->create();
-    $model = inTenant($tenant, fn () => TenancyTestParent::factory()->create());
+    inTenant($tenant, fn () => TenancyTestParent::factory()->create());
 
     expect(function () use ($tenant) {
         inTenant($tenant, function () {
-            TenancyTestParent::query()->increment('id', 1, ['tenant_id' => 999]);
+            TenancyTestParent::query()->increment('views', 1, ['tenant_id' => 999]);
         });
     })->toThrow(InvalidTenantException::class);
 });
 
 test('decrement with tenant_id in extra throws InvalidTenantException', function () {
     $tenant = Tenant::factory()->create();
-    $model = inTenant($tenant, fn () => TenancyTestParent::factory()->create());
+    inTenant($tenant, fn () => TenancyTestParent::factory()->create());
 
     expect(function () use ($tenant) {
         inTenant($tenant, function () {
-            TenancyTestParent::query()->decrement('id', 1, ['tenant_id' => 999]);
+            TenancyTestParent::query()->decrement('views', 1, ['tenant_id' => 999]);
         });
     })->toThrow(InvalidTenantException::class);
 });
 
-test('normal increment works and respects tenant scope', function () {
-    $tenant = Tenant::factory()->create();
-    $model = inTenant($tenant, fn () => TenancyTestParent::factory()->create());
+test('increment respects tenant scope and does not affect other tenants', function () {
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
 
-    inTenant($tenant, function () use ($model) {
-        TenancyTestParent::find($model->id)->increment('id', 0);
+    $modelA = inTenant($tenantA, fn () => TenancyTestParent::factory()->create(['views' => 0]));
+    $modelB = inTenant($tenantB, fn () => TenancyTestParent::factory()->create(['views' => 5]));
+
+    inTenant($tenantA, function () {
+        TenancyTestParent::query()->increment('views', 10);
     });
 
-    expect($model->exists)->toBeTrue();
+    $updatedA = inTenant($tenantA, fn () => TenancyTestParent::find($modelA->id));
+    $updatedB = inTenant($tenantB, fn () => TenancyTestParent::find($modelB->id));
+
+    expect($updatedA->views)->toBe(10)
+        ->and($updatedB->views)->toBe(5);
+});
+
+test('decrement respects tenant scope and does not affect other tenants', function () {
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+
+    $modelA = inTenant($tenantA, fn () => TenancyTestParent::factory()->create(['views' => 100]));
+    $modelB = inTenant($tenantB, fn () => TenancyTestParent::factory()->create(['views' => 50]));
+
+    inTenant($tenantA, function () {
+        TenancyTestParent::query()->decrement('views', 10);
+    });
+
+    $updatedA = inTenant($tenantA, fn () => TenancyTestParent::find($modelA->id));
+    $updatedB = inTenant($tenantB, fn () => TenancyTestParent::find($modelB->id));
+
+    expect($updatedA->views)->toBe(90)
+        ->and($updatedB->views)->toBe(50);
 });
