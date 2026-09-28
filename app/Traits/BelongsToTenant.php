@@ -26,12 +26,12 @@ trait BelongsToTenant
 
             $contextTenantId = $context->id();
 
-            if ($model->tenant_id && $model->tenant_id !== $contextTenantId) {
+            if ($model->tenant_id && (int) $model->tenant_id !== $contextTenantId) {
                 throw new InvalidTenantException(
                     sprintf(
                         'Cannot create %s with tenant_id %d when context is %d',
                         $model::class,
-                        $model->tenant_id,
+                        (int) $model->tenant_id,
                         $contextTenantId
                     )
                 );
@@ -41,8 +41,8 @@ trait BelongsToTenant
         });
 
         static::updating(function ($model) {
-            $original = $model->getOriginal('tenant_id');
-            $current = $model->getAttribute('tenant_id');
+            $original = (int) $model->getOriginal('tenant_id');
+            $current = (int) $model->getAttribute('tenant_id');
 
             if ($original !== $current) {
                 throw new InvalidTenantException(
@@ -75,12 +75,12 @@ trait BelongsToTenant
             }
 
             // If tenant_id is already set, it must match the context
-            if ($model->tenant_id !== $contextTenantId) {
+            if ((int) $model->tenant_id !== $contextTenantId) {
                 throw new InvalidTenantException(
                     sprintf(
                         'Cannot save %s with tenant_id %d when context is %d',
                         $model::class,
-                        $model->tenant_id,
+                        (int) $model->tenant_id,
                         $contextTenantId
                     )
                 );
@@ -96,12 +96,12 @@ trait BelongsToTenant
                 );
             }
 
-            if ($model->tenant_id !== $context->id()) {
+            if ((int) $model->tenant_id !== $context->id()) {
                 throw new InvalidTenantException(
                     sprintf(
                         'Cannot delete %s with tenant_id %d when context is %d',
                         $model::class,
-                        $model->tenant_id,
+                        (int) $model->tenant_id,
                         $context->id()
                     )
                 );

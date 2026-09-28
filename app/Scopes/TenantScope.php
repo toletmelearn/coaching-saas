@@ -20,6 +20,6 @@ class TenantScope implements Scope
             );
         }
 
-        $builder->where($model->qualifyColumn('tenant_id'), '=', $context->id());
+        $builder->where($model->qualifyColumn('tenant_id'), '=', (int) $context->id());
     }
 }

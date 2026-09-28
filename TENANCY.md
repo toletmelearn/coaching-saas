@@ -89,7 +89,6 @@ $tenantContext->runAs($tenant, function () {
 ### Model::withoutGlobalScope() or withoutTenancy()
 
 Used only in:
-- Platform admin endpoints (not tenant-owned data).
 - System-level operations: migrations, seeders, admin console commands.
 - Auditing or analytics requiring cross-tenant visibility.
 
@@ -98,11 +97,14 @@ Used only in:
 - Every use must be reviewed and approved as an exception to tenant scoping.
 - Pattern: search for `withoutGlobalScope.*TenantScope` or custom `withoutTenancy()` method.
 
-Example (admin only):
+Example (system maintenance):
 
 ```php
-// Admin: enumerate all users by role across tenants (not exposed to regular routes)
-$allOwners = User::withoutGlobalScope(TenantScope::class)->where('role', 'owner')->get();
+// Console command: audit tenant configuration across all tenants
+$allTenants = Tenant::withoutGlobalScope(TenantScope::class)->get();
+foreach ($allTenants as $tenant) {
+    app(TenantContext::class)->runAs($tenant, fn () => $this->auditTenant());
+}
 ```
 
 ---
@@ -201,11 +203,68 @@ $table->unique(['slug']);
 $table->unique(['tenant_id', 'slug']);
 ```
 
+### Blueprint Macros
+
+Two macros simplify the composite FK pattern:
+
+#### `$table->tenantKeys()`
+
+Adds a unique constraint on `(tenant_id, id)`. Use on all parent tables:
+
+```php
+Schema::create('courses', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('tenant_id')->constrained('tenants')->restrictOnDelete();
+    $table->string('name');
+    $table->timestamps();
+
+    $table->tenantKeys();  // Adds unique(['tenant_id', 'id'])
+});
+```
+
+#### `$table->tenantForeign($column, $table)`
+
+Adds a composite FK on `(tenant_id, $column)` referencing the parent's `(tenant_id, id)`. Use on all child tables:
+
+```php
+Schema::create('lessons', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('tenant_id');
+    $table->foreignId('course_id');
+    $table->string('title');
+    $table->timestamps();
+
+    $table->tenantForeign('course_id', 'courses');  // Adds FK on (tenant_id, course_id)
+});
+```
+
 ### Testing
 
 This rule must be enforced identically on MySQL (production) and validated by
 `tests/Feature/Tenancy` run under `composer test:mysql` — SQLite's foreign key handling is
 not a reliable stand-in for this specific guarantee.
+
+### Test Fixtures & RefreshDatabase
+
+Test fixture migrations are run in a `beforeEach()` hook **after** RefreshDatabase has refreshed the main database. This is safe because:
+
+1. RefreshDatabase first creates a fresh database with all main migrations
+2. The beforeEach hook runs next, adding fixture migrations to that fresh state
+3. Each test then runs in its own transaction, with both main and fixture tables available
+4. Rollback discards all changes (both main data and fixture data)
+
+**Pattern:**
+
+```php
+beforeEach(function () {
+    Artisan::call('migrate', [
+        '--path' => 'tests/Fixtures/migrations',
+        '--realpath' => true,
+    ]);
+});
+```
+
+This avoids running DDL inside the test's transaction (which on MySQL causes implicit commits and breaks rollback isolation).
 
 ## Tenant-aware user provider
 

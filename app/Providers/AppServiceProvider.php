@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Macros\BlueprintTenancyMacro;
 use App\Support\TenantContext;
 use Illuminate\Support\ServiceProvider;
 
@@ -20,6 +21,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        BlueprintTenancyMacro::register();
     }
 }

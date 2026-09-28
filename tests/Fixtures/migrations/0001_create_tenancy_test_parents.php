@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('slug');
             $table->timestamps();
 
-            $table->unique(['tenant_id', 'id']);
+            $table->tenantKeys();
             $table->unique(['tenant_id', 'slug']);
         });
     }

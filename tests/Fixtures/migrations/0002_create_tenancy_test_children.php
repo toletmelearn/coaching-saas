@@ -15,10 +15,7 @@ return new class extends Migration
             $table->string('name');
             $table->timestamps();
 
-            $table->foreign(['tenant_id', 'parent_id'])
-                ->references(['tenant_id', 'id'])
-                ->on('tenancy_test_parents')
-                ->restrictOnDelete();
+            $table->tenantForeign('parent_id', 'tenancy_test_parents');
         });
     }
 

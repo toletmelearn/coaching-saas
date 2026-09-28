@@ -9,7 +9,9 @@ use Tests\Fixtures\Models\TenancyTestChild;
 use Tests\Fixtures\Models\TenancyTestParent;
 
 beforeEach(function () {
-    // Run test fixture migrations
+    // Run test fixture migrations. These are run AFTER RefreshDatabase has already refreshed
+    // the main database, so they execute outside the transaction boundary.
+    // This is safe even on MySQL because we're adding to an already-fresh database.
     Artisan::call('migrate', [
         '--path' => 'tests/Fixtures/migrations',
         '--realpath' => true,
@@ -130,20 +132,63 @@ test('creating without tenant context throws MissingTenantContextException', fun
     ]))->toThrow(MissingTenantContextException::class);
 });
 
+test('direct instantiation and save() auto-fills tenant_id from context', function () {
+    $tenant = Tenant::factory()->create();
+
+    $model = inTenant($tenant, function () {
+        $m = new TenancyTestParent(['name' => 'Direct', 'slug' => 'direct']);
+        expect($m->tenant_id)->toBeNull(); // not set yet
+
+        $m->save();
+
+        return $m;
+    });
+
+    expect($model->tenant_id)->toBe($tenant->id);
+    expect($model->name)->toBe('Direct');
+});
+
+test('::create() auto-fills tenant_id from context', function () {
+    $tenant = Tenant::factory()->create();
+
+    $model = inTenant($tenant, fn () => TenancyTestParent::create([
+        'name' => 'Created',
+        'slug' => 'created',
+    ]));
+
+    expect($model->tenant_id)->toBe($tenant->id);
+    expect($model->name)->toBe('Created');
+});
+
+test('::factory()->create() auto-fills tenant_id from context', function () {
+    $tenant = Tenant::factory()->create();
+
+    $model = inTenant($tenant, fn () => TenancyTestParent::factory()->create([
+        'name' => 'Factory',
+    ]));
+
+    expect($model->tenant_id)->toBe($tenant->id);
+    expect($model->name)->toBe('Factory');
+});
+
 test('tenant_id is not mass-assignable', function () {
     $tenant = Tenant::factory()->create();
     $otherTenant = Tenant::factory()->create();
 
-    inTenant($tenant, function () use ($otherTenant) {
+    inTenant($tenant, function () use ($tenant, $otherTenant) {
         $model = TenancyTestParent::make([
             'tenant_id' => $otherTenant->id,
             'name' => 'Test',
             'slug' => 'test',
         ]);
 
-        // tenant_id should not be set from make() input (guarded), and will be auto-filled on save from context
-        expect($model->name)->toBe('Test');
         // tenant_id is guarded, so the provided value is ignored
+        expect($model->tenant_id)->toBeNull(); // not set by make() due to guarding
+
+        $model->save();
+
+        // After save(), tenant_id is auto-filled from context
+        expect($model->tenant_id)->toBe($tenant->id); // auto-filled to context tenant
     });
 });
 
