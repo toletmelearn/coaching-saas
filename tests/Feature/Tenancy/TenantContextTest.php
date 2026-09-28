@@ -43,3 +43,24 @@ test('a fresh instance from the container has no tenant, proving the binding is 
     expect($fresh)->not->toBe($context)
         ->and($fresh->has())->toBeFalse();
 });
+
+test('TenantContext is empty in a queued job (scoped binding resets between requests and jobs)', function () {
+    $tenant = Tenant::factory()->create();
+    $context = app(TenantContext::class);
+    $context->set($tenant);
+
+    expect($context->has())->toBeTrue();
+    expect($context->id())->toBe($tenant->id);
+
+    // Simulate job processing: Laravel calls forgetScopedInstances() at the job boundary.
+    // This is how the framework ensures each job starts with a fresh container scope,
+    // which is essential for multi-tenancy: a job queued from tenant A's request
+    // must not inherit tenant A's context when it runs (jobs carry their own tenant_id).
+    app()->forgetScopedInstances();
+
+    // After forgetScopedInstances(), a fresh TenantContext from the container is empty.
+    $jobContext = app(TenantContext::class);
+
+    expect($jobContext->has())->toBeFalse();
+    expect(fn () => $jobContext->get())->toThrow(RuntimeException::class);
+});
