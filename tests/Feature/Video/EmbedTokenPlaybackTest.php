@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Support\Video\BunnyEmbedTokenSigner;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 function bunnyLessonWithReadyVideo(Tenant $tenant, int $libraryId, string $libraryKey, string $tokenKey): Lesson
 {
@@ -129,4 +130,51 @@ test('no Bunny API key or token key (account or per-tenant) ever appears in a re
     $response->assertDontSee('freshly-issued-library-key', false);
     expect($response->getContent())->not->toContain('account-level-secret')
         ->and($response->getContent())->not->toContain('freshly-issued-library-key');
+});
+
+test('no Bunny API key or token key (account or per-tenant) ever appears in captured log output', function () {
+    config(['coaching.video_driver' => 'bunny']);
+    config(['services.bunny.account_api_key' => 'account-level-secret']);
+
+    Http::fake([
+        'api.bunny.net/videolibrary' => Http::response(['Id' => 888, 'ApiKey' => 'freshly-issued-library-key'], 201),
+        'video.bunnycdn.com/library/*/videos' => Http::response(['guid' => 'video-guid'], 200),
+    ]);
+
+    $captured = [];
+    Log::listen(function ($event) use (&$captured) {
+        $captured[] = $event->message.' '.json_encode($event->context);
+    });
+
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+    $tenant->forceFill([
+        'bunny_library_id' => 888,
+        'bunny_library_api_key' => 'freshly-issued-library-key',
+        'bunny_library_token_key' => 'tenant-token-key-for-logging-check',
+    ])->save();
+
+    [$owner, $lesson] = inTenant($tenant, function () {
+        $owner = User::factory()->owner()->create();
+        $course = Course::factory()->published()->create();
+        $chapter = Chapter::factory()->for($course)->create();
+        $lesson = Lesson::factory()->for($chapter)->create(['course_id' => $course->id]);
+
+        return [$owner, $lesson];
+    });
+
+    // Positive control: the listener genuinely captures log calls made through the facade.
+    Log::info('phase-5-log-listener-sanity-check');
+    expect($captured)->toContain('phase-5-log-listener-sanity-check {}');
+
+    $this->actingAs($owner, 'tenant')
+        ->post("http://{$domain}/manage/lessons/{$lesson->id}/video/start-upload", [
+            'filename' => 'lecture.mp4', 'mime_type' => 'video/mp4', 'size_bytes' => 1_000_000,
+        ]);
+
+    $allLogged = implode("\n", $captured);
+    expect($allLogged)->not->toContain('account-level-secret')
+        ->and($allLogged)->not->toContain('freshly-issued-library-key')
+        ->and($allLogged)->not->toContain('tenant-token-key-for-logging-check');
 });

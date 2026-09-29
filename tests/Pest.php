@@ -3,10 +3,21 @@
 use App\Models\Tenant;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 pest()->extend(TestCase::class)->use(RefreshDatabase::class)->in('Feature');
 pest()->extend(TestCase::class)->in('Unit');
+
+// Phase 5 video tests talk to Bunny Stream exclusively through Http::fake(); a real
+// network call escaping a fake() setup must fail loudly, not silently hit the internet.
+pest()->beforeEach(function () {
+    Http::preventStrayRequests();
+})->in('Feature/Video');
+
+pest()->beforeEach(function () {
+    Http::preventStrayRequests();
+})->in('Unit/Support/Video');
 
 function inTenant(Tenant $tenant, callable $fn): mixed
 {

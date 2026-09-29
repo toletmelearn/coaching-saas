@@ -26,6 +26,10 @@
         <testsuite name="Production">
             <directory>tests/Feature/Production</directory>
         </testsuite>
+        <testsuite name="Video">
+            <directory>tests/Feature/Video</directory>
+            <directory>tests/Unit/Support/Video</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>
