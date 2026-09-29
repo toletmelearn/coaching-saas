@@ -46,7 +46,12 @@
     @if ($lesson->youtube_video_id)
         <p class="text-gray-500 mb-6">{{ __('lessons.video.lesson_has_youtube') }}</p>
     @else
-        <div id="video-manager" class="mb-6" data-lesson-id="{{ $lesson->id }}">
+        <div
+            id="video-manager"
+            class="mb-6"
+            data-lesson-id="{{ $lesson->id }}"
+            data-upload-failed-message="{{ __('lessons.video.upload_failed') }}"
+        >
             @if ($lesson->video)
                 <p class="mb-2">
                     <span class="inline-block rounded-full px-2 py-0.5 text-xs bg-gray-200 text-gray-700">
@@ -81,94 +86,6 @@
             </div>
             <p class="text-sm text-red-700 hidden" id="video-upload-error"></p>
         </div>
-
-        @if (config('coaching.video_driver') === 'bunny')
-            <script src="https://cdn.jsdelivr.net/npm/tus-js-client@4/dist/tus.min.js"></script>
-        @endif
-
-        <script>
-            (function () {
-                var input = document.getElementById('video-file-input');
-                var manager = document.getElementById('video-manager');
-                if (!input || !manager) return;
-
-                var progressTrack = document.getElementById('video-progress-track');
-                var progressBar = document.getElementById('video-progress-bar');
-                var errorEl = document.getElementById('video-upload-error');
-                var lessonId = manager.dataset.lessonId;
-
-                function showError(message) {
-                    errorEl.textContent = message;
-                    errorEl.classList.remove('hidden');
-                }
-
-                input.addEventListener('change', function () {
-                    var file = input.files[0];
-                    if (!file) return;
-
-                    errorEl.classList.add('hidden');
-                    progressTrack.classList.remove('hidden');
-                    progressBar.style.width = '0%';
-
-                    fetch('/manage/lessons/' + lessonId + '/video/start-upload', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : '',
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify({ filename: file.name, mime_type: file.type, size_bytes: file.size })
-                    }).then(function (response) {
-                        if (!response.ok) {
-                            throw new Error('start-upload-failed');
-                        }
-
-                        return response.json();
-                    }).then(function (data) {
-                        if (data.driver === 'bunny' && window.tus) {
-                            new window.tus.Upload(file, {
-                                endpoint: data.tus_endpoint,
-                                headers: data.headers,
-                                metadata: data.metadata,
-                                onProgress: function (bytesUploaded, bytesTotal) {
-                                    progressBar.style.width = Math.round((bytesUploaded / bytesTotal) * 100) + '%';
-                                },
-                                onSuccess: function () {
-                                    window.location.reload();
-                                },
-                                onError: function () {
-                                    showError(@js(__('lessons.video.upload_failed')));
-                                },
-                            }).start();
-
-                            return;
-                        }
-
-                        if (data.upload_url) {
-                            var xhr = new XMLHttpRequest();
-                            xhr.open('POST', data.upload_url);
-                            xhr.upload.addEventListener('progress', function (e) {
-                                if (e.lengthComputable) {
-                                    progressBar.style.width = Math.round((e.loaded / e.total) * 100) + '%';
-                                }
-                            });
-                            xhr.onload = function () {
-                                if (xhr.status >= 200 && xhr.status < 300) {
-                                    window.location.reload();
-                                } else {
-                                    showError(@js(__('lessons.video.upload_failed')));
-                                }
-                            };
-                            var formData = new FormData();
-                            formData.append('file', file);
-                            xhr.send(formData);
-                        }
-                    }).catch(function () {
-                        showError(@js(__('lessons.video.upload_failed')));
-                    });
-                });
-            })();
-        </script>
     @endif
 
     <h2 class="text-lg font-semibold mt-8 mb-2">{{ __('courses.manage.notes') }}</h2>

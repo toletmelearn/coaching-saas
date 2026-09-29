@@ -26,6 +26,18 @@ is the only supported driver in local/testing; `VIDEO_DRIVER=fake` is refused by
 [docs/specs/phase-5-video.md](docs/specs/phase-5-video.md) and
 [docs/DEPLOY.md](docs/DEPLOY.md) for the `bunny` driver's production setup.
 
+**Testing an actual video upload locally**, rather than just the app's own test suite,
+needs XAMPP's PHP to allow a file that size through *before* Laravel ever sees it. Edit
+`C:\xampp\php\php.ini` (the CLI/Apache one XAMPP's control panel points at) and raise both
+`upload_max_filesize` and `post_max_size` (the latter must be **larger** than the former —
+PHP counts the whole multipart body, not just the file) to comfortably above
+`COACHING_MAX_VIDEO_MB` (default 2048), e.g. `upload_max_filesize = 2100M` and
+`post_max_size = 2200M`, then restart Apache from the XAMPP control panel. Left at PHP's
+tiny defaults (2M/8M), PHP silently discards the upload before `$_FILES` is even
+populated — the app detects this specific case (`Content-Length` above the configured
+limit but no file present) and reports it as "file too large" rather than a generic
+error, but the upload still won't go through until `php.ini` is raised.
+
 ### Hosts file (subdomain tenants)
 
 Tenants are resolved by subdomain (see [TENANCY.md](TENANCY.md)), so add entries to

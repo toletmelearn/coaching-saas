@@ -14,18 +14,20 @@ class Tenant extends Model
     protected $fillable = ['name', 'status', 'timezone', 'currency'];
 
     /**
-     * Bunny library credentials are never mass-assignable (set only via forceFill from
+     * The Bunny library credential is never mass-assignable (set only via forceFill from
      * BunnyVideoProvider::ensureLibraryProvisioned) and never serialized to an array/JSON
-     * response — defence in depth alongside the encrypted cast below.
+     * response — defence in depth alongside the encrypted cast below. It doubles as the
+     * embed-token signing key (verified against
+     * https://bunny.net/docs/stream/mobile-sdk-token-authentication: "the token security
+     * key is your Video Library API Key") — there is no separate token key.
      */
-    protected $hidden = ['bunny_library_api_key', 'bunny_library_token_key'];
+    protected $hidden = ['bunny_library_api_key'];
 
     protected function casts(): array
     {
         return [
             'status' => TenantStatus::class,
             'bunny_library_api_key' => 'encrypted',
-            'bunny_library_token_key' => 'encrypted',
             'bunny_library_created_at' => 'datetime',
         ];
     }

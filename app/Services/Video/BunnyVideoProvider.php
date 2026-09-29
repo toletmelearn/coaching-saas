@@ -16,9 +16,11 @@ use Illuminate\Support\Facades\Http;
 /**
  * One Bunny Stream library per tenant (VIDEO.md, AGENT_RULES.md invariant #13). The
  * platform's single account-level API key (config('services.bunny.account_api_key'))
- * is used only to create a tenant's library; every other call uses that tenant's own
- * library API key. See docs/specs/phase-5-video.md for the verified endpoint/header
- * details and the open "token security key provisioning" risk.
+ * is used only to create a tenant's library; every other call — including signing
+ * embed view tokens — uses that tenant's own library API key (verified against
+ * https://bunny.net/docs/stream/mobile-sdk-token-authentication: "the token security
+ * key is your Video Library API Key" — there is no separate token key). See
+ * docs/specs/phase-5-video.md for the verified endpoint/header details.
  */
 class BunnyVideoProvider implements VideoProvider
 {
@@ -44,7 +46,7 @@ class BunnyVideoProvider implements VideoProvider
 
             if ($locked->bunny_library_id !== null) {
                 $tenant->forceFill($locked->only([
-                    'bunny_library_id', 'bunny_library_api_key', 'bunny_library_token_key', 'bunny_library_created_at',
+                    'bunny_library_id', 'bunny_library_api_key', 'bunny_library_created_at',
                 ]));
 
                 return;
@@ -60,16 +62,11 @@ class BunnyVideoProvider implements VideoProvider
             $locked->forceFill([
                 'bunny_library_id' => $response->json('Id'),
                 'bunny_library_api_key' => $response->json('ApiKey'),
-                // TODO: Bunny's verified Create Video Library response does not include a
-                // token security key field (see docs/specs/phase-5-video.md "Open gap").
-                // Left null until the provisioning source for this value is confirmed;
-                // playbackUrl() below fails loudly rather than signing with a guessed value.
-                'bunny_library_token_key' => null,
                 'bunny_library_created_at' => now(),
             ])->save();
 
             $tenant->forceFill($locked->only([
-                'bunny_library_id', 'bunny_library_api_key', 'bunny_library_token_key', 'bunny_library_created_at',
+                'bunny_library_id', 'bunny_library_api_key', 'bunny_library_created_at',
             ]));
         });
     }
@@ -135,14 +132,14 @@ class BunnyVideoProvider implements VideoProvider
     {
         $tenant = Tenant::findOrFail($video->tenant_id);
 
-        if ($tenant->bunny_library_token_key === null) {
+        if ($tenant->bunny_library_api_key === null) {
             throw new VideoProviderException(__('lessons.video.playback_unavailable'));
         }
 
         return (new BunnyEmbedTokenSigner)->embedUrl(
             libraryId: (int) $tenant->bunny_library_id,
             videoId: (string) $video->provider_video_id,
-            tokenSecurityKey: $tenant->bunny_library_token_key,
+            tokenSecurityKey: $tenant->bunny_library_api_key,
         );
     }
 }

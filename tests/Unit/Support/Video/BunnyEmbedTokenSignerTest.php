@@ -4,6 +4,10 @@ use App\Support\Video\BunnyEmbedTokenSigner;
 
 // Formula verified against https://bunny.net/docs/stream-embed-token-authentication:
 // token = SHA256_HEX(token_security_key + video_id + expiration), expires = UNIX seconds.
+// The signer itself is generic (any string key); at the call site, that key is the
+// tenant's own library API key — verified against
+// https://bunny.net/docs/stream/mobile-sdk-token-authentication: "the token security key
+// is your Video Library API Key" — there is no separate token key.
 
 test('token is the SHA256 hex digest of key + video id + expiration, in that order', function () {
     $key = 'secret-token-key';

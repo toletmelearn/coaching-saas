@@ -18,7 +18,6 @@ function setUpBunnyLessonWithReadyVideo(): array
     $tenant->forceFill([
         'bunny_library_id' => 111,
         'bunny_library_api_key' => 'library-key',
-        'bunny_library_token_key' => 'token-key',
     ])->save();
     $domain = 'tenant-a.coaching.test';
     $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);

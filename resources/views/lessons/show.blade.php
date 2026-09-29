@@ -22,7 +22,14 @@
                     referrerpolicy="strict-origin-when-cross-origin"
                 ></iframe>
             @else
-                <video class="w-full h-full" controls preload="metadata">
+                <video
+                    class="w-full h-full"
+                    controls
+                    preload="metadata"
+                    controlsList="nofullscreen noremoteplayback"
+                    disablePictureInPicture
+                    oncontextmenu="return false"
+                >
                     <source src="{{ $videoPlayback['url'] }}" type="video/mp4">
                 </video>
             @endif

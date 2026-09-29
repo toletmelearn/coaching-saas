@@ -15,7 +15,6 @@ test('videos:sync moves a processing video to ready using a faked provider respo
     $tenant->forceFill([
         'bunny_library_id' => 111,
         'bunny_library_api_key' => 'library-key',
-        'bunny_library_token_key' => 'token-key',
     ])->save();
 
     $video = inTenant($tenant, function () {
@@ -46,7 +45,6 @@ test('videos:sync moves a processing video to failed and records the provider er
     $tenant->forceFill([
         'bunny_library_id' => 111,
         'bunny_library_api_key' => 'library-key',
-        'bunny_library_token_key' => 'token-key',
     ])->save();
 
     $video = inTenant($tenant, function () {
@@ -77,7 +75,6 @@ test('videos:sync does not touch a video already ready (positive control: an unt
     $tenant->forceFill([
         'bunny_library_id' => 111,
         'bunny_library_api_key' => 'library-key',
-        'bunny_library_token_key' => 'token-key',
     ])->save();
 
     $video = inTenant($tenant, function () {
@@ -100,9 +97,9 @@ test('videos:sync scopes each row to its own tenant, never using an ambient Tena
     config(['coaching.video_driver' => 'bunny']);
 
     $tenantA = Tenant::factory()->create();
-    $tenantA->forceFill(['bunny_library_id' => 111, 'bunny_library_api_key' => 'key-a', 'bunny_library_token_key' => 'tk-a'])->save();
+    $tenantA->forceFill(['bunny_library_id' => 111, 'bunny_library_api_key' => 'key-a'])->save();
     $tenantB = Tenant::factory()->create();
-    $tenantB->forceFill(['bunny_library_id' => 222, 'bunny_library_api_key' => 'key-b', 'bunny_library_token_key' => 'tk-b'])->save();
+    $tenantB->forceFill(['bunny_library_id' => 222, 'bunny_library_api_key' => 'key-b'])->save();
 
     $videoA = inTenant($tenantA, function () {
         $course = Course::factory()->published()->create();

@@ -30,17 +30,27 @@ class LessonVideoUploadController extends Controller
 
         Gate::authorize('manageContent', $lessonVideo->lesson->course);
 
+        $maxBytes = (int) config('coaching.max_video_mb', 2048) * 1024 * 1024;
         $file = $request->file('file');
 
         if ($file === null) {
+            // When an upload exceeds PHP's own post_max_size, PHP silently discards the
+            // body before populating $_FILES/$_POST — the request arrives here looking
+            // like no file was sent at all, but Content-Length (which PHP fills in
+            // regardless) still reports the real size the browser tried to send. Report
+            // that specific, teacher-actionable case distinctly from "no file at all".
+            $contentLength = (int) $request->server('CONTENT_LENGTH', 0);
+
+            if ($contentLength > $maxBytes) {
+                abort(Response::HTTP_UNPROCESSABLE_ENTITY, __('lessons.video.file_too_large'));
+            }
+
             abort(Response::HTTP_UNPROCESSABLE_ENTITY, __('lessons.video.unsupported_file_type'));
         }
 
         if (! in_array($file->getMimeType(), self::ALLOWED_MIME_TYPES, true)) {
             abort(Response::HTTP_UNPROCESSABLE_ENTITY, __('lessons.video.unsupported_file_type'));
         }
-
-        $maxBytes = (int) config('coaching.max_video_mb', 2048) * 1024 * 1024;
 
         if ($file->getSize() > $maxBytes) {
             abort(Response::HTTP_UNPROCESSABLE_ENTITY, __('lessons.video.file_too_large'));

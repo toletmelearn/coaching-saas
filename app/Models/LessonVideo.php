@@ -45,12 +45,14 @@ class LessonVideo extends Model
 
     /**
      * Physical path on the `local` (private) disk for the `fake` driver only — the bunny
-     * driver never stores bytes locally. Keyed by the video's own id, never the
-     * teacher-supplied original filename, so a crafted filename can never influence the
-     * storage path.
+     * driver never stores bytes locally. Keyed by the video's own `provider_video_id` (a
+     * UUID generated server-side by `FakeVideoProvider::createProviderVideo()`), never
+     * the teacher-supplied original filename, so a crafted filename can never influence
+     * the storage path, and a replace gets a fresh path rather than overwriting the old
+     * file in place.
      */
     public function getStoragePathAttribute(): string
     {
-        return "tenants/{$this->tenant_id}/videos/{$this->id}.mp4";
+        return "tenants/{$this->tenant_id}/videos/{$this->provider_video_id}.mp4";
     }
 }

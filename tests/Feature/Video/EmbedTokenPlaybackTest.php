@@ -11,12 +11,16 @@ use App\Support\Video\BunnyEmbedTokenSigner;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-function bunnyLessonWithReadyVideo(Tenant $tenant, int $libraryId, string $libraryKey, string $tokenKey): Lesson
+/**
+ * The library API key doubles as the embed-token signing key (verified against
+ * https://bunny.net/docs/stream/mobile-sdk-token-authentication: "the token security key
+ * is your Video Library API Key") — there is no separate token key.
+ */
+function bunnyLessonWithReadyVideo(Tenant $tenant, int $libraryId, string $libraryKey): Lesson
 {
     $tenant->forceFill([
         'bunny_library_id' => $libraryId,
         'bunny_library_api_key' => $libraryKey,
-        'bunny_library_token_key' => $tokenKey,
         'bunny_library_created_at' => now(),
     ])->save();
 
@@ -30,14 +34,14 @@ function bunnyLessonWithReadyVideo(Tenant $tenant, int $libraryId, string $libra
     });
 }
 
-test('an enrolled student is served an embed URL signed with their own tenant\'s token key', function () {
+test('an enrolled student is served an embed URL signed with their own tenant\'s library key', function () {
     config(['coaching.video_driver' => 'bunny']);
 
     $tenant = Tenant::factory()->create();
     $domain = 'tenant-a.coaching.test';
     $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
 
-    $lesson = bunnyLessonWithReadyVideo($tenant, 111, 'tenant-a-library-key', 'tenant-a-token-key');
+    $lesson = bunnyLessonWithReadyVideo($tenant, 111, 'tenant-a-library-key');
     $course = inTenant($tenant, fn () => $lesson->course);
     $videoId = inTenant($tenant, fn () => $lesson->video->provider_video_id);
 
@@ -53,17 +57,17 @@ test('an enrolled student is served an embed URL signed with their own tenant\'s
 
     $response->assertOk();
 
-    $expectedToken = (new BunnyEmbedTokenSigner)->sign('tenant-a-token-key', $videoId, expiration: now()->addMinutes(10)->timestamp);
+    $expectedToken = (new BunnyEmbedTokenSigner)->sign('tenant-a-library-key', $videoId, expiration: now()->addMinutes(10)->timestamp);
 
     // Coarse check: the page contains an embed URL for this library/video carrying a
     // token= param at all (exact token value is time-sensitive, checked precisely in
     // the unit-level BunnyEmbedTokenSignerTest).
     $response->assertSee("player.mediadelivery.net/embed/111/{$videoId}", false);
-    $response->assertDontSee('tenant-a-token-key', false); // the raw key itself must never render
+    $response->assertDontSee('tenant-a-library-key', false); // the raw key itself must never render
     expect(strlen($expectedToken))->toBe(64); // sanity: a hex sha256 digest
 });
 
-test('a token signed with tenant A\'s key is never accepted for tenant B\'s video', function () {
+test('a token signed with tenant A\'s library key is never accepted for tenant B\'s video', function () {
     config(['coaching.video_driver' => 'bunny']);
 
     $tenantA = Tenant::factory()->create();
@@ -71,8 +75,8 @@ test('a token signed with tenant A\'s key is never accepted for tenant B\'s vide
     $domainB = 'tenant-b.coaching.test';
     $tenantB->domains()->create(['domain' => $domainB, 'type' => 'subdomain']);
 
-    bunnyLessonWithReadyVideo($tenantA, 111, 'tenant-a-library-key', 'tenant-a-token-key');
-    $lessonB = bunnyLessonWithReadyVideo($tenantB, 222, 'tenant-b-library-key', 'tenant-b-token-key');
+    bunnyLessonWithReadyVideo($tenantA, 111, 'tenant-a-library-key');
+    $lessonB = bunnyLessonWithReadyVideo($tenantB, 222, 'tenant-b-library-key');
     $courseB = inTenant($tenantB, fn () => $lessonB->course);
     $videoIdB = inTenant($tenantB, fn () => $lessonB->video->provider_video_id);
 
@@ -84,8 +88,8 @@ test('a token signed with tenant A\'s key is never accepted for tenant B\'s vide
     });
 
     $expires = now()->addMinutes(10)->timestamp;
-    $tokenSignedWithTenantAKey = (new BunnyEmbedTokenSigner)->sign('tenant-a-token-key', $videoIdB, $expires);
-    $tokenSignedWithTenantBKey = (new BunnyEmbedTokenSigner)->sign('tenant-b-token-key', $videoIdB, $expires);
+    $tokenSignedWithTenantAKey = (new BunnyEmbedTokenSigner)->sign('tenant-a-library-key', $videoIdB, $expires);
+    $tokenSignedWithTenantBKey = (new BunnyEmbedTokenSigner)->sign('tenant-b-library-key', $videoIdB, $expires);
 
     // Positive control: tenant B's own key produces the token actually served to its student
     $response = $this->actingAs($studentB, 'tenant')
@@ -98,7 +102,7 @@ test('a token signed with tenant A\'s key is never accepted for tenant B\'s vide
     $response->assertDontSee($tokenSignedWithTenantAKey, false);
 });
 
-test('no Bunny API key or token key (account or per-tenant) ever appears in a rendered page or JSON response', function () {
+test('no Bunny API key (account or per-tenant) ever appears in a rendered page or JSON response', function () {
     config(['coaching.video_driver' => 'bunny']);
     config(['services.bunny.account_api_key' => 'account-level-secret']);
 
@@ -132,7 +136,7 @@ test('no Bunny API key or token key (account or per-tenant) ever appears in a re
         ->and($response->getContent())->not->toContain('freshly-issued-library-key');
 });
 
-test('no Bunny API key or token key (account or per-tenant) ever appears in captured log output', function () {
+test('no Bunny API key (account or per-tenant) ever appears in captured log output', function () {
     config(['coaching.video_driver' => 'bunny']);
     config(['services.bunny.account_api_key' => 'account-level-secret']);
 
@@ -152,7 +156,6 @@ test('no Bunny API key or token key (account or per-tenant) ever appears in capt
     $tenant->forceFill([
         'bunny_library_id' => 888,
         'bunny_library_api_key' => 'freshly-issued-library-key',
-        'bunny_library_token_key' => 'tenant-token-key-for-logging-check',
     ])->save();
 
     [$owner, $lesson] = inTenant($tenant, function () {
@@ -177,6 +180,5 @@ test('no Bunny API key or token key (account or per-tenant) ever appears in capt
 
     $allLogged = implode("\n", $captured);
     expect($allLogged)->not->toContain('account-level-secret')
-        ->and($allLogged)->not->toContain('freshly-issued-library-key')
-        ->and($allLogged)->not->toContain('tenant-token-key-for-logging-check');
+        ->and($allLogged)->not->toContain('freshly-issued-library-key');
 });

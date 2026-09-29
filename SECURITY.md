@@ -76,12 +76,14 @@
   casts), never in plaintext columns, logs, or queue payloads.
 - The Bunny Stream **account**-level API key is an application-level secret (`.env`,
   `BUNNY_STREAM_ACCOUNT_API_KEY`), used only to create a tenant's library. Each tenant's own
-  **library** API key and **token security key** are per-tenant secrets — stored on
-  `tenants` via Laravel's `encrypted` cast (never a plaintext column), in `Tenant::$hidden`
-  (never serialized to an array/JSON response), and never logged: any exception raised while
-  calling Bunny is constructed with a teacher-facing message only
-  (`App\Exceptions\VideoProviderException`), never the raw provider response, so there is
-  nothing key-shaped to accidentally `report()` into the logs in the first place.
+  **library** API key is a per-tenant secret — stored on `tenants` via Laravel's `encrypted`
+  cast (never a plaintext column), in `Tenant::$hidden` (never serialized to an array/JSON
+  response), and never logged: any exception raised while calling Bunny is constructed with
+  a teacher-facing message only (`App\Exceptions\VideoProviderException`), never the raw
+  provider response, so there is nothing key-shaped to accidentally `report()` into the logs
+  in the first place. That same library API key doubles as the embed-token signing key
+  (verified against https://bunny.net/docs/stream/mobile-sdk-token-authentication: "the
+  token security key is your Video Library API Key") — there is no separate token key.
 
 ## Private storage and signed URLs
 
@@ -99,8 +101,8 @@
   page render and playback (e.g. an enrolment revoked mid-session) is caught immediately, not
   only on the next page load. The `bunny` driver uses Bunny's own embed view token
   authentication (10-minute expiry) instead, signed with that specific tenant's own library
-  token key — never the platform account key, and never another tenant's key (tested:
-  a token computed with tenant A's key is never accepted for tenant B's video).
+  API key — never the platform account key, and never another tenant's key (tested: a token
+  computed with tenant A's key is never accepted for tenant B's video).
 
 ### Watermark is a deterrent, not a guarantee
 
@@ -109,7 +111,12 @@ and today's date) makes casual screen-recording and simple frame sharing traceab
 the student whose session produced it — it does **not** prevent recording, and a determined
 viewer can still capture the video (screen recording, camera-on-screen, or removing the
 watermark element via browser devtools before recording). Treat it as raising the cost and
-traceability of leaking, not as DRM; do not describe it to institutes as such. Per VIDEO.md's
+traceability of leaking, not as DRM; do not describe it to institutes as such. Likewise the
+`fake` driver's `<video>` element carries `controlsList="nofullscreen noremoteplayback"`,
+`disablePictureInPicture`, and `oncontextmenu="return false"` — these discourage the
+browser's own built-in fullscreen/casting/right-click-save affordances and are trivially
+bypassed by anyone using devtools or a non-default browser; they are deterrents alongside the
+watermark, not a security boundary. Per VIDEO.md's
 former "Watermarking — OPEN DECISION", this phase resolves that decision in favour of the
 dynamic per-viewer overlay approach (not Bunny's static library watermark), specifically so
 recordings are traceable to an individual viewer rather than only proving *a* leak occurred.

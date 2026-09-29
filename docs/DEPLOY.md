@@ -121,9 +121,11 @@ are all checked by `php artisan app:preflight`.
 One Bunny Stream **account**, with per-tenant **libraries** provisioned automatically by the
 app on each tenant's first video upload (VIDEO.md, AGENT_RULES.md invariant #13 — never a
 shared library). Only the account-level API key lives in `.env`
-(`BUNNY_STREAM_ACCOUNT_API_KEY`, from your Bunny account's API page); per-tenant library keys
-and token security keys are created and stored (encrypted) by the app itself — never set
-those in `.env`.
+(`BUNNY_STREAM_ACCOUNT_API_KEY`, from your Bunny account's API page); each tenant's own
+library API key is created and stored encrypted by the app itself — never set it in `.env`.
+That same key doubles as the embed-token signing key (verified against
+https://bunny.net/docs/stream/mobile-sdk-token-authentication: "the token security key is
+your Video Library API Key") — there is no separate token security key to configure.
 
 **Per-library settings to enable** (Bunny dashboard → Stream → the tenant's library →
 Security), for every library, ideally by having these as the account-level defaults new
@@ -141,12 +143,6 @@ creation:
   local machine, never left enabled in production). Prevents the embed URL from being
   iframed on an unrelated site even if a token leaked.
 
-**Unresolved before this ships for real** (see docs/specs/phase-5-video.md "Open gap"): the
-verified Bunny Create-Video-Library API response does not return a token security key, so
-`BunnyVideoProvider::ensureLibraryProvisioned()` currently leaves it `null` after creating a
-library — playback for that tenant will fail loudly (a clear error, not a broken/insecure
-embed) until this is resolved by confirming the correct provisioning source for that value
-against Bunny's dashboard/API/support.
 
 ## 4. Deploy steps
 

@@ -78,7 +78,6 @@ test('the video iframe (bunny driver) carries referrerpolicy strict-origin-when-
     $tenant->forceFill([
         'bunny_library_id' => 111,
         'bunny_library_api_key' => 'library-key',
-        'bunny_library_token_key' => 'token-key',
     ])->save();
 
     [$lesson, $course, $student] = inTenant($tenant, function () {
