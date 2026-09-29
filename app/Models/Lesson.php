@@ -6,6 +6,7 @@ use App\Enums\LessonStatus;
 use App\Exceptions\LessonCourseMismatchException;
 use App\Traits\BelongsToTenant;
 use Database\Factories\LessonFactory;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -91,5 +92,23 @@ class Lesson extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(LessonAttachment::class)->orderBy('position');
+    }
+
+    /**
+     * Every published lesson in the course, in chapter/lesson position order — the single
+     * definition of "lesson order" shared by lesson navigation (previous/next) and "first
+     * lesson to continue to" on the student dashboard.
+     *
+     * @return Collection<int, self>
+     */
+    public static function orderedPublishedForCourse(Course $course): Collection
+    {
+        return static::where('lessons.course_id', $course->id)
+            ->where('lessons.status', LessonStatus::Published)
+            ->join('chapters', 'lessons.chapter_id', '=', 'chapters.id')
+            ->orderBy('chapters.position')
+            ->orderBy('lessons.position')
+            ->select('lessons.*')
+            ->get();
     }
 }

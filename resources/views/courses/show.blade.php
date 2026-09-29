@@ -14,7 +14,7 @@
                         <a href="{{ url('/courses/'.$course->slug.'/lessons/'.$lesson->id) }}">{{ $lesson->title }}</a>
                         @if ($lesson->is_free_preview)
                             <span class="ml-2 inline-block rounded-full px-2 py-0.5 text-xs bg-green-100 text-green-800">{{ __('courses.show.free') }}</span>
-                        @else
+                        @elseif ($access->lessonAccess($viewer, $lesson) !== 'ok')
                             <span class="ml-2 inline-block rounded-full px-2 py-0.5 text-xs bg-gray-200 text-gray-700">{{ __('courses.show.locked') }}</span>
                         @endif
                     </li>

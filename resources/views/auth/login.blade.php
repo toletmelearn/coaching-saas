@@ -1,8 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-    <h1 class="text-xl font-semibold mb-1">{{ $tenant->name }}</h1>
-    <h2 class="text-lg text-gray-700 mb-4">{{ __('auth.login.submit') }}</h2>
+    <x-page-header :title="__('auth.login.submit')" />
 
     @if ($errors->any())
         <div class="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">

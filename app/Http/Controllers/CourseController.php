@@ -32,6 +32,14 @@ class CourseController extends Controller
 
         $course->load('chapters.lessons');
 
-        return view('courses.show', ['course' => $course]);
+        // Avoid an N+1 lookup of $lesson->course inside LessonAccess for every lesson on
+        // the page — they all belong to this same, already-loaded course.
+        foreach ($course->chapters as $chapter) {
+            foreach ($chapter->lessons as $lesson) {
+                $lesson->setRelation('course', $course);
+            }
+        }
+
+        return view('courses.show', ['course' => $course, 'viewer' => $user, 'access' => $access]);
     }
 }
