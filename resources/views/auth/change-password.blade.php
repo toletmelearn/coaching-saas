@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
-    <h1>{{ __('auth.change_password.heading') }}</h1>
+    <x-page-header :title="__('auth.change_password.heading')" />
 
     @if ($errors->any())
-        <div class="errors">
+        <div class="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
             @foreach ($errors->all() as $error)
                 <p>{{ $error }}</p>
             @endforeach
@@ -14,12 +14,9 @@
     <form method="POST" action="{{ url('/auth/change-password') }}">
         @csrf
 
-        <label for="password">{{ __('auth.change_password.new_password') }}</label>
-        <input type="password" name="password" id="password" required>
+        <x-field name="password" type="password" :label="__('auth.change_password.new_password')" required />
+        <x-field name="password_confirmation" type="password" :label="__('auth.change_password.confirm_password')" required />
 
-        <label for="password_confirmation">{{ __('auth.change_password.confirm_password') }}</label>
-        <input type="password" name="password_confirmation" id="password_confirmation" required>
-
-        <button type="submit">{{ __('auth.change_password.submit') }}</button>
+        <x-button>{{ __('auth.change_password.submit') }}</x-button>
     </form>
 @endsection

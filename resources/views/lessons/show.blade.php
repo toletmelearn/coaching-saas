@@ -14,6 +14,7 @@
             src="https://www.youtube-nocookie.com/embed/{{ $lesson->youtube_video_id }}"
             title="{{ $lesson->title }}"
             frameborder="0"
+            referrerpolicy="strict-origin-when-cross-origin"
             allowfullscreen
         ></iframe>
     @else

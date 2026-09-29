@@ -1,26 +1,26 @@
 @extends('layouts.app')
 
 @section('content')
-    <h1>{{ $course->title }}</h1>
-    <p>{{ $course->description }}</p>
+    <x-page-header :title="$course->title" />
+    <p class="mb-6">{{ $course->description }}</p>
 
     @forelse ($course->chapters as $chapter)
-        <h2>{{ $chapter->title }}</h2>
-        <ul>
-            @foreach ($chapter->lessons as $lesson)
-                <li>
-                    @if ($lesson->status->value === 'published')
+        @php $publishedLessons = $chapter->lessons->where('status', \App\Enums\LessonStatus::Published); @endphp
+        <section class="mb-6">
+            <h2 class="text-lg font-semibold mb-2">{{ $chapter->title }}</h2>
+            <ul class="divide-y divide-gray-100">
+                @foreach ($publishedLessons as $lesson)
+                    <li class="py-2">
+                        <a href="{{ url('/courses/'.$course->slug.'/lessons/'.$lesson->id) }}">{{ $lesson->title }}</a>
                         @if ($lesson->is_free_preview)
-                            <a href="{{ url('/courses/'.$course->slug.'/lessons/'.$lesson->id) }}">{{ $lesson->title }}</a>
-                            <span>{{ __('courses.show.free') }}</span>
+                            <span class="ml-2 inline-block rounded-full px-2 py-0.5 text-xs bg-green-100 text-green-800">{{ __('courses.show.free') }}</span>
                         @else
-                            <a href="{{ url('/courses/'.$course->slug.'/lessons/'.$lesson->id) }}">{{ $lesson->title }}</a>
-                            <span>{{ __('courses.show.locked') }}</span>
+                            <span class="ml-2 inline-block rounded-full px-2 py-0.5 text-xs bg-gray-200 text-gray-700">{{ __('courses.show.locked') }}</span>
                         @endif
-                    @endif
-                </li>
-            @endforeach
-        </ul>
+                    </li>
+                @endforeach
+            </ul>
+        </section>
     @empty
         <p>{{ __('courses.show.no_chapters') }}</p>
     @endforelse

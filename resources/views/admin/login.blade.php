@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
-    <h1>{{ __('auth.login.submit') }}</h1>
+    <x-page-header :title="__('auth.login.submit')" />
 
     @if ($errors->any())
-        <div class="errors">
+        <div class="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
             @foreach ($errors->all() as $error)
                 <p>{{ $error }}</p>
             @endforeach
@@ -14,12 +14,9 @@
     <form method="POST" action="{{ url('/admin/login') }}">
         @csrf
 
-        <label for="email">{{ __('auth.login.identifier') }}</label>
-        <input type="email" name="email" id="email" value="{{ old('email') }}" required autofocus>
+        <x-field name="email" type="email" :label="__('auth.login.identifier')" required />
+        <x-field name="password" type="password" :label="__('auth.login.password')" required />
 
-        <label for="password">{{ __('auth.login.password') }}</label>
-        <input type="password" name="password" id="password" required>
-
-        <button type="submit">{{ __('auth.login.submit') }}</button>
+        <x-button>{{ __('auth.login.submit') }}</x-button>
     </form>
 @endsection

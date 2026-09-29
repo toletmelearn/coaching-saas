@@ -1,10 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
-    <h1>{{ __('auth.login.submit') }}</h1>
+    <h1 class="text-xl font-semibold mb-1">{{ $tenant->name }}</h1>
+    <h2 class="text-lg text-gray-700 mb-4">{{ __('auth.login.submit') }}</h2>
 
     @if ($errors->any())
-        <div class="errors">
+        <div class="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
             @foreach ($errors->all() as $error)
                 <p>{{ $error }}</p>
             @endforeach
@@ -14,16 +15,10 @@
     <form method="POST" action="{{ url('/login') }}">
         @csrf
 
-        <label for="identifier">{{ __('auth.login.identifier') }}</label>
-        <input type="text" name="identifier" id="identifier" value="{{ old('identifier') }}" required autofocus>
+        <x-field name="identifier" :label="__('auth.login.identifier')" required />
+        <x-field name="password" type="password" :label="__('auth.login.password')" required />
+        <x-checkbox name="remember" :label="__('auth.login.remember')" />
 
-        <label for="password">{{ __('auth.login.password') }}</label>
-        <input type="password" name="password" id="password" required>
-
-        <label>
-            <input type="checkbox" name="remember" value="1"> {{ __('auth.login.remember') }}
-        </label>
-
-        <button type="submit">{{ __('auth.login.submit') }}</button>
+        <x-button>{{ __('auth.login.submit') }}</x-button>
     </form>
 @endsection

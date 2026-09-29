@@ -1,35 +1,24 @@
 @extends('layouts.app')
 
 @section('content')
-    <h1>{{ __('users.create.heading') }}</h1>
-
-    @if ($errors->any())
-        <div class="errors">
-            @foreach ($errors->all() as $error)
-                <p>{{ $error }}</p>
-            @endforeach
-        </div>
-    @endif
+    <x-page-header :title="__('users.create.heading')" />
 
     <form method="POST" action="{{ url('/users') }}">
         @csrf
 
-        <label for="name">{{ __('users.create.name') }}</label>
-        <input type="text" name="name" id="name" value="{{ old('name') }}" required>
+        <x-field name="name" :label="__('users.create.name')" required />
+        <x-field name="email" type="email" :label="__('users.create.email')" />
+        <x-field name="phone" :label="__('users.create.phone')" />
 
-        <label for="email">{{ __('users.create.email') }}</label>
-        <input type="email" name="email" id="email" value="{{ old('email') }}">
+        <div class="mb-4">
+            <label for="role" class="block text-sm font-medium text-gray-700 mb-1">{{ __('users.create.role') }}</label>
+            <select name="role" id="role" class="block w-full rounded-md border border-gray-300 px-3 py-2 text-base">
+                <option value="student">{{ __('users.roles.student') }}</option>
+                <option value="staff">{{ __('users.roles.staff') }}</option>
+                <option value="owner">{{ __('users.roles.owner') }}</option>
+            </select>
+        </div>
 
-        <label for="phone">{{ __('users.create.phone') }}</label>
-        <input type="text" name="phone" id="phone" value="{{ old('phone') }}">
-
-        <label for="role">{{ __('users.create.role') }}</label>
-        <select name="role" id="role">
-            <option value="student">{{ __('users.roles.student') }}</option>
-            <option value="staff">{{ __('users.roles.staff') }}</option>
-            <option value="owner">{{ __('users.roles.owner') }}</option>
-        </select>
-
-        <button type="submit">{{ __('users.create.submit') }}</button>
+        <x-button>{{ __('users.create.submit') }}</x-button>
     </form>
 @endsection

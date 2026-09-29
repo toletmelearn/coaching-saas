@@ -32,7 +32,7 @@ class LessonAttachmentFactory extends Factory
             ]);
         })->afterCreating(function (LessonAttachment $attachment) {
             $path = sprintf('tenants/%d/lessons/%d/%s.pdf', $attachment->tenant_id, $attachment->lesson_id, Str::random(20));
-            $attachment->forceFill(['path' => $path])->saveQuietly();
+            $attachment->forceFill(['path' => $path])->save();
 
             Storage::disk($attachment->disk)->put($attachment->path, '%PDF-1.4 fake attachment content');
         });

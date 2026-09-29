@@ -18,14 +18,36 @@ use Illuminate\View\View;
 
 class EnrolmentController extends Controller
 {
-    public function index(Course $course): View
+    public function index(Course $course, Request $request): View
     {
         Gate::authorize('manageEnrolments', $course);
 
         $enrolments = $course->enrolments()->with('user')->orderByDesc('created_at')->paginate(20);
-        $students = User::where('role', UserRole::Student)->where('status', UserStatus::Active)->orderBy('name')->get();
 
-        return view('manage.enrolments.index', ['course' => $course, 'enrolments' => $enrolments, 'students' => $students]);
+        $search = trim((string) $request->query('q', ''));
+        $studentsQuery = User::where('role', UserRole::Student)->where('status', UserStatus::Active)->orderBy('name');
+
+        if ($search !== '') {
+            $normalizedPhone = User::normalizePhone($search);
+
+            $studentsQuery->where(function ($query) use ($search, $normalizedPhone) {
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+
+                if ($normalizedPhone !== '') {
+                    $query->orWhere('phone', 'like', "%{$normalizedPhone}%");
+                }
+            });
+        }
+
+        $students = $studentsQuery->get();
+
+        return view('manage.enrolments.index', [
+            'course' => $course,
+            'enrolments' => $enrolments,
+            'students' => $students,
+            'search' => $search,
+        ]);
     }
 
     public function store(Request $request, Course $course): RedirectResponse
@@ -40,6 +62,10 @@ class EnrolmentController extends Controller
             'starts_at' => ['required', 'date'],
             'ends_at' => ['nullable', 'date', 'after:starts_at'],
             'payment_note' => ['nullable', 'string', 'max:255'],
+        ], [
+            'user_ids.required' => __('courses.manage.validation.select_student'),
+            'user_ids.min' => __('courses.manage.validation.select_student'),
+            'ends_at.after' => __('courses.manage.validation.end_after_start'),
         ]);
 
         $validator->after(function ($validator) use ($request) {

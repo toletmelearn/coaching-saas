@@ -16,10 +16,15 @@ use App\Http\Controllers\Manage\LessonAttachmentController as ManageLessonAttach
 use App\Http\Controllers\Manage\LessonController as ManageLessonController;
 use App\Http\Controllers\PlatformAdminDashboardController;
 use App\Http\Controllers\UserController;
+use App\Support\TenantContext;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    if (! app(TenantContext::class)->has()) {
+        return view('platform.home');
+    }
+
+    return auth('tenant')->check() ? redirect('/dashboard') : redirect('/courses');
 });
 
 // Platform admin — restricted to each configured central domain via Route::domain(),
@@ -89,6 +94,7 @@ Route::middleware('require.tenant')->group(function () {
                     Route::delete('chapters/{chapter}', [ManageChapterController::class, 'destroy']);
 
                     Route::post('chapters/{chapter}/lessons', [ManageLessonController::class, 'store']);
+                    Route::get('lessons/{lesson}/edit', [ManageLessonController::class, 'edit']);
                     Route::patch('lessons/{lesson}', [ManageLessonController::class, 'update']);
                     Route::post('lessons/{lesson}/publish', [ManageLessonController::class, 'publish']);
                     Route::post('lessons/{lesson}/unpublish', [ManageLessonController::class, 'unpublish']);

@@ -13,9 +13,19 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 class LessonController extends Controller
 {
+    public function edit(Lesson $lesson): View
+    {
+        Gate::authorize('manageContent', $lesson->course);
+
+        $lesson->load('attachments');
+
+        return view('manage.lessons.edit', ['lesson' => $lesson]);
+    }
+
     public function store(Request $request, Chapter $chapter): RedirectResponse
     {
         Gate::authorize('manageContent', $chapter->course);

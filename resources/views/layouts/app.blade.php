@@ -4,26 +4,43 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'Coaching SaaS') }}</title>
-    <style>
-        :root { color-scheme: light dark; }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            min-width: 360px;
-            font-family: system-ui, -apple-system, sans-serif;
-            padding: 1rem;
-        }
-        main { max-width: 480px; margin: 0 auto; }
-        label { display: block; margin-top: 0.75rem; font-weight: 600; }
-        input, select { width: 100%; padding: 0.5rem; margin-top: 0.25rem; }
-        button { margin-top: 1rem; padding: 0.5rem 1rem; }
-        .errors { color: #b00020; }
-        table { width: 100%; border-collapse: collapse; }
-        td, th { padding: 0.5rem; text-align: left; border-bottom: 1px solid #ccc; }
-    </style>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body>
-<main>
+<body class="min-w-[360px] bg-gray-50 text-gray-900 font-sans">
+@php
+    $tenant = app(\App\Support\TenantContext::class)->has() ? app(\App\Support\TenantContext::class)->get() : null;
+    $tenantUser = auth('tenant')->user();
+@endphp
+
+@if ($tenant)
+    <header class="bg-white border-b border-gray-200">
+        <div class="max-w-3xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+            <span class="font-semibold text-gray-900">{{ $tenant->name }}</span>
+
+            <nav class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                @if ($tenantUser)
+                    @if ($tenantUser->role->canManageUsers())
+                        <a href="{{ url('/dashboard') }}" class="min-h-[44px] flex items-center">{{ __('nav.dashboard') }}</a>
+                        <a href="{{ url('/manage/courses') }}" class="min-h-[44px] flex items-center">{{ __('nav.courses') }}</a>
+                        <a href="{{ url('/users') }}" class="min-h-[44px] flex items-center">{{ __('nav.people') }}</a>
+                    @else
+                        <a href="{{ url('/dashboard') }}" class="min-h-[44px] flex items-center">{{ __('nav.my_courses') }}</a>
+                    @endif
+
+                    <form method="POST" action="{{ url('/logout') }}">
+                        @csrf
+                        <button type="submit" class="min-h-[44px] text-left">{{ __('nav.logout') }}</button>
+                    </form>
+                @else
+                    <a href="{{ url('/courses') }}" class="min-h-[44px] flex items-center">{{ __('nav.courses') }}</a>
+                    <a href="{{ url('/login') }}" class="min-h-[44px] flex items-center">{{ __('nav.login') }}</a>
+                @endif
+            </nav>
+        </div>
+    </header>
+@endif
+
+<main class="max-w-3xl mx-auto px-4 py-6">
     @yield('content')
 </main>
 </body>

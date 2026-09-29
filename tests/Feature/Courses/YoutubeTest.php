@@ -99,3 +99,27 @@ test('the rendered lesson embed uses youtube-nocookie.com', function () {
     $response->assertOk();
     $response->assertSee('youtube-nocookie.com/embed/dQw4w9WgXcQ', false);
 });
+
+test('the lesson page sets a safe Referrer-Policy and the iframe carries a matching referrerpolicy attribute', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    $lesson = inTenant($tenant, function () {
+        $course = Course::factory()->published()->create();
+        $chapter = Chapter::factory()->for($course)->create();
+
+        return Lesson::factory()->for($chapter)->published()->create([
+            'course_id' => $course->id,
+            'is_free_preview' => true,
+            'youtube_video_id' => 'dQw4w9WgXcQ',
+        ]);
+    });
+    $course = inTenant($tenant, fn () => $lesson->course);
+
+    $response = $this->get("http://{$domain}/courses/{$course->slug}/lessons/{$lesson->id}");
+
+    $response->assertOk();
+    $response->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    $response->assertSee('referrerpolicy="strict-origin-when-cross-origin"', false);
+});

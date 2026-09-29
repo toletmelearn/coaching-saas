@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CourseStatus;
+use App\Enums\LessonStatus;
 use App\Models\Course;
 use App\Support\LessonAccess;
 use Illuminate\Support\Facades\Auth;
@@ -14,7 +15,7 @@ class CourseController extends Controller
     public function index(): View
     {
         $courses = Course::where('status', CourseStatus::Published)
-            ->withCount('lessons')
+            ->withCount(['lessons' => fn ($query) => $query->where('status', LessonStatus::Published)])
             ->orderBy('title')
             ->paginate(20);
 

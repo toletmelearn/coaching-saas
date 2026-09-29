@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureActiveTenantUser;
 use App\Http\Middleware\RedirectIfMustChangePassword;
 use App\Http\Middleware\RequireTenant;
 use App\Http\Middleware\ResolveTenant;
+use App\Http\Middleware\SetReferrerPolicy;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,6 +19,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(prepend: [
             ResolveTenant::class,
+        ]);
+
+        $middleware->web(append: [
+            SetReferrerPolicy::class,
         ]);
 
         $middleware->alias([

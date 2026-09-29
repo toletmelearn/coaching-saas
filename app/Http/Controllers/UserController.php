@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Models\User;
+use App\Support\LoginRateLimiter;
 use App\Support\TemporaryPasswordGenerator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -80,7 +81,7 @@ class UserController extends Controller
 
         $user->save();
 
-        return redirect()->route('users.index')->with('temporary_password', $temporaryPassword);
+        return $this->redirectWithTemporaryPassword($user, $temporaryPassword);
     }
 
     public function show(User $user): View
@@ -146,6 +147,20 @@ class UserController extends Controller
             'must_change_password' => true,
         ])->save();
 
-        return redirect()->route('users.index')->with('temporary_password', $temporaryPassword);
+        // Lets a teacher unblock a locked-out student in the same action as resetting
+        // their password, instead of a separate support request.
+        LoginRateLimiter::clearForUser($user->tenant_id, $user);
+
+        return $this->redirectWithTemporaryPassword($user, $temporaryPassword);
+    }
+
+    private function redirectWithTemporaryPassword(User $user, string $temporaryPassword): RedirectResponse
+    {
+        return redirect()->route('users.index')
+            ->with('temporary_password', $temporaryPassword)
+            ->with('temporary_password_for', [
+                'name' => $user->name,
+                'identifier' => $user->email ?? $user->phone,
+            ]);
     }
 }

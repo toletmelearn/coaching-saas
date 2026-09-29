@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
-    <h1>{{ __('users.index.heading') }}</h1>
+    <x-page-header :title="__('users.index.heading')" />
 
     <form method="POST" action="{{ url('/admin/logout') }}">
         @csrf
-        <button type="submit">{{ __('auth.login.logout') }}</button>
+        <x-button variant="secondary">{{ __('auth.login.logout') }}</x-button>
     </form>
 @endsection
