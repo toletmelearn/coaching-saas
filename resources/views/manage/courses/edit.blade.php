@@ -21,7 +21,7 @@
         @endcan
 
         @can('archive', $course)
-            <form method="POST" action="{{ url('/manage/courses/'.$course->id.'/archive') }}" onsubmit="return confirm(@js(__('courses.manage.confirm_action')))">
+            <form method="POST" action="{{ url('/manage/courses/'.$course->id.'/archive') }}" onsubmit="return confirm(@js(__('courses.manage.confirm_archive')))">
                 @csrf
                 <x-button variant="danger">{{ __('courses.manage.archive') }}</x-button>
             </form>
@@ -53,7 +53,7 @@
                         @csrf
                         <x-button variant="secondary" class="!min-h-0 !py-1 !px-2">↓</x-button>
                     </form>
-                    <form method="POST" action="{{ url('/manage/chapters/'.$chapter->id) }}" onsubmit="return confirm(@js(__('courses.manage.confirm_action')))">
+                    <form method="POST" action="{{ url('/manage/chapters/'.$chapter->id) }}" onsubmit="return confirm(@js(__('courses.manage.confirm_delete')))">
                         @csrf
                         @method('DELETE')
                         <x-button variant="danger" class="!min-h-0 !py-1 !px-2">{{ __('courses.manage.delete') }}</x-button>

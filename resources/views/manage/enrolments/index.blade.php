@@ -29,7 +29,7 @@
                     <td class="py-2 pr-2">{{ $enrolment->payment_note }}</td>
                     <td class="py-2 pr-2">
                         @if ($enrolment->status->value === 'active')
-                            <form method="POST" action="{{ url('/manage/enrolments/'.$enrolment->id.'/revoke') }}" onsubmit="return confirm(@js(__('courses.manage.confirm_action')))">
+                            <form method="POST" action="{{ url('/manage/enrolments/'.$enrolment->id.'/revoke') }}" onsubmit="return confirm(@js(__('courses.manage.confirm_revoke')))">
                                 @csrf
                                 <x-button variant="danger" class="!min-h-[36px] !py-0 !px-2 text-sm">{{ __('courses.manage.revoke') }}</x-button>
                             </form>

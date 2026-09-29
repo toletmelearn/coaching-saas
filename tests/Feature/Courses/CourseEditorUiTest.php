@@ -206,11 +206,10 @@ test('confirm dialogs are JSON-encoded so an apostrophe/quote in the translation
         return [$owner, $lesson];
     });
 
-    // courses.manage.confirm_action deliberately contains an apostrophe and a double
-    // quote (see lang/en/courses.php) — exactly the input that breaks a naive
-    // onsubmit="return confirm('{{ __(...) }}')".
-    $translation = __('courses.manage.confirm_action');
-    expect($translation)->toContain("'")->toContain('"');
+    // Override the real (normal, teacher-facing) translation for this test only, with
+    // one deliberately containing an apostrophe and a double quote -- exactly the input
+    // that breaks a naive onsubmit="return confirm('{{ __(...) }}')".
+    app('translator')->addLines(['courses.manage.confirm_delete' => 'It\'s "tricky"'], 'en');
 
     $response = $this->actingAs($owner, 'tenant')
         ->get("http://{$domain}/manage/lessons/{$lesson->id}/edit");
@@ -222,11 +221,14 @@ test('confirm dialogs are JSON-encoded so an apostrophe/quote in the translation
 
     $jsArgument = $match[1];
 
-    // The raw apostrophe/quote from the translation must never appear unescaped in the
-    // attribute — only their \u0027 / \u0022 escapes (Illuminate\Support\Js::from).
-    expect($jsArgument)->not->toContain("can't")
-        ->toContain('can\u0027t')
-        ->toContain('\u0022removes it for everyone\u0022');
+    // The raw apostrophe/quote must never appear unescaped in the attribute -- only
+    // their hex-escaped form (Illuminate\Support\Js::from).
+    $escapedApostrophe = sprintf('%s%04x', '\\u', ord("'"));
+    $escapedQuote = sprintf('%s%04x', '\\u', ord('"'));
+
+    expect($jsArgument)->not->toContain("It's")
+        ->toContain('It'.$escapedApostrophe.'s')
+        ->toContain($escapedQuote.'tricky'.$escapedQuote);
 });
 
 test('course and lesson statuses are translated on the course editor page, not printed as raw enum values', function () {
