@@ -7,6 +7,7 @@ use App\Models\Lesson;
 use App\Models\LessonAttachment;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 function makePaidLessonWithAttachment(Tenant $tenant): array
 {
@@ -30,47 +31,44 @@ test('disabling an enrolled student logs them out of a paid lesson and its PDF o
 
     [$course, $lesson, $attachment] = makePaidLessonWithAttachment($tenant);
 
-    [$owner, $student] = inTenant($tenant, function () use ($course) {
-        $owner = User::factory()->owner()->create();
-        $student = User::factory()->student()->create();
+    $student = inTenant($tenant, function () use ($course) {
+        $student = User::factory()->student()->create([
+            'email' => 'disable-me@example.com',
+            'password' => Hash::make('password123'),
+        ]);
         Enrolment::factory()->for($course)->for($student, 'user')->active()->create();
 
-        return [$owner, $student];
+        return $student;
     });
 
+    // Real login (no actingAs) so the session actually carries this user's id, not an
+    // in-memory PHP object the guard was just handed directly.
+    $this->post("http://{$domain}/login", [
+        'identifier' => 'disable-me@example.com',
+        'password' => 'password123',
+    ])->assertRedirect();
+    $this->assertAuthenticatedAs($student, 'tenant');
+
     // Positive control: enrolled + active student can open the paid lesson and its PDF
-    $this->actingAs($student, 'tenant')
-        ->get("http://{$domain}/courses/{$course->slug}/lessons/{$lesson->id}")
-        ->assertOk();
+    $this->get("http://{$domain}/courses/{$course->slug}/lessons/{$lesson->id}")->assertOk();
+    $this->get("http://{$domain}/courses/{$course->slug}/lessons/{$lesson->id}/attachments/{$attachment->id}")->assertOk();
 
-    $this->actingAs($student, 'tenant')
-        ->get("http://{$domain}/courses/{$course->slug}/lessons/{$lesson->id}/attachments/{$attachment->id}")
-        ->assertOk();
-
-    freshRequestCycle();
-
-    $this->actingAs($owner, 'tenant')
-        ->post("http://{$domain}/users/{$student->id}/disable")
-        ->assertRedirect();
+    // Disable the student directly in the DB (not via the in-memory $student object, and
+    // not via actingAs as a different actor) — the only thing that should matter to the
+    // next request is what's actually in the database.
+    inTenant($tenant, fn () => $student->forceFill(['status' => 'disabled'])->save());
 
     freshRequestCycle();
 
-    // actingAs() sets the guard's user directly from this in-memory object rather than
-    // re-resolving it from the session/DB, so it must be refreshed to see the disable the
-    // owner just performed via a separate HTTP request — otherwise this would only prove
-    // the middleware reads a stale PHP object, not that it re-checks status per request.
-    inTenant($tenant, fn () => $student->refresh());
-
-    // The disabled student's own next request logs them out (session invalidated) instead of being served.
-    $lessonResponse = $this->actingAs($student, 'tenant')
-        ->get("http://{$domain}/courses/{$course->slug}/lessons/{$lesson->id}");
+    // No actingAs() and no refresh() here: the still-logged-in session must re-resolve the
+    // user from the DB (via TenantUserProvider) on this new request and find them disabled.
+    $lessonResponse = $this->get("http://{$domain}/courses/{$course->slug}/lessons/{$lesson->id}");
     $lessonResponse->assertRedirect("http://{$domain}/login");
     $this->assertGuest('tenant');
 
     freshRequestCycle();
 
-    $attachmentResponse = $this->actingAs($student, 'tenant')
-        ->get("http://{$domain}/courses/{$course->slug}/lessons/{$lesson->id}/attachments/{$attachment->id}");
+    $attachmentResponse = $this->get("http://{$domain}/courses/{$course->slug}/lessons/{$lesson->id}/attachments/{$attachment->id}");
     $attachmentResponse->assertRedirect("http://{$domain}/login");
     $this->assertGuest('tenant');
 });

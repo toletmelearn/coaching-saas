@@ -281,3 +281,65 @@ test('rate limit message does not reveal identifier existence', function () {
     $response->assertStatus(429);
     $response->assertDontSee('user@example.com');
 });
+
+// === Rate Limiting: Per Tenant + Identifier, Regardless of IP ===
+
+test('5 failures from 5 different IPs are not throttled by the identifier-wide limit', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    inTenant($tenant, fn () => User::factory()->create([
+        'email' => 'distributed@example.com',
+        'password' => Hash::make('password123'),
+    ]));
+
+    for ($i = 1; $i <= 5; $i++) {
+        $this->withServerVariables(['REMOTE_ADDR' => "10.0.0.{$i}"])
+            ->post("http://{$domain}/login", [
+                'identifier' => 'distributed@example.com',
+                'password' => 'wrong',
+            ]);
+    }
+
+    // Positive control: a 6th attempt, from yet another new IP, is still a normal failure —
+    // 5 distinct IPs never trips the per-IP limiter (5/min, per IP+identifier), and the
+    // identifier-wide limiter's threshold (20) hasn't been reached yet either.
+    $response = $this->withServerVariables(['REMOTE_ADDR' => '10.0.0.6'])
+        ->post("http://{$domain}/login", [
+            'identifier' => 'distributed@example.com',
+            'password' => 'wrong',
+        ]);
+
+    $response->assertSessionHasErrors()->assertStatus(302);
+});
+
+test('20 failures from 20 different IPs trips the identifier-wide limit for a 21st new IP', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    inTenant($tenant, fn () => User::factory()->create([
+        'email' => 'distributed2@example.com',
+        'password' => Hash::make('password123'),
+    ]));
+
+    for ($i = 1; $i <= 20; $i++) {
+        $this->withServerVariables(['REMOTE_ADDR' => "10.0.1.{$i}"])
+            ->post("http://{$domain}/login", [
+                'identifier' => 'distributed2@example.com',
+                'password' => 'wrong',
+            ]);
+    }
+
+    $response = $this->withServerVariables(['REMOTE_ADDR' => '10.0.1.21'])
+        ->post("http://{$domain}/login", [
+            'identifier' => 'distributed2@example.com',
+            'password' => 'wrong',
+        ]);
+
+    $response->assertStatus(429);
+    $response->assertDontSee('distributed2@example.com');
+});

@@ -28,7 +28,7 @@ return [
         'no_chapters_yet' => 'No chapters yet — add your first chapter.',
         'chapter_has_lessons' => 'Delete or move its lessons first.',
         'remove_video_first' => 'Remove the video before turning off free preview.',
-        'video_free_preview_only' => 'A YouTube video can only be added to a free-preview lesson.',
+        'video_free_preview_only' => "Paid lessons can't use YouTube links — anyone with the link could watch it. Protected video for paid lessons is coming soon.",
         'invalid_youtube_url' => 'That does not look like a valid YouTube URL.',
         'enrolments' => 'Enrolments',
         'enrol_students' => 'Enrol students',

@@ -29,9 +29,16 @@ class TenantLoginController extends Controller
 
         $tenant = app(TenantContext::class)->get();
         $identifier = trim($data['identifier']);
-        $key = sprintf('login:%d:%s:%s', $tenant->id, strtolower($identifier), $request->ip());
+        // Per tenant + identifier + IP: stops brute-forcing a single account from one
+        // machine.
+        $ipKey = sprintf('login:%d:%s:%s', $tenant->id, strtolower($identifier), $request->ip());
+        // Per tenant + identifier only, regardless of IP: stops the same attack distributed
+        // across many IPs (a botnet, or rotating proxies), which the IP-scoped limiter alone
+        // never catches since each IP individually stays under its own threshold. See
+        // SECURITY.md "Rate limiting".
+        $identifierKey = sprintf('login-identifier:%d:%s', $tenant->id, strtolower($identifier));
 
-        if (RateLimiter::tooManyAttempts($key, 5)) {
+        if (RateLimiter::tooManyAttempts($ipKey, 5) || RateLimiter::tooManyAttempts($identifierKey, 20)) {
             abort(429);
         }
 
@@ -40,12 +47,14 @@ class TenantLoginController extends Controller
             : User::query()->where('phone', User::normalizePhone($identifier))->first();
 
         if ($user === null || $user->status !== UserStatus::Active || ! Hash::check($data['password'], $user->password)) {
-            RateLimiter::hit($key, 60);
+            RateLimiter::hit($ipKey, 60);
+            RateLimiter::hit($identifierKey, 60 * 60);
 
             return back()->withErrors(['identifier' => __('auth.failed')]);
         }
 
-        RateLimiter::clear($key);
+        RateLimiter::clear($ipKey);
+        RateLimiter::clear($identifierKey);
 
         $request->session()->regenerate();
 

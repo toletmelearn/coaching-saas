@@ -417,3 +417,60 @@ test('owner-created user can log in with the generated temporary password and mu
     $user = inTenant($tenant, fn () => User::where('email', 'newstudent-temp@example.com')->first());
     expect($user->must_change_password)->toBeTrue();
 });
+
+test('after a password reset the user can log in with the flashed password and is redirected to change-password', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    $owner = inTenant($tenant, fn () => User::factory()->owner()->create());
+    $student = inTenant($tenant, fn () => User::factory()->student()->mustChangePassword(false)->create([
+        'email' => 'reset-target@example.com',
+    ]));
+
+    $response = $this->actingAs($owner, 'tenant')
+        ->post("http://{$domain}/users/{$student->id}/reset-password");
+
+    $response->assertRedirect();
+
+    $temporaryPassword = $response->getSession()->get('temporary_password');
+    expect($temporaryPassword)->not->toBeNull();
+
+    auth('tenant')->logout();
+
+    $loginResponse = $this->post("http://{$domain}/login", [
+        'identifier' => 'reset-target@example.com',
+        'password' => $temporaryPassword,
+    ]);
+
+    $loginResponse->assertRedirect("http://{$domain}/auth/change-password");
+
+    inTenant($tenant, fn () => $student->refresh());
+    expect($student->must_change_password)->toBeTrue();
+});
+
+test('the generated temporary password matches the required format', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    $owner = inTenant($tenant, fn () => User::factory()->owner()->create());
+
+    // Format check on user creation...
+    $createResponse = $this->actingAs($owner, 'tenant')
+        ->post("http://{$domain}/users", [
+            'name' => 'Format Check',
+            'email' => 'format-check@example.com',
+        ]);
+    $createdPassword = $createResponse->getSession()->get('temporary_password');
+    expect($createdPassword)->toMatch('/^[abcdefghjkmnpqrstuvwxyz23456789]{4}-[abcdefghjkmnpqrstuvwxyz23456789]{4}$/');
+
+    // ...and on password reset, which must use the same generator.
+    $student = inTenant($tenant, fn () => User::factory()->student()->create());
+    $resetResponse = $this->actingAs($owner, 'tenant')
+        ->post("http://{$domain}/users/{$student->id}/reset-password");
+    $resetPassword = $resetResponse->getSession()->get('temporary_password');
+    expect($resetPassword)->toMatch('/^[abcdefghjkmnpqrstuvwxyz23456789]{4}-[abcdefghjkmnpqrstuvwxyz23456789]{4}$/');
+});

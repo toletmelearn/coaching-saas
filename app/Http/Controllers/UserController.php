@@ -5,12 +5,12 @@ namespace App\Http\Controllers;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Models\User;
+use App\Support\TemporaryPasswordGenerator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Enum;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -63,7 +63,7 @@ class UserController extends Controller
 
         Gate::authorize('createWithRole', [User::class, $role]);
 
-        $temporaryPassword = Str::password(12);
+        $temporaryPassword = TemporaryPasswordGenerator::generate();
 
         $user = new User([
             'name' => $data['name'],
@@ -135,19 +135,17 @@ class UserController extends Controller
         return redirect()->route('users.index');
     }
 
-    public function resetPassword(Request $request, User $user): RedirectResponse
+    public function resetPassword(User $user): RedirectResponse
     {
         Gate::authorize('resetPassword', $user);
 
-        $data = $request->validate([
-            'password' => ['required', 'string', 'min:8'],
-        ]);
+        $temporaryPassword = TemporaryPasswordGenerator::generate();
 
         $user->forceFill([
-            'password' => Hash::make($data['password']),
+            'password' => Hash::make($temporaryPassword),
             'must_change_password' => true,
         ])->save();
 
-        return redirect()->route('users.index');
+        return redirect()->route('users.index')->with('temporary_password', $temporaryPassword);
     }
 }

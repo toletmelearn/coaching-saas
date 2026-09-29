@@ -269,9 +269,7 @@ test('owner can reset staff password', function () {
     $staff = inTenant($tenant, fn () => User::factory()->staff()->create());
 
     $response = $this->actingAs($owner, 'tenant')
-        ->post("http://{$domain}/users/{$staff->id}/reset-password", [
-            'password' => 'newpassword123',
-        ]);
+        ->post("http://{$domain}/users/{$staff->id}/reset-password");
 
     $response->assertRedirect();
 });
@@ -286,9 +284,7 @@ test('staff can reset student password', function () {
     $student = inTenant($tenant, fn () => User::factory()->student()->create());
 
     $response = $this->actingAs($staff, 'tenant')
-        ->post("http://{$domain}/users/{$student->id}/reset-password", [
-            'password' => 'newpassword123',
-        ]);
+        ->post("http://{$domain}/users/{$student->id}/reset-password");
 
     $response->assertRedirect();
 });
@@ -305,14 +301,11 @@ test('staff cannot reset staff password', function () {
 
     // Positive control: staff CAN reset a student's password
     $this->actingAs($staff1, 'tenant')
-        ->post("http://{$domain}/users/{$student->id}/reset-password", [
-            'password' => 'newpassword123',
-        ])->assertRedirect();
+        ->post("http://{$domain}/users/{$student->id}/reset-password")
+        ->assertRedirect();
 
     $response = $this->actingAs($staff1, 'tenant')
-        ->post("http://{$domain}/users/{$staff2->id}/reset-password", [
-            'password' => 'newpassword123',
-        ]);
+        ->post("http://{$domain}/users/{$staff2->id}/reset-password");
 
     $response->assertForbidden();
 });
@@ -329,14 +322,11 @@ test('staff cannot reset owner password', function () {
 
     // Positive control: staff CAN reset a student's password
     $this->actingAs($staff, 'tenant')
-        ->post("http://{$domain}/users/{$student->id}/reset-password", [
-            'password' => 'newpassword123',
-        ])->assertRedirect();
+        ->post("http://{$domain}/users/{$student->id}/reset-password")
+        ->assertRedirect();
 
     $response = $this->actingAs($staff, 'tenant')
-        ->post("http://{$domain}/users/{$owner->id}/reset-password", [
-            'password' => 'newpassword123',
-        ]);
+        ->post("http://{$domain}/users/{$owner->id}/reset-password");
 
     $response->assertForbidden();
 });

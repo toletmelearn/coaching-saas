@@ -84,6 +84,15 @@
 - Auth endpoints (login, password reset), payment-sensitive endpoints (manual UPI approval,
   webhook receivers), and any public-facing form are rate limited per IP and, where a tenant
   is already resolved, per tenant.
+- **Closed gap (Phase 3.2): distributed login brute-forcing.** Tenant login was rate limited
+  only by `tenant + identifier + IP` (5/minute). An attacker spreading failed attempts across
+  many IPs (a botnet, rotating proxies, or a simple retry-with-a-new-IP loop) never tripped
+  that limiter, since each individual IP stayed under the threshold — the identifier itself
+  was never actually protected against a distributed attack. Fixed by adding a second limiter
+  keyed by `tenant + identifier` alone, regardless of IP (20 failed attempts/60 minutes),
+  checked and incremented alongside the existing per-IP one. Both return the same generic
+  "too many attempts" response, so neither limiter leaks which one tripped or whether the
+  identifier exists (`tests/Feature/Auth/RateLimitTest.php`).
 
 ## Custom domains and TLS
 

@@ -36,6 +36,8 @@ test('YouTube URL on a non-free lesson is rejected', function () {
 
     $response->assertSessionHasErrors('youtube_url');
     expect(inTenant($tenant, fn () => Lesson::where('title', 'Paid lesson')->first()))->toBeNull();
+
+    $response->assertSessionHasErrors(['youtube_url' => __('courses.manage.video_free_preview_only')]);
 });
 
 test('turning off free preview while a video is set is rejected', function () {

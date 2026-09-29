@@ -124,9 +124,7 @@ test('password reset by owner sets must_change_password to true', function () {
 
     // Owner resets student's password
     $this->actingAs($owner, 'tenant')
-        ->post("http://{$domain}/users/{$student->id}/reset-password", [
-            'password' => 'reset-password',
-        ]);
+        ->post("http://{$domain}/users/{$student->id}/reset-password");
 
     inTenant($tenant, fn () => $student->refresh());
 
