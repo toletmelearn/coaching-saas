@@ -41,11 +41,18 @@ Route::middleware('require.tenant')->group(function () {
     Route::get('login', [TenantLoginController::class, 'show'])->name('login');
     Route::post('login', [TenantLoginController::class, 'store']);
 
-    // Public catalogue and free-preview lessons — no login required.
-    Route::get('courses', [CourseController::class, 'index']);
-    Route::get('courses/{course:slug}', [CourseController::class, 'show']);
-    Route::get('courses/{course:slug}/lessons/{lesson}', [LessonController::class, 'show'])->scopeBindings();
-    Route::get('courses/{course:slug}/lessons/{lesson}/attachments/{attachment}', [LessonAttachmentController::class, 'show'])->scopeBindings();
+    // Public catalogue and free-preview lessons — no login required. Both middleware are
+    // no-ops for guests (they check for a resolved tenant user first), so a guest still
+    // passes through untouched; a logged-in student who is disabled or must change their
+    // password gets the same redirect here as on every other tenant route (Phase 4.1 —
+    // this group previously sat outside auth:tenant entirely, so a disabled/must-change
+    // student's session was never re-checked on these specific routes).
+    Route::middleware(['active.tenant.user', 'must.change.password'])->group(function () {
+        Route::get('courses', [CourseController::class, 'index']);
+        Route::get('courses/{course:slug}', [CourseController::class, 'show']);
+        Route::get('courses/{course:slug}/lessons/{lesson}', [LessonController::class, 'show'])->scopeBindings();
+        Route::get('courses/{course:slug}/lessons/{lesson}/attachments/{attachment}', [LessonAttachmentController::class, 'show'])->scopeBindings();
+    });
 
     Route::middleware('auth:tenant')->group(function () {
         Route::post('logout', [TenantLogoutController::class, 'store']);

@@ -88,7 +88,8 @@ class TenantSeeder extends Seeder
             'course_id' => $course->id,
             'title' => 'Introduction to Mechanics',
             'is_free_preview' => true,
-            'youtube_video_id' => 'dQw4w9WgXcQ',
+            // Neutral placeholder — never a real video id. See README "Local credentials".
+            'youtube_video_id' => 'xxxxxxxxxxx',
         ]);
         $free->forceFill(['status' => 'published', 'published_at' => now()])->save();
 

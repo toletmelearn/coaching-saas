@@ -50,6 +50,49 @@ test("enrolled student can open a paid lesson's PDF; non-enrolled student gets 4
     $response->assertHeader('X-Content-Type-Options', 'nosniff');
 });
 
+test('attachment response headers are correct, including for a filename with quotes and non-ASCII characters', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    $originalName = 'Notes "Ch 1" – भौतिकी.pdf';
+
+    [$course, $lesson, $attachment] = inTenant($tenant, function () use ($originalName) {
+        $course = Course::factory()->published()->create();
+        $chapter = Chapter::factory()->for($course)->create();
+        $lesson = Lesson::factory()->for($chapter)->published()->create([
+            'course_id' => $course->id,
+            'is_free_preview' => false,
+        ]);
+        $attachment = LessonAttachment::factory()->for($lesson)->create(['original_name' => $originalName]);
+
+        return [$course, $lesson, $attachment];
+    });
+
+    $student = inTenant($tenant, function () use ($course) {
+        $student = User::factory()->student()->create();
+        Enrolment::factory()->for($course)->for($student, 'user')->active()->create();
+
+        return $student;
+    });
+
+    $response = $this->actingAs($student, 'tenant')
+        ->get("http://{$domain}/courses/{$course->slug}/lessons/{$lesson->id}/attachments/{$attachment->id}");
+
+    $response->assertOk();
+    $response->assertHeader('Content-Type', 'application/pdf');
+    $response->assertHeader('X-Content-Type-Options', 'nosniff');
+
+    $disposition = $response->headers->get('Content-Disposition');
+    expect($disposition)->toStartWith('inline;');
+    // RFC 5987's encoding token is case-insensitive; Symfony emits it lowercase.
+    expect(strtolower($disposition))->toContain("filename*=utf-8''");
+    // A header value must not contain a raw, unescaped double quote breaking out of the
+    // quoted filename parameter — a backslash-escaped quote (\") inside it is valid
+    // RFC 6266 quoted-string syntax, which is what a literal quote in the name becomes.
+    expect(preg_match('/^filename="(?:[^"\\\\]|\\\\.)*"$/', explode('; ', $disposition)[1]))->toBe(1);
+});
+
 test('the stored attachment file is not reachable via any public URL', function () {
     $tenant = Tenant::factory()->create();
 

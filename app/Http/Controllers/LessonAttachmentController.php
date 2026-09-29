@@ -8,6 +8,7 @@ use App\Models\LessonAttachment;
 use App\Support\LessonAccess;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\Response;
 
 class LessonAttachmentController extends Controller
@@ -32,9 +33,21 @@ class LessonAttachmentController extends Controller
 
         $contents = Storage::disk($attachment->disk)->get($attachment->path);
 
+        // RFC 6266: filename= must be a safe ASCII fallback (quotes/backslashes escaped by
+        // makeDisposition itself); the real name — quotes, non-ASCII, whatever the teacher
+        // typed — travels in filename*=UTF-8''... instead, which is what browsers actually
+        // display. Never hand-build this header by interpolating the name into a string.
+        $asciiFallback = preg_replace('/[^\x20-\x7E]/', '_', $attachment->original_name) ?? 'attachment.pdf';
+
+        $disposition = HeaderUtils::makeDisposition(
+            HeaderUtils::DISPOSITION_INLINE,
+            $attachment->original_name,
+            $asciiFallback,
+        );
+
         return response($contents, Response::HTTP_OK, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="'.$attachment->original_name.'"',
+            'Content-Disposition' => $disposition,
             'X-Content-Type-Options' => 'nosniff',
         ]);
     }

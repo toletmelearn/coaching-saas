@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Enums\CourseStatus;
 use App\Enums\LessonStatus;
 use App\Enums\UserRole;
+use App\Enums\UserStatus;
 use App\Models\Course;
 use App\Models\Enrolment;
 use App\Models\Lesson;
@@ -14,11 +15,15 @@ class LessonAccess
 {
     public function isStaffOrOwner(?User $user): bool
     {
-        return $user !== null && in_array($user->role, [UserRole::Owner, UserRole::Staff], true);
+        return $user !== null
+            && $user->status === UserStatus::Active
+            && in_array($user->role, [UserRole::Owner, UserRole::Staff], true);
     }
 
     public function courseIsVisible(?User $user, Course $course): bool
     {
+        $user = $this->activeUserOrNull($user);
+
         if ($this->isStaffOrOwner($user)) {
             return true;
         }
@@ -35,6 +40,8 @@ class LessonAccess
      */
     public function lessonAccess(?User $user, Lesson $lesson): string
     {
+        $user = $this->activeUserOrNull($user);
+
         if ($this->isStaffOrOwner($user)) {
             return 'ok';
         }
@@ -67,8 +74,28 @@ class LessonAccess
 
     public function hasValidEnrolment(User $user, Course $course): bool
     {
+        if ($user->status !== UserStatus::Active) {
+            return false;
+        }
+
         $enrolment = $this->findEnrolment($user, $course);
 
         return $enrolment !== null && $enrolment->isValidNow();
+    }
+
+    /**
+     * Defence in depth: a disabled user is treated identically to a guest throughout this
+     * service, regardless of how it was called. The primary enforcement is the
+     * active.tenant.user middleware (logs a disabled user out on their next request), so in
+     * the normal HTTP flow this never actually triggers — it only matters if LessonAccess is
+     * ever called with a stale/bypassed user object.
+     */
+    private function activeUserOrNull(?User $user): ?User
+    {
+        if ($user !== null && $user->status !== UserStatus::Active) {
+            return null;
+        }
+
+        return $user;
     }
 }
