@@ -25,6 +25,13 @@ class LoginRateLimiter
 
     private const IDENTIFIER_DECAY_SECONDS = 60 * 60;
 
+    /**
+     * Bounds the "IPs seen for this identifier" cache entry so a sustained distributed
+     * attack (which the identifier-wide limiter above already stops after 20 attempts,
+     * long before this would matter in practice) can't grow it without bound.
+     */
+    private const MAX_SEEN_IPS = 50;
+
     public static function tooManyAttempts(int $tenantId, string $identifier, string $ip): bool
     {
         return RateLimiter::tooManyAttempts(self::ipKey($tenantId, $identifier, $ip), self::IP_MAX_ATTEMPTS)
@@ -41,6 +48,10 @@ class LoginRateLimiter
 
         if (! in_array($ip, $seenIps, true)) {
             $seenIps[] = $ip;
+
+            if (count($seenIps) > self::MAX_SEEN_IPS) {
+                $seenIps = array_slice($seenIps, -self::MAX_SEEN_IPS);
+            }
         }
 
         Cache::put($seenIpsKey, $seenIps, self::IDENTIFIER_DECAY_SECONDS);

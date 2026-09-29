@@ -16,7 +16,7 @@
         @forelse ($courses as $course)
             <tr class="border-b border-gray-100">
                 <td class="py-2 pr-2"><a href="{{ url('/manage/courses/'.$course->id) }}">{{ $course->title }}</a></td>
-                <td class="py-2 pr-2">{{ __('courses.manage.status') }}: {{ $course->status->value }}</td>
+                <td class="py-2 pr-2">{{ __('courses.manage.status') }}: {{ __('courses.manage.course_statuses.'.$course->status->value) }}</td>
             </tr>
         @empty
             <tr><td class="py-2">{{ __('courses.index.empty') }}</td></tr>

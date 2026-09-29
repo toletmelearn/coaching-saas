@@ -3,7 +3,7 @@
 @section('content')
     <x-page-header :title="$course->title" />
 
-    <p class="mb-4 text-sm text-gray-600">{{ __('courses.manage.status') }}: {{ $course->status->value }}</p>
+    <p class="mb-4 text-sm text-gray-600">{{ __('courses.manage.status') }}: {{ __('courses.manage.course_statuses.'.$course->status->value) }}</p>
 
     <div class="flex flex-wrap gap-2 mb-6">
         @can('publish', $course)
@@ -21,7 +21,7 @@
         @endcan
 
         @can('archive', $course)
-            <form method="POST" action="{{ url('/manage/courses/'.$course->id.'/archive') }}" onsubmit="return confirm('{{ __('courses.manage.confirm_action') }}')">
+            <form method="POST" action="{{ url('/manage/courses/'.$course->id.'/archive') }}" onsubmit="return confirm(@js(__('courses.manage.confirm_action')))">
                 @csrf
                 <x-button variant="danger">{{ __('courses.manage.archive') }}</x-button>
             </form>
@@ -53,7 +53,7 @@
                         @csrf
                         <x-button variant="secondary" class="!min-h-0 !py-1 !px-2">↓</x-button>
                     </form>
-                    <form method="POST" action="{{ url('/manage/chapters/'.$chapter->id) }}" onsubmit="return confirm('{{ __('courses.manage.confirm_action') }}')">
+                    <form method="POST" action="{{ url('/manage/chapters/'.$chapter->id) }}" onsubmit="return confirm(@js(__('courses.manage.confirm_action')))">
                         @csrf
                         @method('DELETE')
                         <x-button variant="danger" class="!min-h-0 !py-1 !px-2">{{ __('courses.manage.delete') }}</x-button>
@@ -68,7 +68,7 @@
                             <span>
                                 {{ $lesson->title }}
                                 <span class="ml-2 inline-block rounded-full px-2 py-0.5 text-xs {{ $lesson->status->value === 'published' ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-700' }}">
-                                    {{ $lesson->status->value }}
+                                    {{ __('courses.manage.lesson_statuses.'.$lesson->status->value) }}
                                 </span>
                             </span>
                         </div>

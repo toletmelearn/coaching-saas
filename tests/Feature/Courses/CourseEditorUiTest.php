@@ -191,3 +191,63 @@ test('the course editor links to its enrolments screen and the public course pag
     $response->assertSee('/manage/courses/'.$course->id.'/enrolments', false);
     $response->assertSee('/courses/'.$course->slug, false);
 });
+
+test('confirm dialogs are JSON-encoded so an apostrophe/quote in the translation cannot break the onsubmit attribute', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    [$owner, $lesson] = inTenant($tenant, function () {
+        $owner = User::factory()->owner()->create();
+        $course = Course::factory()->published()->create();
+        $chapter = Chapter::factory()->for($course)->create();
+        $lesson = Lesson::factory()->for($chapter)->create(['course_id' => $course->id]);
+
+        return [$owner, $lesson];
+    });
+
+    // courses.manage.confirm_action deliberately contains an apostrophe and a double
+    // quote (see lang/en/courses.php) — exactly the input that breaks a naive
+    // onsubmit="return confirm('{{ __(...) }}')".
+    $translation = __('courses.manage.confirm_action');
+    expect($translation)->toContain("'")->toContain('"');
+
+    $response = $this->actingAs($owner, 'tenant')
+        ->get("http://{$domain}/manage/lessons/{$lesson->id}/edit");
+
+    $response->assertOk();
+
+    preg_match('/onsubmit="return confirm\((.*?)\)"/', $response->getContent(), $match);
+    expect($match)->not->toBeEmpty();
+
+    $jsArgument = $match[1];
+
+    // The raw apostrophe/quote from the translation must never appear unescaped in the
+    // attribute — only their \u0027 / \u0022 escapes (Illuminate\Support\Js::from).
+    expect($jsArgument)->not->toContain("can't")
+        ->toContain('can\u0027t')
+        ->toContain('\u0022removes it for everyone\u0022');
+});
+
+test('course and lesson statuses are translated on the course editor page, not printed as raw enum values', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    [$owner, $course] = inTenant($tenant, function () {
+        $owner = User::factory()->owner()->create();
+        $course = Course::factory()->draft()->create();
+        $chapter = Chapter::factory()->for($course)->create();
+        Lesson::factory()->for($chapter)->draft()->create(['course_id' => $course->id, 'title' => 'Status Label Lesson']);
+
+        return [$owner, $course];
+    });
+
+    $response = $this->actingAs($owner, 'tenant')
+        ->get("http://{$domain}/manage/courses/{$course->id}");
+
+    $response->assertOk();
+    $response->assertSee(__('courses.manage.course_statuses.draft'));
+    $response->assertSee(__('courses.manage.lesson_statuses.draft'));
+    $response->assertDontSee('>draft<', false);
+});

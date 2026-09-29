@@ -38,7 +38,7 @@ return [
         'delete' => 'Delete',
         'revoke' => 'Revoke',
         'reenrol' => 'Re-enrol',
-        'confirm_action' => 'Are you sure?',
+        'confirm_action' => 'Are you sure? This can\'t be undone — deleting "removes it for everyone".',
         'starts_at' => 'Starts',
         'ends_at' => 'Ends',
         'payment_note' => 'Payment note',
@@ -66,6 +66,15 @@ return [
         'enrolment_statuses' => [
             'active' => 'Active',
             'revoked' => 'Revoked',
+        ],
+        'course_statuses' => [
+            'draft' => 'Draft',
+            'published' => 'Published',
+            'archived' => 'Archived',
+        ],
+        'lesson_statuses' => [
+            'draft' => 'Draft',
+            'published' => 'Published',
         ],
     ],
 ];

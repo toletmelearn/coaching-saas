@@ -53,7 +53,7 @@
 
                             @if ($rowUser->status->value === 'active')
                                 @can('disable', $rowUser)
-                                    <form method="POST" action="{{ url('/users/'.$rowUser->id.'/disable') }}" onsubmit="return confirm('{{ __('users.actions.confirm_disable') }}')">
+                                    <form method="POST" action="{{ url('/users/'.$rowUser->id.'/disable') }}" onsubmit="return confirm(@js(__('users.actions.confirm_disable')))">
                                         @csrf
                                         <x-button variant="danger" class="w-full">{{ __('users.actions.disable') }}</x-button>
                                     </form>

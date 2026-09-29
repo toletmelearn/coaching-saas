@@ -51,7 +51,7 @@
         @forelse ($lesson->attachments as $attachment)
             <li class="py-2 flex items-center justify-between gap-2">
                 <span>{{ $attachment->original_name }}</span>
-                <form method="POST" action="{{ url('/manage/attachments/'.$attachment->id) }}" onsubmit="return confirm('{{ __('courses.manage.confirm_action') }}')">
+                <form method="POST" action="{{ url('/manage/attachments/'.$attachment->id) }}" onsubmit="return confirm(@js(__('courses.manage.confirm_action')))">
                     @csrf
                     @method('DELETE')
                     <x-button variant="danger" class="!min-h-[36px] !py-0 !px-2 text-sm">{{ __('courses.manage.delete') }}</x-button>
@@ -69,7 +69,7 @@
     </form>
 
     <div class="mt-8">
-        <form method="POST" action="{{ url('/manage/lessons/'.$lesson->id) }}" onsubmit="return confirm('{{ __('courses.manage.confirm_action') }}')">
+        <form method="POST" action="{{ url('/manage/lessons/'.$lesson->id) }}" onsubmit="return confirm(@js(__('courses.manage.confirm_action')))">
             @csrf
             @method('DELETE')
             <x-button variant="danger">{{ __('courses.manage.delete') }}</x-button>
