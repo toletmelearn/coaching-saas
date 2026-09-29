@@ -61,6 +61,50 @@ test('the seeder creates a second draft course', function () {
     expect($draftCourseCount)->toBe(1);
 });
 
+test('the full DatabaseSeeder (php artisan db:seed) seeds courses through model events, not around them', function () {
+    // No argument -> Database\Seeders\DatabaseSeeder, exactly what `php artisan
+    // migrate:fresh --seed` runs. Unlike the other tests in this file, this does NOT call
+    // TenantSeeder directly — it goes through the real seeding entry point, so it also
+    // catches anything (like WithoutModelEvents) that only breaks when seeding runs through
+    // DatabaseSeeder itself.
+    $this->seed();
+
+    $tenant = Tenant::query()->where('name', 'Demo Institute')->firstOrFail();
+
+    $result = app(TenantContext::class)->runAs($tenant, function () {
+        $course = Course::where('title', 'Physics – Class 11')->firstOrFail();
+
+        $chapterPositions = Chapter::where('course_id', $course->id)->orderBy('position')->pluck('position')->all();
+
+        $lessonPositionsByChapter = Chapter::where('course_id', $course->id)->get()
+            ->map(fn (Chapter $chapter) => Lesson::where('chapter_id', $chapter->id)->orderBy('position')->pluck('position')->all())
+            ->all();
+
+        $student = User::where('email', 'student@demo.coaching.test')->firstOrFail();
+        $enrolment = Enrolment::where('course_id', $course->id)->where('user_id', $student->id)->first();
+
+        return [
+            'slug' => $course->slug,
+            'tenant_id' => $course->tenant_id,
+            'chapter_positions' => $chapterPositions,
+            'lesson_positions_by_chapter' => $lessonPositionsByChapter,
+            'enrolment' => $enrolment,
+        ];
+    });
+
+    expect($result['slug'])->toBe('physics-class-11')
+        ->and($result['tenant_id'])->toBe($tenant->id)
+        ->and($result['enrolment'])->not->toBeNull();
+
+    // Positions are contiguous 1..n with no duplicates — proves the creating hooks that
+    // auto-fill `position` actually ran, not that any fixed value happened to be supplied.
+    expect($result['chapter_positions'])->toBe(range(1, count($result['chapter_positions'])));
+
+    foreach ($result['lesson_positions_by_chapter'] as $positions) {
+        expect($positions)->toBe(range(1, count($positions)));
+    }
+});
+
 test('demo courses are not seeded when environment is production', function () {
     app()->instance('env', 'production');
 
