@@ -2,7 +2,13 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+// Daily database + private-storage backup, then prune anything past the 14-day retention
+// window (config/backup.php). Requires the server cron -> schedule:run (docs/DEPLOY.md).
+Schedule::command('backup:run')->daily()->at('02:00')->onOneServer();
+Schedule::command('backup:clean')->daily()->at('01:30')->onOneServer();

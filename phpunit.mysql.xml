@@ -20,6 +20,14 @@
         <testsuite name="Enrolments">
             <directory>tests/Feature/Enrolments</directory>
         </testsuite>
+        <testsuite name="Console">
+            <directory>tests/Feature/Console</directory>
+        </testsuite>
+        <testsuite name="Production">
+            <file>tests/Feature/CloudflareTrustedProxyTest.php</file>
+            <file>tests/Feature/SessionCookieDomainTest.php</file>
+            <file>tests/Feature/BackupConfigurationTest.php</file>
+        </testsuite>
     </testsuites>
     <source>
         <include>

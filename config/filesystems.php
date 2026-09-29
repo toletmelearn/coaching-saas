@@ -47,6 +47,17 @@ return [
             'report' => false,
         ],
 
+        // Where spatie/laravel-backup writes backup archives — deliberately separate from
+        // the 'local' disk (storage/app/private) it backs up, so a backup run never nests
+        // its own output inside the tree it's archiving. See docs/DEPLOY.md for copying
+        // these off the server.
+        'backups' => [
+            'driver' => 'local',
+            'root' => storage_path('app/backups'),
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

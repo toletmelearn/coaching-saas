@@ -35,6 +35,21 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo(
             fn (Request $request) => $request->is('admin/*') ? '/admin/login' : '/login',
         );
+
+        // Only trust X-Forwarded-For / X-Forwarded-Proto when the immediate TCP connection
+        // (REMOTE_ADDR) is Cloudflare itself — config('cloudflare.ip_ranges') isn't used
+        // here because config() isn't guaranteed to be booted this early; a direct
+        // require keeps this the single source of truth (see config/cloudflare.php for
+        // how to refresh the list). A request from any other IP has its forwarded headers
+        // ignored entirely, so $request->ip() falls back to REMOTE_ADDR and a forged
+        // header can never spoof or share another visitor's rate-limit bucket.
+        $middleware->trustProxies(
+            at: (require __DIR__.'/../config/cloudflare.php')['ip_ranges'],
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
