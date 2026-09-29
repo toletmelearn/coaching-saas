@@ -43,11 +43,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // how to refresh the list). A request from any other IP has its forwarded headers
         // ignored entirely, so $request->ip() falls back to REMOTE_ADDR and a forged
         // header can never spoof or share another visitor's rate-limit bucket.
+        //
+        // Deliberately NOT trusting HEADER_X_FORWARDED_HOST or HEADER_X_FORWARDED_PORT:
+        // Cloudflare always forwards the real Host header itself, and tenant resolution is
+        // host-based (ResolveTenant uses $request->getHost()) — honouring a forwarded host
+        // would let a forged X-Forwarded-Host resolve the wrong tenant. See SECURITY.md.
         $middleware->trustProxies(
             at: (require __DIR__.'/../config/cloudflare.php')['ip_ranges'],
             headers: Request::HEADER_X_FORWARDED_FOR
-                | Request::HEADER_X_FORWARDED_HOST
-                | Request::HEADER_X_FORWARDED_PORT
                 | Request::HEADER_X_FORWARDED_PROTO,
         );
     })

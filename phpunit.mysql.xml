@@ -24,9 +24,7 @@
             <directory>tests/Feature/Console</directory>
         </testsuite>
         <testsuite name="Production">
-            <file>tests/Feature/CloudflareTrustedProxyTest.php</file>
-            <file>tests/Feature/SessionCookieDomainTest.php</file>
-            <file>tests/Feature/BackupConfigurationTest.php</file>
+            <directory>tests/Feature/Production</directory>
         </testsuite>
     </testsuites>
     <source>

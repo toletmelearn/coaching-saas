@@ -17,6 +17,15 @@
   not to a global users table. A successful replay is treated as a critical bug, not an edge
   case.
 
+## Trusted proxies (Cloudflare)
+
+- `bootstrap/app.php`'s `trustProxies()` only honours `X-Forwarded-For` and
+  `X-Forwarded-Proto` from Cloudflare's published IPs (`config/cloudflare.php`) — it
+  deliberately does **not** trust `X-Forwarded-Host` (or `-Port`): tenant resolution is
+  host-based (`ResolveTenant` uses `$request->getHost()`), so honouring a forwarded host
+  would let a forged `X-Forwarded-Host` header resolve a different tenant than the one the
+  request actually reached.
+
 ## Contact-required CHECK constraint: minimum database version
 
 - `users.email IS NOT NULL OR users.phone IS NOT NULL` is enforced by a native `CHECK`
