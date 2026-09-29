@@ -87,14 +87,14 @@ test('tenant home redirects guests to /courses and logged-in users to /dashboard
         ->assertRedirect("http://{$domain}/dashboard");
 });
 
-test('the central domain home page shows a simple translated platform page, not the Laravel welcome page', function () {
+test('the central domain home page shows the translated platform landing page, not the Laravel welcome page', function () {
     $centralDomain = config('tenancy.central_domains')[0] ?? 'coaching.test';
 
     $response = $this->get("http://{$centralDomain}/");
 
     $response->assertOk();
-    $response->assertSee(__('platform.home.heading'));
-    $response->assertSee(__('platform.home.message'));
+    $response->assertSee(__('platform.home.hero.heading'));
+    $response->assertSee(__('platform.home.demo_form.heading'));
 });
 
 test('owner/staff dashboard links to Courses and People; student dashboard shows My courses', function () {

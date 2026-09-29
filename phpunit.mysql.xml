@@ -30,6 +30,9 @@
             <directory>tests/Feature/Video</directory>
             <directory>tests/Unit/Support/Video</directory>
         </testsuite>
+        <testsuite name="Platform">
+            <directory>tests/Feature/Platform</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

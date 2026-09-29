@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\PlatformAdmin;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 
@@ -115,6 +116,14 @@ test('fails when a demo tenant exists', function () {
     app()->instance('env', 'production');
     config(passingPreflightConfig());
     Tenant::factory()->create(['name' => 'Demo Institute']);
+
+    $this->artisan('app:preflight')->assertFailed();
+});
+
+test('fails when the local demo platform admin account exists', function () {
+    app()->instance('env', 'production');
+    config(passingPreflightConfig());
+    PlatformAdmin::factory()->create(['email' => 'admin@coaching.test']);
 
     $this->artisan('app:preflight')->assertFailed();
 });

@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\DemoRequestController as AdminDemoRequestController;
+use App\Http\Controllers\Admin\InstituteController;
 use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\Auth\PlatformAdminLoginController;
 use App\Http\Controllers\Auth\PlatformAdminLogoutController;
@@ -7,6 +9,7 @@ use App\Http\Controllers\Auth\TenantLoginController;
 use App\Http\Controllers\Auth\TenantLogoutController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DemoRequestController;
 use App\Http\Controllers\LessonAttachmentController;
 use App\Http\Controllers\LessonController;
 use App\Http\Controllers\LessonVideoStreamController;
@@ -18,31 +21,51 @@ use App\Http\Controllers\Manage\LessonAttachmentController as ManageLessonAttach
 use App\Http\Controllers\Manage\LessonController as ManageLessonController;
 use App\Http\Controllers\Manage\LessonVideoController as ManageLessonVideoController;
 use App\Http\Controllers\PlatformAdminDashboardController;
+use App\Http\Controllers\PlatformHomeController;
 use App\Http\Controllers\UserController;
 use App\Support\TenantContext;
 use Illuminate\Support\Facades\Route;
 
+// Central-domain-only routes — restricted via Route::domain(), so a tenant subdomain
+// never matches any of these at all (routing-level, not just an in-controller check).
+foreach (config('tenancy.central_domains', []) as $centralDomain) {
+    Route::domain($centralDomain)->group(function () {
+        Route::get('/', [PlatformHomeController::class, 'show']);
+        Route::post('demo-requests', [DemoRequestController::class, 'store']);
+
+        Route::prefix('admin')->group(function () {
+            Route::get('login', [PlatformAdminLoginController::class, 'show'])->name('admin.login');
+            Route::post('login', [PlatformAdminLoginController::class, 'store']);
+            Route::post('logout', [PlatformAdminLogoutController::class, 'store'])
+                ->middleware('auth:platform_admin');
+
+            Route::middleware('auth:platform_admin')->group(function () {
+                Route::get('dashboard', [PlatformAdminDashboardController::class, 'show']);
+
+                Route::get('institutes', [InstituteController::class, 'index'])->name('admin.institutes.index');
+                Route::get('institutes/create', [InstituteController::class, 'create'])->name('admin.institutes.create');
+                Route::post('institutes', [InstituteController::class, 'store']);
+                Route::get('institutes/{tenant}', [InstituteController::class, 'show'])->name('admin.institutes.show');
+                Route::post('institutes/{tenant}/suspend', [InstituteController::class, 'suspend']);
+                Route::post('institutes/{tenant}/reactivate', [InstituteController::class, 'reactivate']);
+                Route::post('institutes/{tenant}/reset-owner-password', [InstituteController::class, 'resetOwnerPassword']);
+
+                Route::get('demo-requests', [AdminDemoRequestController::class, 'index'])->name('admin.demo-requests.index');
+                Route::post('demo-requests/{demoRequest}/mark-contacted', [AdminDemoRequestController::class, 'markContacted']);
+            });
+        });
+    });
+}
+
+// Tenant-domain fallback root — only ever reached on a tenant subdomain, since every
+// central domain is intercepted by the domain-scoped group above.
 Route::get('/', function () {
     if (! app(TenantContext::class)->has()) {
-        return view('platform.home');
+        abort(404);
     }
 
     return auth('tenant')->check() ? redirect('/dashboard') : redirect('/courses');
 });
-
-// Platform admin — restricted to each configured central domain via Route::domain(),
-// so a tenant subdomain never matches these at all (routing-level defense-in-depth,
-// not just the in-controller TenantContext check in PlatformAdminLoginController).
-foreach (config('tenancy.central_domains', []) as $centralDomain) {
-    Route::domain($centralDomain)->prefix('admin')->group(function () {
-        Route::get('login', [PlatformAdminLoginController::class, 'show'])->name('admin.login');
-        Route::post('login', [PlatformAdminLoginController::class, 'store']);
-        Route::post('logout', [PlatformAdminLogoutController::class, 'store'])
-            ->middleware('auth:platform_admin');
-        Route::get('dashboard', [PlatformAdminDashboardController::class, 'show'])
-            ->middleware('auth:platform_admin');
-    });
-}
 
 // Tenant-scoped routes.
 Route::middleware('require.tenant')->group(function () {

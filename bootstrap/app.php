@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CheckTenantSuspended;
 use App\Http\Middleware\EnsureActiveTenantUser;
 use App\Http\Middleware\RedirectIfMustChangePassword;
 use App\Http\Middleware\RequireTenant;
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->web(append: [
+            CheckTenantSuspended::class,
             SetReferrerPolicy::class,
         ]);
 

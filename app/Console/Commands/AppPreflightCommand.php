@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\PlatformAdmin;
 use App\Models\Tenant;
 use App\Models\TenantDomain;
 use App\Support\DatabaseVersionCheck;
@@ -142,7 +143,8 @@ class AppPreflightCommand extends Command
 
         try {
             $demoExists = Tenant::query()->where('name', 'Demo Institute')->exists()
-                || TenantDomain::query()->where('domain', "demo.{$baseDomain}")->exists();
+                || TenantDomain::query()->where('domain', "demo.{$baseDomain}")->exists()
+                || PlatformAdmin::query()->where('email', 'admin@coaching.test')->exists();
         } catch (Throwable) {
             // Already reported by checkDatabaseReachable(); don't double-report.
             return null;

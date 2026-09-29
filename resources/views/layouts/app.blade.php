@@ -11,6 +11,7 @@
 @php
     $tenant = app(\App\Support\TenantContext::class)->has() ? app(\App\Support\TenantContext::class)->get() : null;
     $tenantUser = auth('tenant')->user();
+    $platformAdmin = auth('platform_admin')->user();
 @endphp
 
 @if ($tenant)
@@ -36,6 +37,33 @@
                     <a href="{{ url('/courses') }}" class="min-h-[44px] flex items-center">{{ __('nav.courses') }}</a>
                     <a href="{{ url('/login') }}" class="min-h-[44px] flex items-center">{{ __('nav.login') }}</a>
                 @endif
+            </nav>
+        </div>
+    </header>
+@elseif ($platformAdmin)
+    <header class="bg-white border-b border-gray-200">
+        <div class="max-w-3xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+            <span class="font-semibold text-gray-900">{{ config('app.name', 'Coaching SaaS') }}</span>
+
+            <nav class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                <a href="{{ url('/admin/dashboard') }}" class="min-h-[44px] flex items-center">{{ __('platform.admin.nav.dashboard') }}</a>
+                <a href="{{ url('/admin/institutes') }}" class="min-h-[44px] flex items-center">{{ __('platform.admin.nav.institutes') }}</a>
+                <a href="{{ url('/admin/demo-requests') }}" class="min-h-[44px] flex items-center">{{ __('platform.admin.nav.demo_requests') }}</a>
+
+                <form method="POST" action="{{ url('/admin/logout') }}">
+                    @csrf
+                    <button type="submit" class="min-h-[44px] text-left">{{ __('platform.admin.nav.logout') }}</button>
+                </form>
+            </nav>
+        </div>
+    </header>
+@else
+    <header class="bg-white border-b border-gray-200">
+        <div class="max-w-3xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+            <span class="font-semibold text-gray-900">{{ config('app.name', 'Coaching SaaS') }}</span>
+
+            <nav class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                <a href="{{ url('/admin/login') }}" class="min-h-[44px] flex items-center">{{ __('platform.admin_login_link') }}</a>
             </nav>
         </div>
     </header>

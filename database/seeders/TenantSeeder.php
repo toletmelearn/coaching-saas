@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\DomainType;
+use App\Enums\PlatformAdminStatus;
 use App\Enums\TenantStatus;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
@@ -10,6 +11,7 @@ use App\Models\Course;
 use App\Models\Enrolment;
 use App\Models\Lesson;
 use App\Models\LessonAttachment;
+use App\Models\PlatformAdmin;
 use App\Models\Tenant;
 use App\Models\TenantDomain;
 use App\Models\User;
@@ -67,6 +69,14 @@ class TenantSeeder extends Seeder
                 ['created_by' => $owner->id],
             );
         });
+
+        // Local dev/demo platform admin — see README "Local credentials". Never seeded
+        // outside local/testing (guarded above); php artisan app:preflight fails in
+        // production if this account exists.
+        PlatformAdmin::query()->firstOrCreate(
+            ['email' => 'admin@coaching.test'],
+            ['name' => 'Local Platform Admin', 'password' => Hash::make('password'), 'status' => PlatformAdminStatus::Active],
+        );
     }
 
     private function seedDemoCourse(User $owner, User $student): void
