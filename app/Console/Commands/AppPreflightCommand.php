@@ -33,6 +33,7 @@ class AppPreflightCommand extends Command
             $this->checkDatabaseReachable(),
             $this->checkMysqlVersion(),
             $this->checkNoDemoData(),
+            $this->checkVideoDriver(),
         ]);
 
         if ($failures === []) {
@@ -150,5 +151,25 @@ class AppPreflightCommand extends Command
         return $demoExists
             ? 'A demo tenant/account exists — never seed demo data in production (see README.md "Local credentials" and docs/DEPLOY.md).'
             : null;
+    }
+
+    /**
+     * Only the account-level Bunny key is checked here — per-tenant library keys don't
+     * exist yet for a tenant that has never uploaded video, so those are validated lazily
+     * at first use (docs/specs/phase-5-video.md).
+     */
+    private function checkVideoDriver(): ?string
+    {
+        $driver = config('coaching.video_driver');
+
+        if ($driver === 'fake') {
+            return 'VIDEO_DRIVER=fake is never allowed in production.';
+        }
+
+        if ($driver === 'bunny' && empty(config('services.bunny.account_api_key'))) {
+            return 'VIDEO_DRIVER=bunny but BUNNY_STREAM_ACCOUNT_API_KEY is not set.';
+        }
+
+        return null;
     }
 }

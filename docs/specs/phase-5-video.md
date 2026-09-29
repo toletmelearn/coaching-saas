@@ -1,6 +1,8 @@
 # Phase 5: Protected Video for Lessons
 
-**Status:** Step 1 (tests only) — awaiting approval before implementation.
+**Status:** Complete. `composer test` (408/409, 1 pre-existing MySQL-only test skipped on
+SQLite), `composer test:mysql` (377/377), `composer lint`, and `composer analyse` all pass
+with zero regressions to Phases 1–4.
 
 ---
 
@@ -284,7 +286,7 @@ Restated from the brief, corrected for the per-tenant-library design (changes in
 
 ## Files changed
 
-### Step 1 (this commit) — tests only
+### Step 1 — tests only
 
 - `docs/specs/phase-5-video.md` (this file)
 - `tests/Unit/Support/Video/BunnyEmbedTokenSignerTest.php`
@@ -299,27 +301,87 @@ Restated from the brief, corrected for the per-tenant-library design (changes in
 - `tests/Feature/Video/VideosSyncCommandTest.php`
 - `tests/Feature/Video/ReplaceDeleteVideoTest.php`
 - `tests/Feature/Video/WatermarkFullscreenMarkupTest.php`
+- `tests/Pest.php`: `Http::preventStrayRequests()` for `Feature/Video` and
+  `Unit/Support/Video`.
+- `phpunit.mysql.xml`: `Video` test suite (both directories above).
 
-### Step 2 (not written yet — implementation, pending approval)
+### Step 1 correction pass (approved, before Step 2 began)
 
-- Migrations: `lesson_videos` table, `tenants` Bunny columns.
+- `tests/Feature/Console/AppPreflightCommandTest.php`: `passingPreflightConfig()`
+  extended with `coaching.video_driver` / `services.bunny.account_api_key` — same
+  "positive baseline gains a key when a new check dimension is added" pattern already
+  used by every other check in that file; without it, adding the new video-driver
+  preflight check would have broken that file's own pre-existing positive control.
+
+### Step 2 — implementation
+
+- Migrations: `2026_09_30_000001_create_lesson_videos_table.php`,
+  `2026_09_30_000002_add_bunny_library_columns_to_tenants_table.php`.
 - `app/Enums/VideoStatus.php`
+- `app/Exceptions/VideoProviderException.php`
 - `app/Contracts/VideoProvider.php`
-- `app/Models/LessonVideo.php`, `database/factories/LessonVideoFactory.php`
+- `app/Models/{LessonVideo,Tenant,Lesson,Enrolment}.php` (Tenant: encrypted/hidden Bunny
+  columns; Lesson: `video()` relation; Enrolment: `revoke()` convenience method — see
+  "Test corrections" below for why)
+- `database/factories/LessonVideoFactory.php`
 - `app/Services/Video/{FakeVideoProvider,BunnyVideoProvider}.php`
 - `app/Support/Video/{BunnyEmbedTokenSigner,BunnyUploadSignature}.php`
 - `app/Http/Controllers/Manage/LessonVideoController.php`
-- `app/Http/Controllers/LessonVideoStreamController.php`
-- `app/Console/Commands/VideosSyncCommand.php`
-- `app/Providers/VideoServiceProvider.php` (or extend `AppServiceProvider`)
-- `routes/web.php`, `routes/console.php` additions
-- `config/coaching.php` additions (`video_driver`, `max_video_mb`,
-  `video_embed_ttl_minutes`)
-- `config/services.php` `bunny` block (`account_api_key`)
-- View/partial changes to `resources/views/lessons/show.blade.php` and the lesson
-  edit/manage view for the upload UI, watermark overlay script, fullscreen control.
-- `Lesson` model: `saving` hook addition for the YouTube/video mutual-exclusivity check.
-- `app/Console/Commands/AppPreflightCommand.php`: add the `bunny` account-key check.
+- `app/Http/Controllers/{LessonVideoStreamController,LessonVideoUploadController,LessonController}.php`
+- `app/Http/Controllers/Manage/LessonController.php` (loads `video`; rejects a
+  `youtube_url` update when a protected video already exists)
+- `app/Console/Commands/{VideosSyncCommand,AppPreflightCommand}.php`
+- `app/Providers/AppServiceProvider.php` (`VideoProvider` binding)
+- `routes/web.php` (start-upload/refresh-status/destroy, the two signed routes),
+  `routes/console.php` (`videos:sync` every minute)
+- `config/coaching.php` (`video_driver`, `max_video_mb`, `video_embed_ttl_minutes`,
+  `video_upload_signature_ttl_minutes`), `config/services.php` (`bunny.account_api_key`)
+- `lang/en/lessons.php` (`video.*` teacher-facing strings and status labels)
+- `resources/views/lessons/show.blade.php` (protected-video player, watermark overlay,
+  fullscreen control), `resources/views/manage/lessons/edit.blade.php` (upload UI:
+  file input, progress bar, status badge, Refresh status, Replace, Delete)
+- `README.md`, `docs/DEPLOY.md`, `SECURITY.md`, `VIDEO.md` (see those files' own diffs)
+
+---
+
+## Test corrections (Step 1 → Step 2, approved-pattern fixes, not behavioral changes)
+
+Same category as Phase 4's own precedent (phase-4-courses.md) — bugs in my own Step 1
+tests, found once real code existed to run them against, each stopped-and-confirmed with
+the user before touching an already-committed test file:
+
+1. **`FakeStreamRouteTest`, all 4 tests** — `$lesson->video->id` was dereferenced outside
+   `inTenant()`, throwing `MissingTenantContextException` (an undefined-variable-shaped
+   bug, not a design question). Fixed by capturing the video's id *inside* the
+   `inTenant()` closure and returning it directly.
+2. **`FakeStreamRouteTest`, 3 of 4 tests** — `URL::temporarySignedRoute()` called directly
+   in the test body (not during an actual HTTP request) has no request to infer the host
+   from, so it signed against `APP_URL` (`localhost:8000`) while the test then requested
+   the URL from `tenant-a.coaching.test` — an unconditional signature mismatch (403)
+   regardless of expiry, masked in the 4th test because it *expected* 403 anyway (for the
+   wrong reason: host mismatch, not the expiry it claimed to test). Fixed with a
+   `signedStreamUrl()` helper that forces the root URL to the tenant's domain before
+   generating, matching how the real controller flow works (there, Laravel infers the
+   root from the actual incoming request automatically).
+3. **`FakeStreamRouteTest`, Cache-Control assertion** — expected the literal string
+   `'private, no-store'`, but Symfony's `ResponseHeaderBag` always alphabetically sorts
+   Cache-Control directives (`ksort` in `computeCacheControlValue()`), so that literal
+   order is never producible via the normal directive API — semantically identical,
+   corrected to `'no-store, private'`.
+4. **`EmbedTokenPlaybackTest`, log-leak test** — its positive control asserted
+   `json_encode([])` (an empty `Log::info()` context array) equals `'{}'`; PHP encodes an
+   empty array as `'[]'`, not `'{}'` (arrays don't distinguish empty-object from
+   empty-list) — the control could never pass regardless of implementation. Corrected to
+   `'[]'`.
+5. **`Enrolment` model** — `FakeStreamRouteTest`'s revocation test called
+   `$enrolment->revoke()`, which didn't exist (only `Manage\EnrolmentController::revoke()`
+   had this logic, inline). Added a small `Enrolment::revoke(?int $revokedBy = null): void`
+   convenience method mirroring the controller's existing `forceFill()` exactly — doesn't
+   touch any locked invariant, and the controller itself was left untouched (not
+   refactored to use it, per "don't perform broad refactors").
+
+`git diff --stat` against the Step 1 commit (`1de8410`) is provided in the Step 2 report;
+every other Step 1 test file is byte-for-byte what was committed there.
 
 ---
 
@@ -337,18 +399,33 @@ Restated from the brief, corrected for the per-tenant-library design (changes in
   this phase's choice (Phase 4 precedent: `App\Console\Commands\*`).
 - The embed host `player.mediadelivery.net` is used because it's the only one the
   fetched official doc showed; see the "Embed host note" above.
+- A tenant's currently-configured `VIDEO_DRIVER` is assumed to match the `provider` value
+  already stored on that tenant's existing `lesson_videos` rows when resolving playback —
+  true in practice (the driver isn't meant to be switched under a tenant with existing
+  video content) and matches every test, but not defensively re-checked per row.
+- `LessonVideoUploadController` (the fake driver's actual bytes-receiving endpoint) is
+  implemented per requirement #3 (server-side size/type re-validation, id-keyed storage
+  path, production refusal) but has no dedicated Step-1 test — the brief's Step 1 test
+  list didn't include one, and Step 2 doesn't add tests beyond what's already the
+  contract (see "Tests are the contract" in the Step 2 instructions).
+- Race-safety for concurrent first-uploads (`ensureLibraryProvisioned`'s
+  `lockForUpdate()`) is implemented but not exercised by an actual concurrency test — Pest
+  runs single-process/single-connection per test, so true concurrent requests aren't
+  reproducible in this suite; noted as "not feasible to test here" rather than skipped
+  silently.
 
 ## Unresolved risks
 
-- **Token security key provisioning is unverified** (see "Open gap" above) — blocks
-  finishing the `bunny` driver's library-provisioning code until resolved; does not
-  block Step 1's tests or the `fake` driver.
+- **Token security key provisioning is unverified** (see "Open gap" above) — a freshly
+  provisioned tenant's `bunny_library_token_key` is left `null`; `BunnyVideoProvider::
+  playbackUrl()` throws a clear, teacher-facing `VideoProviderException` rather than
+  signing with a guessed value. Must be resolved (Bunny dashboard/API/support) before the
+  `bunny` driver is used with a real tenant.
 - **Embed host** (`player.mediadelivery.net` vs. `iframe.mediadelivery.net`) should be
   reconfirmed against a real tenant library's settings before the `bunny` driver ships.
-- Per VIDEO.md, static-vs-dynamic watermarking was an open decision "to be resolved
-  before Phase 6." This phase resolves it by choosing the dynamic-overlay approach (per
-  the brief's already-fixed product decision #3) — recorded here so VIDEO.md's own
-  "Watermarking — OPEN DECISION" section should be updated to reflect this choice once
-  Step 2 ships, rather than left stating it's still undecided.
 - No webhook handling yet (explicitly out of scope, per the brief) — `videos:sync`
-  polling is the only status-update path until a later phase adds webhooks.
+  polling (every minute) is the only status-update path until a later phase adds
+  webhooks.
+- The upload UI's client-side JS (progress bar, tus-js-client integration for the bunny
+  driver, XHR for the fake driver) has no browser-level test coverage — only the
+  server-side endpoints it calls are tested.

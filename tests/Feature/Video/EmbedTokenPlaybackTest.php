@@ -165,8 +165,10 @@ test('no Bunny API key or token key (account or per-tenant) ever appears in capt
     });
 
     // Positive control: the listener genuinely captures log calls made through the facade.
+    // json_encode([]) (an empty context array) is '[]', not '{}' — PHP arrays don't
+    // distinguish an empty object from an empty list.
     Log::info('phase-5-log-listener-sanity-check');
-    expect($captured)->toContain('phase-5-log-listener-sanity-check {}');
+    expect($captured)->toContain('phase-5-log-listener-sanity-check []');
 
     $this->actingAs($owner, 'tenant')
         ->post("http://{$domain}/manage/lessons/{$lesson->id}/video/start-upload", [

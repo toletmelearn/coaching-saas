@@ -12,3 +12,7 @@ Artisan::command('inspire', function () {
 // window (config/backup.php). Requires the server cron -> schedule:run (docs/DEPLOY.md).
 Schedule::command('backup:run')->daily()->at('02:00')->onOneServer();
 Schedule::command('backup:clean')->daily()->at('01:30')->onOneServer();
+
+// Polls the video provider for videos still uploading/processing (no webhooks yet —
+// see VIDEO.md). Every minute per docs/specs/phase-5-video.md.
+Schedule::command('videos:sync')->everyMinute()->onOneServer();

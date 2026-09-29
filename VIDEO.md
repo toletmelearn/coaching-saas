@@ -42,17 +42,14 @@
   just the public YouTube embed — no signing, no Bunny library, no watermarking, since the
   content is intentionally public.
 
-## Watermarking — OPEN DECISION
+## Watermarking — RESOLVED (Phase 5)
 
-Not decided. Two candidate approaches, to be resolved **before Phase 6**:
-
-1. **Static library watermark** — Bunny Stream's built-in watermark-on-encode feature.
-   Simple, no custom player, but the watermark is baked into the file (can't vary per
-   viewer) and Bunny's watermark options are limited.
-2. **Own HLS player with dynamic overlay** — build/embed a player that overlays viewer-
-   specific info (e.g. student name/email/timestamp) on top of standard HLS playback.
-   Stronger deterrent (traceable per viewer) and more flexible, but is real engineering
-   work: a custom player, overlay rendering, and keeping it in sync across devices/screen
-   sizes.
-
-No implementation should assume either approach until this is decided.
+Resolved in favour of **option 2**, a dynamic overlay: an absolutely positioned,
+`pointer-events: none` div showing the viewer's name, an identifier (last 4 digits of phone,
+or the local part of their email if no phone), and today's date, escaped Blade output (never
+raw HTML — student names are user input), repositioned to a random spot every 20–40 seconds
+via a small inline script. Owner/staff previews show "Preview – {name}" instead. Chosen over
+Bunny's static library watermark (option 1) specifically because it's traceable to the
+individual viewer, not just proof a leak occurred — see SECURITY.md "Watermark is a
+deterrent, not a guarantee" for what this does and doesn't protect against. See
+docs/specs/phase-5-video.md for the full implementation.

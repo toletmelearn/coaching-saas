@@ -19,6 +19,13 @@ Prerequisites: XAMPP with PHP 8.3, MySQL/MariaDB, and Apache; Composer; Node.js 
 5. `php artisan migrate`
 6. `npm install && npm run build` (or `npm run dev` while working on frontend)
 
+Protected lesson video works locally with **no external service and no `.env` keys** —
+`VIDEO_DRIVER` defaults to `fake` (private-disk storage + a signed Laravel stream route) and
+is the only supported driver in local/testing; `VIDEO_DRIVER=fake` is refused by
+`php artisan app:preflight` in production, so never set it there. See
+[docs/specs/phase-5-video.md](docs/specs/phase-5-video.md) and
+[docs/DEPLOY.md](docs/DEPLOY.md) for the `bunny` driver's production setup.
+
 ### Hosts file (subdomain tenants)
 
 Tenants are resolved by subdomain (see [TENANCY.md](TENANCY.md)), so add entries to

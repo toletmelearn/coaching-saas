@@ -9,11 +9,14 @@ use App\Http\Controllers\CourseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LessonAttachmentController;
 use App\Http\Controllers\LessonController;
+use App\Http\Controllers\LessonVideoStreamController;
+use App\Http\Controllers\LessonVideoUploadController;
 use App\Http\Controllers\Manage\ChapterController as ManageChapterController;
 use App\Http\Controllers\Manage\CourseController as ManageCourseController;
 use App\Http\Controllers\Manage\EnrolmentController as ManageEnrolmentController;
 use App\Http\Controllers\Manage\LessonAttachmentController as ManageLessonAttachmentController;
 use App\Http\Controllers\Manage\LessonController as ManageLessonController;
+use App\Http\Controllers\Manage\LessonVideoController as ManageLessonVideoController;
 use App\Http\Controllers\PlatformAdminDashboardController;
 use App\Http\Controllers\UserController;
 use App\Support\TenantContext;
@@ -57,6 +60,10 @@ Route::middleware('require.tenant')->group(function () {
         Route::get('courses/{course:slug}', [CourseController::class, 'show']);
         Route::get('courses/{course:slug}/lessons/{lesson}', [LessonController::class, 'show'])->scopeBindings();
         Route::get('courses/{course:slug}/lessons/{lesson}/attachments/{attachment}', [LessonAttachmentController::class, 'show'])->scopeBindings();
+
+        Route::get('lesson-videos/{lessonVideo}/stream', [LessonVideoStreamController::class, 'show'])
+            ->name('lesson-videos.stream')
+            ->middleware('signed');
     });
 
     Route::middleware('auth:tenant')->group(function () {
@@ -104,6 +111,13 @@ Route::middleware('require.tenant')->group(function () {
 
                     Route::post('lessons/{lesson}/attachments', [ManageLessonAttachmentController::class, 'store']);
                     Route::delete('attachments/{attachment}', [ManageLessonAttachmentController::class, 'destroy']);
+
+                    Route::post('lessons/{lesson}/video/start-upload', [ManageLessonVideoController::class, 'startUpload']);
+                    Route::post('lessons/{lesson}/video/refresh-status', [ManageLessonVideoController::class, 'refreshStatus']);
+                    Route::delete('lessons/{lesson}/video', [ManageLessonVideoController::class, 'destroy']);
+                    Route::post('lesson-videos/{lessonVideo}/upload', [LessonVideoUploadController::class, 'store'])
+                        ->name('lesson-videos.fake-upload')
+                        ->middleware('signed');
 
                     Route::get('courses/{course}/enrolments', [ManageEnrolmentController::class, 'index']);
                     Route::post('courses/{course}/enrolments', [ManageEnrolmentController::class, 'store']);

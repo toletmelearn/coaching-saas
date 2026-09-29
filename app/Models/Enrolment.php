@@ -53,6 +53,15 @@ class Enrolment extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function revoke(?int $revokedBy = null): void
+    {
+        $this->forceFill([
+            'status' => EnrolmentStatus::Revoked,
+            'revoked_at' => now(),
+            'revoked_by' => $revokedBy,
+        ])->save();
+    }
+
     public function isValidNow(): bool
     {
         if ($this->status !== EnrolmentStatus::Active) {

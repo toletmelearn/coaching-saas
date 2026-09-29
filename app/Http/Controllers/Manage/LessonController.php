@@ -22,6 +22,7 @@ class LessonController extends Controller
         Gate::authorize('manageContent', $lesson->course);
 
         $lesson->load('attachments');
+        $lesson->loadMissing('video');
 
         return view('manage.lessons.edit', ['lesson' => $lesson]);
     }
@@ -70,6 +71,12 @@ class LessonController extends Controller
         if (! $isFreePreview && $lesson->youtube_video_id !== null && ! $request->filled('youtube_url')) {
             throw ValidationException::withMessages([
                 'is_free_preview' => __('courses.manage.remove_video_first'),
+            ]);
+        }
+
+        if ($request->filled('youtube_url') && $lesson->video !== null) {
+            throw ValidationException::withMessages([
+                'youtube_url' => __('lessons.video.lesson_has_video'),
             ]);
         }
 

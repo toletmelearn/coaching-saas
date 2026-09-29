@@ -108,11 +108,45 @@ SESSION_SECURE_COOKIE=true
 SESSION_DOMAIN=                   # leave EMPTY/unset — never set this (see SECURITY.md:
                                    # a non-null SESSION_DOMAIN would share one tenant's
                                    # session cookie with every other tenant subdomain)
+VIDEO_DRIVER=bunny                # `fake` is refused by app:preflight in production
+BUNNY_STREAM_ACCOUNT_API_KEY=     # platform account key only — never a per-tenant key
 ```
 
 Replace `PLATFORM_DOMAIN` with your real domain throughout. `SESSION_DOMAIN` staying unset
-(host-only cookies) and `SESSION_SECURE_COOKIE=true` are both checked by
-`php artisan app:preflight`.
+(host-only cookies), `SESSION_SECURE_COOKIE=true`, and the `VIDEO_DRIVER`/account-key pair
+are all checked by `php artisan app:preflight`.
+
+## 3a. Bunny Stream (protected lesson video)
+
+One Bunny Stream **account**, with per-tenant **libraries** provisioned automatically by the
+app on each tenant's first video upload (VIDEO.md, AGENT_RULES.md invariant #13 — never a
+shared library). Only the account-level API key lives in `.env`
+(`BUNNY_STREAM_ACCOUNT_API_KEY`, from your Bunny account's API page); per-tenant library keys
+and token security keys are created and stored (encrypted) by the app itself — never set
+those in `.env`.
+
+**Per-library settings to enable** (Bunny dashboard → Stream → the tenant's library →
+Security), for every library, ideally by having these as the account-level defaults new
+libraries inherit if Bunny's dashboard supports that, otherwise set on each library after
+creation:
+
+- **Embed view token authentication** — on. This is what makes the signed `token`/`expires`
+  query parameters on the embed URL required (`App\Support\Video\BunnyEmbedTokenSigner`,
+  verified against https://bunny.net/docs/stream-embed-token-authentication). Without this,
+  the embed URL would play for anyone who has it, with no expiry.
+- **CDN token authentication** — on. Same reasoning, for the underlying HLS/MP4 delivery URLs
+  the player itself requests, not just the embed page.
+- **Allowed referrers** — restricted to `PLATFORM_DOMAIN` and `*.PLATFORM_DOMAIN` (and
+  `coaching.test`/`*.coaching.test` only while testing against a real Bunny library from a
+  local machine, never left enabled in production). Prevents the embed URL from being
+  iframed on an unrelated site even if a token leaked.
+
+**Unresolved before this ships for real** (see docs/specs/phase-5-video.md "Open gap"): the
+verified Bunny Create-Video-Library API response does not return a token security key, so
+`BunnyVideoProvider::ensureLibraryProvisioned()` currently leaves it `null` after creating a
+library — playback for that tenant will fail loudly (a clear error, not a broken/insecure
+embed) until this is resolved by confirming the correct provisioning source for that value
+against Bunny's dashboard/API/support.
 
 ## 4. Deploy steps
 
@@ -155,8 +189,12 @@ Fails (non-zero exit) in production if any of: `APP_DEBUG=true`, `APP_KEY` empty
 not `https://`, `PLATFORM_DOMAIN`/`TENANT_BASE_DOMAIN`/`CENTRAL_DOMAINS` still at the local
 dev default, `SESSION_SECURE_COOKIE` not `true`, `storage/` or `bootstrap/cache/` not
 writable, the database unreachable, MySQL/MariaDB below the CHECK-constraint-enforcing
-minimum (8.0.16 / 10.2.1), or a demo tenant/account exists. Outside production it's a no-op
-(informational only) — safe to run locally without it blocking anything.
+minimum (8.0.16 / 10.2.1), a demo tenant/account exists, `VIDEO_DRIVER=fake`, or
+`VIDEO_DRIVER=bunny` with no `BUNNY_STREAM_ACCOUNT_API_KEY`. Per-tenant Bunny library
+credentials are *not* checked here — they don't exist yet for a tenant that has never
+uploaded video — and are instead validated lazily at first use, surfacing a teacher-facing
+error if library creation fails. Outside production it's a no-op (informational only) — safe
+to run locally without it blocking anything.
 
 ## 6. Cron and the queue worker
 

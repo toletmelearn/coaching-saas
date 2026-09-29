@@ -35,4 +35,20 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Bunny Stream (protected lesson video)
+    |--------------------------------------------------------------------------
+    |
+    | Account-level key only — the platform owns one Bunny account. Each tenant gets
+    | its own Stream library (own library id, own library API key, own token security
+    | key), provisioned lazily on that tenant's first upload and stored encrypted on
+    | the tenants table — never here, never per-tenant in .env. See VIDEO.md and
+    | docs/specs/phase-5-video.md.
+    |
+    */
+    'bunny' => [
+        'account_api_key' => env('BUNNY_STREAM_ACCOUNT_API_KEY'),
+    ],
+
 ];

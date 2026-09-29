@@ -18,6 +18,8 @@ function passingPreflightConfig(): array
         'tenancy.central_domains' => ['coaching.app', 'platform.coaching.app'],
         'session.secure' => true,
         'preflight.writable_paths' => [storage_path()],
+        'coaching.video_driver' => 'bunny',
+        'services.bunny.account_api_key' => 'test-account-key',
     ];
 }
 

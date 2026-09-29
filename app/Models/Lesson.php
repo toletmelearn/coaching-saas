@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @use HasFactory<LessonFactory>
@@ -92,6 +93,14 @@ class Lesson extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(LessonAttachment::class)->orderBy('position');
+    }
+
+    /**
+     * @return HasOne<LessonVideo, $this>
+     */
+    public function video(): HasOne
+    {
+        return $this->hasOne(LessonVideo::class);
     }
 
     /**
