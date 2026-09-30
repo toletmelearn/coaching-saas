@@ -2,6 +2,7 @@
 
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 function sheetFixture(): array
 {
@@ -68,7 +69,7 @@ test('the temporary password never appears in the database, logs, or any other p
 
     inTenant($tenant, function () use ($temporaryPassword) {
         $student = User::where('phone', '9876543210')->first();
-        expect(\Illuminate\Support\Facades\Hash::check($temporaryPassword, $student->password))->toBeTrue();
+        expect(Hash::check($temporaryPassword, $student->password))->toBeTrue();
     });
 
     $peoplePage = $this->actingAs($owner, 'tenant')->get("http://{$domain}/users");

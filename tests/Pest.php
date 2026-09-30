@@ -3,6 +3,7 @@
 use App\Models\Tenant;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -43,10 +44,10 @@ function freshRequestCycle(): void
  * a real multipart upload would hit — a Symfony UploadedFile backed by a string
  * has no real file to sniff.
  */
-function csvUploadFile(string $content, string $filename = 'students.csv'): Illuminate\Http\UploadedFile
+function csvUploadFile(string $content, string $filename = 'students.csv'): UploadedFile
 {
     $path = tempnam(sys_get_temp_dir(), 'csv');
     file_put_contents($path, $content);
 
-    return new Illuminate\Http\UploadedFile($path, $filename, 'text/csv', null, true);
+    return new UploadedFile($path, $filename, 'text/csv', null, true);
 }

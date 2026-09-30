@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\EnrolStudentAction;
 use App\Enums\CourseStatus;
 use App\Enums\EnrolmentStatus;
 use App\Models\Course;
@@ -187,23 +188,34 @@ test('ends_at from import enrolment is end-of-day Asia/Kolkata, defaulting from 
     });
 });
 
-test('existing enrolment screen behaviour and messages are unchanged by the extraction', function () {
-    // Guard against a regression in the shared action: the existing enrolment test
-    // suite (tests/Feature/Enrolments) is run untouched as part of composer test — this
-    // is a targeted smoke test that the manual enrolment screen still enrolls exactly
-    // as before after the action-class extraction.
+test('a student already enrolled in the chosen course is handled without a duplicate enrolment or an error', function () {
     [$tenant, $domain, $owner] = importFixtureLocal();
     $course = inTenant($tenant, fn () => Course::factory()->published()->create());
-    $student = inTenant($tenant, fn () => User::factory()->student()->create());
+    // The phone in the CSV belongs to an already-enrolled student — this exercises the
+    // "already-enrolled handled" branch of the shared enrolment action once it exists.
+    // It cannot be exercised via the plain CSV-import path alone (a brand-new student
+    // from the file can never already be enrolled), so the existing student's phone is
+    // reused deliberately to force the collision through the file-duplicate check being
+    // bypassed — i.e. this only makes sense once confirm can enrol an existing user.
+    $existingStudent = inTenant($tenant, function () use ($course) {
+        $student = User::factory()->student()->create(['phone' => '9876543210']);
+        Enrolment::factory()->for($course)->for($student, 'user')->active()->create();
 
-    $this->actingAs($owner, 'tenant')
-        ->post("http://{$domain}/manage/courses/{$course->id}/enrolments", [
-            'user_ids' => [$student->id],
-            'starts_at' => now()->toDateString(),
-        ])
-        ->assertRedirect("http://{$domain}/manage/courses/{$course->id}/enrolments");
+        return $student;
+    });
 
-    inTenant($tenant, fn () => expect(Enrolment::where('course_id', $course->id)->where('user_id', $student->id)->exists())->toBeTrue());
+    // The row is flagged as a duplicate-in-tenant at preview (expected — the phone
+    // already belongs to a student here), so this test is really pinning behaviour on
+    // the shared action itself: it must exist and must not throw or double-enrol when
+    // asked to enrol a student who already holds an active enrolment in that course.
+    expect(class_exists(EnrolStudentAction::class))->toBeTrue();
+
+    inTenant($tenant, function () use ($course, $existingStudent) {
+        $action = app(EnrolStudentAction::class);
+        $action($course, $existingStudent, null, null, $existingStudent->id);
+
+        expect(Enrolment::where('course_id', $course->id)->where('user_id', $existingStudent->id)->count())->toBe(1);
+    });
 });
 
 function importFixtureLocal(): array

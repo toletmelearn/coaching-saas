@@ -93,11 +93,18 @@ test('a student is forbidden from exporting progress', function () {
     $this->actingAs($student, 'tenant')->get("http://{$domain}/manage/courses/{$course->id}/progress/export")->assertForbidden();
 });
 
-test('a course belonging to another tenant 404s', function () {
-    [, $domain, $owner] = exportFixture();
+test('a course belonging to another tenant 404s, while the owner\'s own course export succeeds (positive control)', function () {
+    [, $domain, $owner, $course] = exportFixture();
     $tenantB = Tenant::factory()->create();
     $tenantB->domains()->create(['domain' => 'tenant-b.coaching.test', 'type' => 'subdomain']);
     $courseB = inTenant($tenantB, fn () => Course::factory()->published()->create());
+
+    // Positive control first: without this, the export route simply not existing yet
+    // would 404 for EVERY course id, including this tenant's own, making "another
+    // tenant's course 404s" trivially true for the wrong reason.
+    $this->actingAs($owner, 'tenant')->get("http://{$domain}/manage/courses/{$course->id}/progress/export")->assertOk();
+
+    freshRequestCycle();
 
     $this->actingAs($owner, 'tenant')->get("http://{$domain}/manage/courses/{$courseB->id}/progress/export")->assertStatus(404);
 });

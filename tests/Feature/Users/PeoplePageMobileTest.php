@@ -2,6 +2,7 @@
 
 use App\Models\Tenant;
 use App\Models\User;
+use Tests\Support\MobileSafetyChecker;
 
 test('the People page renders both a card list and a table, from one shared action partial', function () {
     $tenant = Tenant::factory()->create();
@@ -47,7 +48,7 @@ test('card and table renderings expose the identical action set per viewer', fun
     expect(substr_count($html, __('users.actions.reset_password').'-owner-row'))->toBe(0);
 });
 
-test('no fixed width above 340px is used on the People page', function () {
+test('the People page has both the card and table renderings present, and no fixed width above 340px', function () {
     $tenant = Tenant::factory()->create();
     $domain = 'tenant-a.coaching.test';
     $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
@@ -55,12 +56,15 @@ test('no fixed width above 340px is used on the People page', function () {
 
     $html = $this->actingAs($owner, 'tenant')->get("http://{$domain}/users")->getContent();
 
-    preg_match_all('/class="([^"]*)"/', $html, $matches);
-    foreach ($matches[1] as $classAttr) {
-        foreach (explode(' ', $classAttr) as $class) {
-            if (preg_match('/^w-\[(\d+)px\]$/', $class, $m)) {
-                expect((int) $m[1])->toBeLessThanOrEqual(340);
-            }
-        }
-    }
+    // Positive control: without this, a page with no `w-[Npx]` class ANYWHERE (which is
+    // exactly what today's People page — with no mobile-card markup at all — looks like)
+    // would trivially satisfy "no fixed width above 340px" by having no such class to
+    // begin with, regardless of whether the mobile cards actually exist.
+    expect($html)->toMatch('/class="[^"]*\bsm:hidden\b[^"]*"/');
+
+    $violations = array_filter(
+        MobileSafetyChecker::violations($html),
+        fn ($v) => str_starts_with($v, 'fixed width above')
+    );
+    expect($violations)->toBe([]);
 });

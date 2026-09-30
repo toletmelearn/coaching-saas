@@ -23,6 +23,13 @@ test('an owner with nothing set up sees all six steps as incomplete', function (
     $response = $this->actingAs($owner, 'tenant')->get("http://{$domain}/dashboard");
 
     $response->assertSee(__('dashboard.getting_started.title'));
+
+    // Bare key-presence check first: Laravel's assertViewHas with a Closure passes
+    // Arr::get() (null on a missing key) straight into the closure without checking the
+    // key exists — collect(null)->every(...) is vacuously true on an empty collection,
+    // so this would otherwise pass even with no 'checklist' view data at all.
+    $response->assertViewHas('checklist');
+    expect($response->viewData('checklist'))->toHaveCount(6);
     $response->assertViewHas('checklist', function ($checklist) {
         return collect($checklist)->every(fn ($step) => $step['done'] === false);
     });
@@ -42,14 +49,28 @@ test('each step flips to done once its condition is met', function () {
 
     $response = $this->actingAs($owner, 'tenant')->get("http://{$domain}/dashboard");
 
+    // Same vacuous-truth trap as above: assert the key exists and has all 6 steps before
+    // checking that a subset of them flipped to done.
+    $response->assertViewHas('checklist');
+    expect($response->viewData('checklist'))->toHaveCount(6);
     $response->assertViewHas('checklist', function ($checklist) {
         return collect($checklist)->pluck('done', 'key')->only(['create_course', 'add_lesson', 'add_students', 'enrol_student'])->every(fn ($v) => $v === true);
     });
 });
 
-test('staff never see the getting-started card', function () {
-    [$tenant, $domain] = checklistFixture();
+test('staff never see the getting-started card, while the owner does (positive control)', function () {
+    [$tenant, $domain, $owner] = checklistFixture();
     $staff = inTenant($tenant, fn () => User::factory()->staff()->create());
+
+    // Positive control first: __() falls back to returning the raw key string when a
+    // translation is missing, so "staff never sees the literal untranslated key" would
+    // trivially hold even with no feature at all. Requiring the owner to actually see it
+    // forces this test to depend on the real feature existing.
+    $this->actingAs($owner, 'tenant')
+        ->get("http://{$domain}/dashboard")
+        ->assertSee(__('dashboard.getting_started.title'));
+
+    freshRequestCycle();
 
     $this->actingAs($staff, 'tenant')
         ->get("http://{$domain}/dashboard")
@@ -58,6 +79,11 @@ test('staff never see the getting-started card', function () {
 
 test('dismissing the checklist hides it and persists', function () {
     [$tenant, $domain, $owner] = checklistFixture();
+
+    // Positive control: the card is visible before dismissal.
+    $this->actingAs($owner, 'tenant')
+        ->get("http://{$domain}/dashboard")
+        ->assertSee(__('dashboard.getting_started.title'));
 
     $this->actingAs($owner, 'tenant')->post("http://{$domain}/manage/getting-started/dismiss")->assertRedirect();
 
@@ -69,8 +95,12 @@ test('dismissing the checklist hides it and persists', function () {
 });
 
 test('only an owner may dismiss the checklist', function () {
-    [$tenant, $domain] = checklistFixture();
+    [$tenant, $domain, $owner] = checklistFixture();
     $staff = inTenant($tenant, fn () => User::factory()->staff()->create());
+
+    // Positive control: the owner can dismiss it.
+    $this->actingAs($owner, 'tenant')->post("http://{$domain}/manage/getting-started/dismiss")->assertRedirect();
+    inTenant($tenant, fn () => $tenant->forceFill(['getting_started_dismissed_at' => null])->save());
 
     $this->actingAs($staff, 'tenant')
         ->post("http://{$domain}/manage/getting-started/dismiss")
@@ -85,7 +115,11 @@ test('checklist counts are tenant-scoped', function () {
 
     $response = $this->actingAs($owner, 'tenant')->get("http://{$domain}/dashboard");
 
-    $response->assertViewHas('checklist', function ($checklist) {
-        return collect($checklist)->firstWhere('key', 'create_course')['done'] === false;
-    });
+    // Bare key-presence check first — without it, ->firstWhere() on a missing/null
+    // checklist throws "Trying to access array offset on null" (an error, not a clean
+    // failure) instead of failing for the intended reason.
+    $response->assertViewHas('checklist');
+    $step = collect($response->viewData('checklist'))->firstWhere('key', 'create_course');
+    expect($step)->not->toBeNull();
+    expect($step['done'])->toBeFalse();
 });

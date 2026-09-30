@@ -59,6 +59,13 @@
         </testsuite>
         <testsuite name="MobileGuards">
             <directory>tests/Feature/MobileGuards</directory>
+            <directory>tests/Unit/Support/MobileGuards</directory>
+        </testsuite>
+        <testsuite name="Actions">
+            <directory>tests/Unit/Actions</directory>
+        </testsuite>
+        <testsuite name="Config">
+            <directory>tests/Unit/Config</directory>
         </testsuite>
     </testsuites>
     <source>

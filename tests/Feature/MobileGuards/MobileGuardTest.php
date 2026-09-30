@@ -6,36 +6,10 @@ use App\Models\Enrolment;
 use App\Models\Lesson;
 use App\Models\Tenant;
 use App\Models\User;
+use Tests\Support\MobileSafetyChecker;
 
-/**
- * Shared 360px-safety assertions for every key tenant page: any <table> sits inside an
- * overflow-x-auto wrapper or is hidden below sm; no class carries a fixed width above
- * 340px; the viewport meta tag is present.
- */
-function assertMobileSafe(string $html, string $page): void
+function mobileGuardFixture(): array
 {
-    expect($html)->toContain('name="viewport"');
-
-    if (str_contains($html, '<table')) {
-        $hasWrapper = preg_match('/overflow-x-auto[^>]*>\s*<table/s', $html) === 1;
-        $isHiddenBelowSm = preg_match('/class="[^"]*\bhidden\b[^"]*\bsm:(table|block)\b[^"]*"[^>]*>\s*<table/s', $html) === 1
-            || preg_match('/<table[^>]*class="[^"]*\bhidden\b[^"]*\bsm:table\b/s', $html) === 1;
-
-        expect($hasWrapper || $isHiddenBelowSm)
-            ->toBeTrue("Page [{$page}] has a <table> that is neither overflow-x-auto wrapped nor hidden below sm.");
-    }
-
-    preg_match_all('/class="([^"]*)"/', $html, $matches);
-    foreach ($matches[1] as $classAttr) {
-        foreach (explode(' ', $classAttr) as $class) {
-            if (preg_match('/^w-\[(\d+)px\]$/', $class, $m)) {
-                expect((int) $m[1])->toBeLessThanOrEqual(340, "Page [{$page}] has a fixed width above 340px ({$class}).");
-            }
-        }
-    }
-}
-
-test('key tenant pages are safe at 360px width', function () {
     $tenant = Tenant::factory()->create();
     $domain = 'tenant-a.coaching.test';
     $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
@@ -51,20 +25,76 @@ test('key tenant pages are safe at 360px width', function () {
         return [$owner, $course, $lesson];
     });
 
-    assertMobileSafe($this->get("http://{$domain}/login")->getContent(), 'login');
+    return [$tenant, $domain, $owner, $course, $lesson];
+}
+
+// === Pages that already exist today: allowed to pass now, kept here as regression guards ===
+
+test('pages that already exist today (login, dashboard, People, lesson, and — pre-dating Phase 9 — the progress page) are mobile-safe', function () {
+    [$tenant, $domain, $owner, $course, $lesson] = mobileGuardFixture();
+
+    $login = $this->get("http://{$domain}/login")->getContent();
+    expect(MobileSafetyChecker::violations($login))->toBe([]);
 
     $this->actingAs($owner, 'tenant');
-    assertMobileSafe($this->get("http://{$domain}/dashboard")->getContent(), 'dashboard');
-    assertMobileSafe($this->get("http://{$domain}/users")->getContent(), 'people');
-    assertMobileSafe($this->get("http://{$domain}/manage/help")->getContent(), 'help');
-    assertMobileSafe($this->get("http://{$domain}/manage/courses/{$course->id}/progress")->getContent(), 'progress');
-    assertMobileSafe($this->get("http://{$domain}/courses/{$course->slug}/lessons/{$lesson->id}")->getContent(), 'lesson');
 
-    $preview = $this->post("http://{$domain}/users/import", ['file' => csvUploadFile("name,phone,email\nAsha Rao,9876543210,\n")]);
-    assertMobileSafe($preview->getContent(), 'import-preview');
+    $dashboard = $this->get("http://{$domain}/dashboard")->getContent();
+    expect(MobileSafetyChecker::violations($dashboard))->toBe([]);
 
+    $people = $this->get("http://{$domain}/users")->getContent();
+    expect(MobileSafetyChecker::violations($people))->toBe([]);
+
+    $lessonPage = $this->get("http://{$domain}/courses/{$course->slug}/lessons/{$lesson->id}")->getContent();
+    expect(MobileSafetyChecker::violations($lessonPage))->toBe([]);
+
+    // The progress INDEX page (not the new export endpoint) is Phase 7 work, already
+    // wrapped in overflow-x-auto — it genuinely already passes today, not because of any
+    // Phase 9 change. Included here rather than in the "Phase 9 pages" group below so a
+    // currently-true pass isn't mistaken for one this phase is responsible for.
+    $progress = $this->get("http://{$domain}/manage/courses/{$course->id}/progress")->getContent();
+    expect(MobileSafetyChecker::violations($progress))->toBe([]);
+});
+
+// === Phase 9 pages: not implemented yet, expected to fail until Step 2 ===
+
+test('the import preview page is mobile-safe', function () {
+    [, $domain, $owner] = mobileGuardFixture();
+
+    $preview = $this->actingAs($owner, 'tenant')
+        ->post("http://{$domain}/users/import", ['file' => csvUploadFile("name,phone,email\nAsha Rao,9876543210,\n")]);
+
+    // Positive control: a missing route currently renders the app's own 404 page, which
+    // has a viewport meta tag, no table, and no fixed-width class — i.e. it would pass
+    // the mobile-safety checker vacuously. Requiring 200 first ties this test to the real
+    // preview page actually rendering.
+    $preview->assertOk();
+
+    expect(MobileSafetyChecker::violations($preview->getContent()))->toBe([]);
+});
+
+test('the credentials sheet is mobile-safe', function () {
+    [$tenant, $domain, $owner] = mobileGuardFixture();
+
+    $preview = $this->actingAs($owner, 'tenant')
+        ->post("http://{$domain}/users/import", ['file' => csvUploadFile("name,phone,email\nAsha Rao,9876543210,\n")]);
     $token = $preview->viewData('token');
-    $confirm = $this->post("http://{$domain}/users/import/confirm", ['token' => $token]);
+    $confirm = $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", ['token' => $token]);
     $sheetToken = $confirm->getSession()->get('import_sheet_token');
-    assertMobileSafe($this->get("http://{$domain}/users/import/sheet/{$sheetToken}")->getContent(), 'credentials-sheet');
+
+    $sheet = $this->actingAs($owner, 'tenant')->get("http://{$domain}/users/import/sheet/{$sheetToken}");
+    $sheet->assertOk();
+
+    expect(MobileSafetyChecker::violations($sheet->getContent()))->toBe([]);
+});
+
+test('the Help page is mobile-safe', function () {
+    [, $domain, $owner] = mobileGuardFixture();
+
+    $help = $this->actingAs($owner, 'tenant')->get("http://{$domain}/manage/help");
+
+    // Positive control, same reasoning as the import preview test above: a 404 page
+    // would otherwise satisfy the mobile-safety checker vacuously.
+    $help->assertOk();
+
+    expect(MobileSafetyChecker::violations($help->getContent()))->toBe([]);
 });
