@@ -4,6 +4,7 @@ use App\Models\PlatformAdmin;
 use App\Models\Tenant;
 use App\Models\TenantDomain;
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 function validInstitutePayload(array $overrides = []): array
 {
@@ -189,6 +190,57 @@ test('resetting the owner password shows a new temporary password once and clear
     $afterReset = $this->post("http://{$domain}/login", ['identifier' => 'owner@example.com', 'password' => 'still-wrong']);
     $afterReset->assertStatus(302);
     $afterReset->assertSessionHasErrors();
+});
+
+test('with a single owner, reset owner password is a single button; with several, the admin must choose one', function () {
+    $admin = PlatformAdmin::factory()->create();
+
+    // Positive control: a single-owner institute shows a plain button, no dropdown.
+    $singleOwnerTenant = Tenant::factory()->create();
+    $singleOwnerDomain = 'single-owner.coaching.test';
+    $singleOwnerTenant->domains()->create(['domain' => $singleOwnerDomain, 'type' => 'subdomain']);
+    inTenant($singleOwnerTenant, fn () => User::factory()->owner()->create(['name' => 'Only Owner']));
+
+    $singlePage = $this->actingAs($admin, 'platform_admin')
+        ->get("http://coaching.test/admin/institutes/{$singleOwnerTenant->id}");
+    $singlePage->assertOk();
+    $singlePage->assertDontSee('name="owner_id"', false);
+
+    // Multi-owner institute: the dropdown is required, and the admin's chosen owner is
+    // the one whose password actually changes — not just whichever is first.
+    $multiOwnerTenant = Tenant::factory()->create();
+    $multiOwnerDomain = 'multi-owner.coaching.test';
+    $multiOwnerTenant->domains()->create(['domain' => $multiOwnerDomain, 'type' => 'subdomain']);
+
+    [$ownerOneId, $ownerTwoId] = inTenant($multiOwnerTenant, function () {
+        $ownerOne = User::factory()->owner()->create(['name' => 'Owner One', 'email' => 'owner-one@example.com']);
+        $ownerTwo = User::factory()->owner()->create(['name' => 'Owner Two', 'email' => 'owner-two@example.com']);
+        $ownerOne->forceFill(['password' => bcrypt('one-password')])->save();
+        $ownerTwo->forceFill(['password' => bcrypt('two-password')])->save();
+
+        return [$ownerOne->id, $ownerTwo->id];
+    });
+
+    $multiPage = $this->actingAs($admin, 'platform_admin')
+        ->get("http://coaching.test/admin/institutes/{$multiOwnerTenant->id}");
+    $multiPage->assertOk();
+    $multiPage->assertSee('name="owner_id"', false);
+    $multiPage->assertSee('Owner One');
+    $multiPage->assertSee('Owner Two');
+
+    $this->actingAs($admin, 'platform_admin')
+        ->post("http://coaching.test/admin/institutes/{$multiOwnerTenant->id}/reset-owner-password", ['owner_id' => $ownerTwoId])
+        ->assertRedirect();
+
+    inTenant($multiOwnerTenant, function () use ($ownerOneId, $ownerTwoId) {
+        $ownerOne = User::find($ownerOneId);
+        $ownerTwo = User::find($ownerTwoId);
+
+        // Owner Two's password changed (no longer matches its original); Owner One's
+        // did not (still matches, proving the choice was actually respected).
+        expect(Hash::check('two-password', $ownerTwo->password))->toBeFalse()
+            ->and(Hash::check('one-password', $ownerOne->password))->toBeTrue();
+    });
 });
 
 // === Guard isolation for the new routes specifically ===

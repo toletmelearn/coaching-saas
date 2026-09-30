@@ -59,9 +59,22 @@
             </form>
         @endif
 
-        <form method="POST" action="{{ url('/admin/institutes/'.$tenant->id.'/reset-owner-password') }}">
-            @csrf
-            <x-button variant="secondary">{{ __('platform.admin.institutes.show.reset_owner_password') }}</x-button>
-        </form>
+        @if ($owners->count() > 1)
+            <form method="POST" action="{{ url('/admin/institutes/'.$tenant->id.'/reset-owner-password') }}" class="flex flex-wrap items-center gap-2">
+                @csrf
+                <label for="owner_id" class="sr-only">{{ __('platform.admin.institutes.show.choose_owner') }}</label>
+                <select name="owner_id" id="owner_id" class="rounded-md border border-gray-300 px-3 py-2 min-h-[44px]">
+                    @foreach ($owners as $owner)
+                        <option value="{{ $owner->id }}">{{ $owner->name }} — {{ $owner->email ?? $owner->phone }}</option>
+                    @endforeach
+                </select>
+                <x-button variant="secondary">{{ __('platform.admin.institutes.show.reset_owner_password') }}</x-button>
+            </form>
+        @elseif ($owners->count() === 1)
+            <form method="POST" action="{{ url('/admin/institutes/'.$tenant->id.'/reset-owner-password') }}">
+                @csrf
+                <x-button variant="secondary">{{ __('platform.admin.institutes.show.reset_owner_password') }}</x-button>
+            </form>
+        @endif
     </div>
 @endsection

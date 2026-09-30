@@ -161,23 +161,35 @@ php artisan app:preflight
 left the app in a safe state (see §5) and exits non-zero if not, so a CI/deploy script
 should treat a non-zero exit here as "stop, do not consider this deploy done."
 
-**Never run `php artisan db:seed` in production** — the demo seeder is guarded to
-local/testing only (Phase 4.2), but there's no seeder for real institutes anyway. Create the
-first (and every) real institute with:
+**Never run `php artisan db:seed` in production** — the demo seeder (including the local-only
+`admin@coaching.test` platform admin, README "Local credentials") is guarded to local/testing
+only (Phase 4.2 / Phase P1), but there's no seeder for real institutes or a real platform
+admin anyway. Create both explicitly, in this order:
 
-```bash
-php artisan tenant:create "Institute Name" subdomain --owner-name="Owner Name" --owner-email=owner@example.com
-```
+1. **First platform admin** (used to sign in on the central domain), once, interactively:
 
-This prints the owner's temporary password once — copy it immediately and hand it to the
-owner through a secure channel; it is not stored or shown again (`must_change_password` is
-set, so they're forced to change it on first login).
+   ```bash
+   php artisan platform-admin:create
+   ```
 
-Create the platform admin account (used to sign in on the central domain) once, interactively:
+2. **First (and every) real institute**, either the same way as every later one — the admin
+   UI (`/admin/institutes/create`, once signed in) — or via the command line:
 
-```bash
-php artisan platform-admin:create
-```
+   ```bash
+   php artisan tenant:create "Institute Name" subdomain --owner-name="Owner Name" --owner-email=owner@example.com
+   ```
+
+   Both paths run the exact same validation and creation logic
+   (`App\Actions\CreateInstituteAction` — see docs/specs/phase-p1-platform.md). Either way,
+   the owner's temporary password is shown once — copy it immediately and hand it to the
+   owner through a secure channel; it is not stored or shown again (`must_change_password`
+   is set, so they're forced to change it on first login).
+
+A platform admin can **suspend** an institute from its detail page in the admin UI
+(`/admin/institutes/{id}`) — a suspended institute's domain returns HTTP 503 with a
+friendly translated page for every visitor (guest or logged-in), and any user already
+logged in there is logged out on their next request. **Reactivate** from the same page to
+restore it.
 
 ## 5. `php artisan app:preflight`
 

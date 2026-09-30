@@ -33,8 +33,18 @@ foreach (config('tenancy.central_domains', []) as $centralDomain) {
         Route::get('/', [PlatformHomeController::class, 'show']);
         Route::post('demo-requests', [DemoRequestController::class, 'store']);
 
+        // No ->name() on any route in this loop: Route::domain() runs this same
+        // registration once per central domain, so a shared route name would be
+        // assigned to several different Route objects — harmless for plain request
+        // matching (route:list/route:clear work fine), but php artisan route:cache
+        // (part of `optimize`, part of every deploy per docs/DEPLOY.md) serializes
+        // routes into a flat name-keyed collection and throws
+        // "Another route has already been assigned name [...]" the moment a second
+        // domain registers the same name. Controllers build redirect URLs from a
+        // plain path instead (matches this app's existing convention elsewhere, e.g.
+        // Manage\LessonController), never route($name).
         Route::prefix('admin')->group(function () {
-            Route::get('login', [PlatformAdminLoginController::class, 'show'])->name('admin.login');
+            Route::get('login', [PlatformAdminLoginController::class, 'show']);
             Route::post('login', [PlatformAdminLoginController::class, 'store']);
             Route::post('logout', [PlatformAdminLogoutController::class, 'store'])
                 ->middleware('auth:platform_admin');
@@ -42,15 +52,15 @@ foreach (config('tenancy.central_domains', []) as $centralDomain) {
             Route::middleware('auth:platform_admin')->group(function () {
                 Route::get('dashboard', [PlatformAdminDashboardController::class, 'show']);
 
-                Route::get('institutes', [InstituteController::class, 'index'])->name('admin.institutes.index');
-                Route::get('institutes/create', [InstituteController::class, 'create'])->name('admin.institutes.create');
+                Route::get('institutes', [InstituteController::class, 'index']);
+                Route::get('institutes/create', [InstituteController::class, 'create']);
                 Route::post('institutes', [InstituteController::class, 'store']);
-                Route::get('institutes/{tenant}', [InstituteController::class, 'show'])->name('admin.institutes.show');
+                Route::get('institutes/{tenant}', [InstituteController::class, 'show']);
                 Route::post('institutes/{tenant}/suspend', [InstituteController::class, 'suspend']);
                 Route::post('institutes/{tenant}/reactivate', [InstituteController::class, 'reactivate']);
                 Route::post('institutes/{tenant}/reset-owner-password', [InstituteController::class, 'resetOwnerPassword']);
 
-                Route::get('demo-requests', [AdminDemoRequestController::class, 'index'])->name('admin.demo-requests.index');
+                Route::get('demo-requests', [AdminDemoRequestController::class, 'index']);
                 Route::post('demo-requests/{demoRequest}/mark-contacted', [AdminDemoRequestController::class, 'markContacted']);
             });
         });

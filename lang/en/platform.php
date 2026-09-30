@@ -141,6 +141,7 @@ return [
                 'confirm_suspend' => 'Suspend this institute? Its site will become unavailable to everyone, and any logged-in users will be logged out.',
                 'confirm_reactivate' => 'Reactivate this institute? Its site will become available again.',
                 'reset_owner_password' => 'Reset owner password',
+                'choose_owner' => 'Choose owner',
                 'reset_owner_password_for' => 'New temporary password for :name',
                 'no_owner' => 'This institute has no owner account.',
             ],

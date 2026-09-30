@@ -24,6 +24,6 @@ class DemoRequestController extends Controller
             'contacted_at' => now(),
         ])->save();
 
-        return redirect()->route('admin.demo-requests.index');
+        return redirect(url('/admin/demo-requests'));
     }
 }

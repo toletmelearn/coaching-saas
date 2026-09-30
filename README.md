@@ -106,17 +106,22 @@ second course,
 testing the "draft course is invisible" behavior). See
 [docs/specs/phase-4-courses.md](docs/specs/phase-4-courses.md).
 
-There is no seeded platform admin account; create one via `php artisan tinker`:
+`php artisan migrate:fresh --seed` also creates a **local-only** platform admin account
+(same local/testing-only guard as the demo tenant above — never seeded in production, and
+`php artisan app:preflight` fails in production if this account exists):
 
-```php
-\App\Models\PlatformAdmin::create([
-    'name' => 'Local Admin',
-    'email' => 'admin@coaching.test',
-    'password' => Hash::make('password'),
-]);
-```
+| Field    | Value                       |
+|----------|------------------------------|
+| Email    | `admin@coaching.test`       |
+| Password | `password`                  |
 
-Log in at `http://coaching.test/admin/login`.
+Log in at `http://coaching.test/admin/login`. To create additional/production platform
+admins, use `php artisan platform-admin:create` (interactive, prompts for name/email/
+password) — never seed one outside local/testing.
+
+Once you've created a tenant or two, `php artisan local:hosts` (local/testing only) prints
+a `127.0.0.1 <domain>` line for every tenant domain plus the central domains, ready to paste
+into `C:\Windows\System32\drivers\etc\hosts` instead of typing them by hand.
 
 ## Commands
 

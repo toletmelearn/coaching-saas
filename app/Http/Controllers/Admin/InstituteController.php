@@ -53,7 +53,7 @@ class InstituteController extends Controller
             'name', 'subdomain', 'owner_name', 'owner_email', 'owner_phone',
         ]));
 
-        return redirect()->route('admin.institutes.show', $result['tenant'])
+        return redirect(url('/admin/institutes/'.$result['tenant']->id))
             ->with('temporary_password', $result['temporary_password'])
             ->with('temporary_password_for', [
                 'name' => $result['owner']->name,
@@ -81,22 +81,31 @@ class InstituteController extends Controller
     {
         $tenant->forceFill(['status' => TenantStatus::Suspended])->save();
 
-        return redirect()->route('admin.institutes.show', $tenant);
+        return redirect(url('/admin/institutes/'.$tenant->id));
     }
 
     public function reactivate(Tenant $tenant): RedirectResponse
     {
         $tenant->forceFill(['status' => TenantStatus::Active])->save();
 
-        return redirect()->route('admin.institutes.show', $tenant);
+        return redirect(url('/admin/institutes/'.$tenant->id));
     }
 
-    public function resetOwnerPassword(Tenant $tenant): RedirectResponse
+    /**
+     * `owner_id` is only meaningful (and only rendered as a choice in the view) when the
+     * institute has more than one owner — with a single owner the form omits it and this
+     * falls back to that one owner, exactly as before.
+     */
+    public function resetOwnerPassword(Request $request, Tenant $tenant): RedirectResponse
     {
+        $requestedOwnerId = $request->input('owner_id');
         $temporaryPassword = TemporaryPasswordGenerator::generate();
 
-        $owner = app(TenantContext::class)->runAs($tenant, function () use ($temporaryPassword) {
-            $owner = User::query()->where('role', UserRole::Owner)->first();
+        $owner = app(TenantContext::class)->runAs($tenant, function () use ($requestedOwnerId, $temporaryPassword) {
+            $query = User::query()->where('role', UserRole::Owner);
+            $owner = $requestedOwnerId !== null
+                ? $query->where('id', $requestedOwnerId)->first()
+                : $query->first();
 
             if ($owner === null) {
                 return null;
@@ -111,13 +120,13 @@ class InstituteController extends Controller
         });
 
         if ($owner === null) {
-            return redirect()->route('admin.institutes.show', $tenant)
+            return redirect(url('/admin/institutes/'.$tenant->id))
                 ->withErrors(['owner' => __('platform.admin.institutes.show.no_owner')]);
         }
 
         LoginRateLimiter::clearForUser($tenant->id, $owner);
 
-        return redirect()->route('admin.institutes.show', $tenant)
+        return redirect(url('/admin/institutes/'.$tenant->id))
             ->with('temporary_password', $temporaryPassword)
             ->with('temporary_password_for', ['name' => $owner->name]);
     }
