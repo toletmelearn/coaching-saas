@@ -44,6 +44,10 @@
             <directory>tests/Feature/Progress</directory>
             <directory>tests/Unit/Support/Progress</directory>
         </testsuite>
+        <testsuite name="Devices">
+            <directory>tests/Feature/Devices</directory>
+            <directory>tests/Unit/Support/Devices</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>
