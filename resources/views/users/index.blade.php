@@ -31,6 +31,7 @@
                     <th class="py-2 pr-2">{{ __('users.columns.email') }}</th>
                     <th class="py-2 pr-2">{{ __('users.columns.role') }}</th>
                     <th class="py-2 pr-2">{{ __('users.columns.status') }}</th>
+                    <th class="py-2 pr-2">{{ __('devices.heading') }}</th>
                     <th class="py-2 pr-2">{{ __('users.columns.actions') }}</th>
                 </tr>
             </thead>
@@ -42,6 +43,17 @@
                     <td class="py-2 pr-2">{{ $rowUser->email }}</td>
                     <td class="py-2 pr-2">{{ __('users.roles.'.$rowUser->role->value) }}</td>
                     <td class="py-2 pr-2">{{ __('users.statuses.'.$rowUser->status->value) }}</td>
+                    <td class="py-2 pr-2">
+                        @if ($rowUser->role->value === 'student')
+                            <div>{{ __('users.devices.count', ['count' => $rowUser->active_device_count]) }}</div>
+                            <div class="text-gray-500">
+                                {{ $rowUser->last_device_active_at
+                                    ? __('users.devices.last_active', ['time' => \Illuminate\Support\Carbon::parse($rowUser->last_device_active_at)->diffForHumans()])
+                                    : __('users.devices.never_active') }}
+                            </div>
+                            <a href="{{ url('/users/'.$rowUser->id.'/devices') }}" class="text-indigo-600 underline">{{ __('users.devices.manage_link') }}</a>
+                        @endif
+                    </td>
                     <td class="py-2 pr-2">
                         <div class="flex flex-col gap-2">
                             @can('resetPassword', $rowUser)
@@ -71,7 +83,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td class="py-2" colspan="6">{{ __('users.index.empty') }}</td>
+                    <td class="py-2" colspan="7">{{ __('users.index.empty') }}</td>
                 </tr>
             @endforelse
             </tbody>

@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Middleware\CheckTenantSuspended;
+use App\Http\Middleware\EnforceDeviceLimit;
 use App\Http\Middleware\EnsureActiveTenantUser;
 use App\Http\Middleware\RedirectIfMustChangePassword;
 use App\Http\Middleware\RequireTenant;
 use App\Http\Middleware\ResolveTenant;
 use App\Http\Middleware\SetReferrerPolicy;
+use App\Http\Middleware\ShowDeviceRevokedNotice;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -33,6 +35,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'require.tenant' => RequireTenant::class,
             'active.tenant.user' => EnsureActiveTenantUser::class,
             'must.change.password' => RedirectIfMustChangePassword::class,
+            'device.limit' => EnforceDeviceLimit::class,
+            'device.revoked.notice' => ShowDeviceRevokedNotice::class,
         ]);
 
         // Laravel's default middleware priority list runs SubstituteBindings (implicit

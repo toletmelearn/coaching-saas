@@ -54,6 +54,16 @@
         />
         <p class="-mt-3 mb-4 text-sm text-gray-500">{{ __('settings.academic_year_end_hint') }}</p>
 
+        <div class="mb-4">
+            <label for="max_devices_per_student" class="block text-sm font-medium text-gray-700 mb-1">{{ __('settings.fields.max_devices_per_student') }}</label>
+            <select name="max_devices_per_student" id="max_devices_per_student" class="block w-full min-h-[44px] rounded-md border-gray-300">
+                @foreach ([1, 2, 3] as $option)
+                    <option value="{{ $option }}" @selected(old('max_devices_per_student', $tenant->max_devices_per_student) == $option)>{{ $option }}</option>
+                @endforeach
+            </select>
+            <p class="mt-1 text-sm text-gray-500">{{ __('settings.max_devices_per_student_hint') }}</p>
+        </div>
+
         <x-button>{{ __('settings.save') }}</x-button>
     </form>
 

@@ -52,5 +52,13 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Course::class, CoursePolicy::class);
         Gate::policy(Enrolment::class, EnrolmentPolicy::class);
         Gate::policy(Tenant::class, TenantPolicy::class);
+
+        // App\Listeners\RegisterUserDevice (Phase 8) needs no explicit Event::listen()
+        // call here — Application::configure() enables event auto-discovery by default
+        // (->withEvents(), never overridden in bootstrap/app.php), which scans
+        // app/Listeners and wires handle(Login $event) up on its own. Registering it
+        // again here would double-fire it (confirmed while debugging: two listener
+        // entries — the auto-discovered "Class@handle" form and a manually added
+        // "Class" form — created two device rows from a single login).
     }
 }

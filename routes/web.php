@@ -23,6 +23,7 @@ use App\Http\Controllers\Manage\LessonAttachmentController as ManageLessonAttach
 use App\Http\Controllers\Manage\LessonController as ManageLessonController;
 use App\Http\Controllers\Manage\LessonVideoController as ManageLessonVideoController;
 use App\Http\Controllers\Manage\SettingsController as ManageSettingsController;
+use App\Http\Controllers\Manage\UserDeviceController as ManageUserDeviceController;
 use App\Http\Controllers\PlatformAdminDashboardController;
 use App\Http\Controllers\PlatformHomeController;
 use App\Http\Controllers\PwaController;
@@ -83,7 +84,9 @@ Route::get('/', function () {
 
 // Tenant-scoped routes.
 Route::middleware('require.tenant')->group(function () {
-    Route::get('login', [TenantLoginController::class, 'show'])->name('login');
+    Route::get('login', [TenantLoginController::class, 'show'])
+        ->name('login')
+        ->middleware('device.revoked.notice');
     Route::post('login', [TenantLoginController::class, 'store']);
 
     // PWA endpoints — no auth required (a guest's browser needs the manifest/icons/
@@ -102,7 +105,7 @@ Route::middleware('require.tenant')->group(function () {
     // password gets the same redirect here as on every other tenant route (Phase 4.1 —
     // this group previously sat outside auth:tenant entirely, so a disabled/must-change
     // student's session was never re-checked on these specific routes).
-    Route::middleware(['active.tenant.user', 'must.change.password'])->group(function () {
+    Route::middleware(['active.tenant.user', 'device.limit', 'must.change.password'])->group(function () {
         Route::get('courses', [CourseController::class, 'index']);
         Route::get('courses/{course:slug}', [CourseController::class, 'show']);
         Route::get('courses/{course:slug}/lessons/{lesson}', [LessonController::class, 'show'])->scopeBindings();
@@ -116,7 +119,7 @@ Route::middleware('require.tenant')->group(function () {
     Route::middleware('auth:tenant')->group(function () {
         Route::post('logout', [TenantLogoutController::class, 'store']);
 
-        Route::middleware('active.tenant.user')->group(function () {
+        Route::middleware(['active.tenant.user', 'device.limit'])->group(function () {
             Route::get('auth/change-password', [ChangePasswordController::class, 'show']);
             Route::post('auth/change-password', [ChangePasswordController::class, 'update']);
 
@@ -139,6 +142,9 @@ Route::middleware('require.tenant')->group(function () {
                 Route::post('users/{user}/disable', [UserController::class, 'disable']);
                 Route::post('users/{user}/enable', [UserController::class, 'enable']);
                 Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword']);
+                Route::get('users/{user}/devices', [ManageUserDeviceController::class, 'index']);
+                Route::post('users/{user}/devices/{device}/sign-out', [ManageUserDeviceController::class, 'signOutOne'])->scopeBindings();
+                Route::post('users/{user}/devices/sign-out-all', [ManageUserDeviceController::class, 'signOutAll']);
 
                 Route::prefix('manage')->group(function () {
                     Route::get('settings', [ManageSettingsController::class, 'show']);

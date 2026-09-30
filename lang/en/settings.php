@@ -11,9 +11,12 @@ return [
         'contact_email' => 'Contact email',
         'theme_color' => 'Accent colour',
         'academic_year_end' => 'Academic year ends',
+        'max_devices_per_student' => 'Devices per student',
     ],
 
     'academic_year_end_hint' => 'Pre-fills the "Ends" date when enrolling a student. You can still change or clear it per enrolment.',
+
+    'max_devices_per_student_hint' => 'A student can be logged in on this many devices at once. Logging in on a new device signs the oldest one out.',
 
     'logo' => [
         'heading' => 'Logo',
@@ -53,5 +56,6 @@ return [
         'theme_color_invalid' => 'Please choose one of the available colours.',
         'academic_year_end_invalid' => 'Please enter a valid date.',
         'academic_year_end_too_far' => 'The academic year end date must be within the next 3 years.',
+        'max_devices_per_student_invalid' => 'Please choose 1, 2 or 3 devices.',
     ],
 ];

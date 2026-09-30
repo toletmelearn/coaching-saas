@@ -71,6 +71,7 @@ test('a revoked device gets a 401 with code device_revoked on a JSON request', f
     [$tenant, $domain, $student, $deviceId] = revokedDeviceFixture();
 
     $response = $this->actingAs($student, 'tenant')
+        ->withCredentials()
         ->withCookie('device_id', $deviceId)
         ->getJson("http://{$domain}/dashboard");
 
@@ -120,6 +121,7 @@ test('a revoked device is signed out on the progress heartbeat endpoint', functi
     });
 
     $this->actingAs($student, 'tenant')
+        ->withCredentials()
         ->withCookie('device_id', $deviceId)
         ->postJson("http://{$domain}/lessons/{$lesson->id}/progress", ['position' => 1, 'duration' => 10, 'played' => 1])
         ->assertUnauthorized();
@@ -157,7 +159,10 @@ test('a revoked device is signed out on the fake video stream endpoint', functio
 
     URL::forceRootUrl("http://{$domain}");
     $url = URL::temporarySignedRoute('lesson-videos.stream', now()->addMinutes(10), ['lessonVideo' => $video->id]);
-    URL::forceRootUrl((string) config('app.url'));
+    // Clears the forced root entirely (not to config('app.url')) — the actual request
+    // below must generate its /login redirect from the request's own host, exactly as
+    // it would outside a test that happened to force a root URL for signing.
+    URL::forceRootUrl(null);
 
     $this->actingAs($student, 'tenant')
         ->withCookie('device_id', $deviceId)

@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\DeviceRevocationReason;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Models\User;
+use App\Support\Devices\DeviceRegistrar;
 use App\Support\LoginRateLimiter;
 use App\Support\TemporaryPasswordGenerator;
 use Illuminate\Http\RedirectResponse;
@@ -18,13 +20,19 @@ use Illuminate\View\View;
 
 class UserController extends Controller
 {
+    public function __construct(private readonly DeviceRegistrar $deviceRegistrar) {}
+
     public function index(): View
     {
         Gate::authorize('viewAny', User::class);
 
         $actor = Auth::guard('tenant')->user();
 
-        $query = User::query();
+        $query = User::query()
+            ->withCount(['devices as active_device_count' => function ($query) {
+                $query->whereNull('revoked_at');
+            }])
+            ->withMax('devices as last_device_active_at', 'last_seen_at');
 
         if ($actor->role === UserRole::Staff) {
             $query->where('role', UserRole::Student);
@@ -124,6 +132,10 @@ class UserController extends Controller
 
         $user->forceFill(['status' => UserStatus::Disabled])->save();
 
+        if ($user->role === UserRole::Student) {
+            $this->deviceRegistrar->revokeAll($user, DeviceRevocationReason::Disabled);
+        }
+
         return redirect()->route('users.index');
     }
 
@@ -146,6 +158,10 @@ class UserController extends Controller
             'password' => Hash::make($temporaryPassword),
             'must_change_password' => true,
         ])->save();
+
+        if ($user->role === UserRole::Student) {
+            $this->deviceRegistrar->revokeAll($user, DeviceRevocationReason::PasswordReset);
+        }
 
         // Lets a teacher unblock a locked-out student in the same action as resetting
         // their password, instead of a separate support request.

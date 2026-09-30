@@ -55,4 +55,11 @@ return [
         'manage_people' => 'Manage people',
         'access_ended' => 'Access ended',
     ],
+
+    'devices' => [
+        'count' => 'Devices: :count',
+        'last_active' => 'Last active :time',
+        'never_active' => 'Never active',
+        'manage_link' => 'Manage devices',
+    ],
 ];

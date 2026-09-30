@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\DeviceRevocationReason;
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
+use App\Support\Devices\DeviceRegistrar;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,6 +14,8 @@ use Illuminate\View\View;
 
 class ChangePasswordController extends Controller
 {
+    public function __construct(private readonly DeviceRegistrar $deviceRegistrar) {}
+
     public function show(): View
     {
         return view('auth.change-password');
@@ -28,6 +33,12 @@ class ChangePasswordController extends Controller
             'password' => Hash::make($data['password']),
             'must_change_password' => false,
         ])->save();
+
+        $currentDeviceId = $request->cookie(DeviceRegistrar::COOKIE_NAME);
+
+        if ($user->role === UserRole::Student && $currentDeviceId !== null) {
+            $this->deviceRegistrar->revokeAllExcept($user, $currentDeviceId, DeviceRevocationReason::PasswordChanged);
+        }
 
         return redirect('/dashboard');
     }

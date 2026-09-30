@@ -8,6 +8,12 @@
 
     <x-page-header :title="__('auth.login.submit')" />
 
+    @if (session('status'))
+        <div class="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+            {{ session('status') }}
+        </div>
+    @endif
+
     @if ($errors->any())
         <div class="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
             @foreach ($errors->all() as $error)

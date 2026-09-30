@@ -22,7 +22,7 @@ function deviceTenantFixture(): array
 test('a device row is unique per (tenant, user, device_id)', function () {
     [$tenant, , $student] = deviceTenantFixture();
 
-    inTenant($tenant, function () use ($student) {
+    inTenant($tenant, function () use ($tenant, $student) {
         // Positive control: a different device_id for the same student succeeds.
         expect(UserDevice::create([
             'user_id' => $student->id,

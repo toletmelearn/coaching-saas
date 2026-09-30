@@ -16,3 +16,6 @@ Schedule::command('backup:clean')->daily()->at('01:30')->onOneServer();
 // Polls the video provider for videos still uploading/processing (no webhooks yet —
 // see VIDEO.md). Every minute per docs/specs/phase-5-video.md.
 Schedule::command('videos:sync')->everyMinute()->onOneServer();
+
+// Deletes device rows not seen for 60+ days (Phase 8 — see docs/specs/phase-8-devices.md).
+Schedule::command('devices:prune')->daily()->onOneServer();

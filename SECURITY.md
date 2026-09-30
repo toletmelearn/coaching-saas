@@ -208,6 +208,58 @@ recordings are traceable to an individual viewer rather than only proving *a* le
   `PUT` requests are never touched by it, and `sw.js` itself was not changed for this
   phase.
 
+## One device per student (Phase 8)
+
+- **`user_devices` is tenant-owned** (`tenant_id`, `BelongsToTenant`, composite FK on
+  `(tenant_id, user_id)` → `users(tenant_id, id)`, `cascadeOnDelete`) and holds, per
+  student device: `device_id` (a 32-hex-char random cookie value), a human-readable
+  `label` ("Chrome on Android", parsed from the user agent by `App\Support\Devices\
+  DeviceLabelParser` — no third-party service, no network), the truncated (255-char)
+  user agent, first/last seen timestamps, and `revoked_at`/`revoked_reason`/
+  `notified_at`. **No IP address is stored anywhere** — not on this table, not derived
+  from the request elsewhere in the device-tracking path
+  (`tests/Feature/Devices/PrivacyAndCleanupTest.php` asserts this directly, including
+  that a login from a given IP never leaves that IP recoverable from the stored row).
+- Limit applies to `role = student` only; owner/staff are never tracked as devices or
+  limited. `tenants.max_devices_per_student` (1–3, default 1) is owner-editable on
+  `/manage/settings`.
+- Registration happens via `App\Listeners\RegisterUserDevice`, listening on Laravel's
+  own `Illuminate\Auth\Events\Login` for the `tenant` guard — never by editing the login
+  controller. Laravel fires this same event on a remember-me cookie restore, so a
+  returning "remembered" session reuses its existing device row rather than minting a
+  new one.
+- Enforcement is the `device.limit` route middleware (`App\Http\Middleware\
+  EnforceDeviceLimit`), applied wherever `active.tenant.user` already is: a no-op for a
+  guest or for owner/staff (no device-table query at all in that case); for an
+  authenticated student it resolves the device by cookie, registers one on the fly for
+  a pre-existing session with no cookie yet, and signs the student out (guard logout,
+  session invalidated, token regenerated) the moment their device's row is found
+  revoked — HTML gets a redirect to `/login` with the message flashed, JSON gets `401
+  {"code":"device_revoked"}`. `last_seen_at` is updated via a single atomic conditional
+  `UPDATE ... WHERE last_seen_at < now() - 60s` (never read-then-write), bounding the
+  middleware to at most one `SELECT` and one `UPDATE` against `user_devices` per
+  request.
+- **Anything that changes a student's credentials revokes devices**: an owner/staff
+  password reset revokes *all* of that student's devices (`password_reset`); the
+  student changing their own password (`ChangePasswordController`) revokes every
+  *other* device but keeps the current one (`password_changed`); disabling a student
+  revokes all of their devices (`disabled`) in addition to the existing
+  `active.tenant.user` block. A normal logout revokes just that one device
+  (`logout`), freeing the slot — logging back in on it reactivates the same row rather
+  than counting as a new device.
+- **Known limit #1**: a Bunny embed URL issued before a revocation stays valid until
+  its own expiry (max 10 minutes) — Bunny's token authentication has no server-side
+  revocation hook. The local `fake` driver's stream re-checks access on every request
+  (see "Protected video specifically" above) and stops immediately; a `bunny`-driver
+  deployment does not get that same immediacy for an already-issued embed token.
+- **Known limit #2**: two people sharing one login can "ping-pong" the device slot —
+  each login evicts the other's device, so both can keep using the account by
+  re-logging-in after being kicked, indefinitely. This is by design (a login never
+  *fails* due to the limit — the newest login always wins) rather than a bug; the
+  owner-visible "Switching devices often" flag (`/users/{user}/devices`, ≥5
+  replacements in the last 7 days, `config('coaching.device_switch_flag')`) is the
+  intended detection mechanism for this pattern, not an automatic block.
+
 ## Custom domains and TLS
 
 - Tenants may eventually bring a custom domain instead of `*.coaching.test`

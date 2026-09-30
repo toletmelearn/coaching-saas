@@ -116,6 +116,7 @@ DB_DATABASE=coaching_saas
 DB_USERNAME=coaching_saas
 DB_PASSWORD=<the password set above>
 SESSION_DRIVER=database
+SESSION_LIFETIME=43200            # 30 days — students aren't logged out every 2 hours
 SESSION_SECURE_COOKIE=true
 SESSION_DOMAIN=                   # leave EMPTY/unset — never set this (see SECURITY.md:
                                    # a non-null SESSION_DOMAIN would share one tenant's
@@ -229,8 +230,8 @@ directly) running every minute:
 ```
 
 This is what actually fires the daily backup (`backup:run` at 02:00, `backup:clean` at
-01:30 — `routes/console.php`) and any other scheduled task; nothing runs on its own without
-this cron entry.
+01:30 — `routes/console.php`), the daily `devices:prune` (removes device rows unseen for
+60+ days), and any other scheduled task; nothing runs on its own without this cron entry.
 
 **Queue worker** — this app doesn't dispatch any queued jobs as of this phase, so there is
 no worker to run yet. When a future phase adds one: CloudPanel has a Supervisor/process

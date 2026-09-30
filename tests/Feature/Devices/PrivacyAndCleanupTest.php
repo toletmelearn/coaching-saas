@@ -21,10 +21,11 @@ test('a login from a given IP never stores that IP anywhere on the device row', 
     $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
     $student = inTenant($tenant, fn () => User::factory()->student()->create());
 
-    $this->post("http://{$domain}/login", [
-        'identifier' => $student->email,
-        'password' => 'password',
-    ], ['REMOTE_ADDR' => '203.0.113.7']);
+    $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.7'])
+        ->post("http://{$domain}/login", [
+            'identifier' => $student->email,
+            'password' => 'password',
+        ]);
 
     $stored = inTenant($tenant, fn () => UserDevice::where('user_id', $student->id)->first());
 

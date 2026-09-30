@@ -14,6 +14,8 @@ return [
 
     'throttled' => 'Too many login attempts. Please try again later.',
 
+    'device_revoked' => 'You were signed out because your account was opened on another device.',
+
     'change_password' => [
         'heading' => 'Update your password',
         'new_password' => 'New password',

@@ -116,6 +116,18 @@ YouTube previews) is completed with a "Mark as complete" tap. Owners/staff see i
 last active) and a per-student detail page. See
 [docs/specs/phase-7-progress.md](docs/specs/phase-7-progress.md).
 
+### One device per student
+
+A student account can only be signed in on a limited number of devices at once (owner
+sets 1–3 on `/manage/settings`, default 1) — logging in on a new device signs the oldest
+one out, so a paid login can't be shared with a whole class. Owner/staff see each
+student's device count on the People page and manage them from `/users/{user}/devices`
+("Sign out this device" / "Sign out all devices"). A signed-out device sees a plain
+"opened on another device" message on its next request. Password reset/change and
+disabling a student also revoke devices — see [SECURITY.md](SECURITY.md). Stale device
+rows (60+ days unseen) are cleaned up by the scheduled `php artisan devices:prune`
+command. See [docs/specs/phase-8-devices.md](docs/specs/phase-8-devices.md).
+
 ### PWA testing locally
 
 Service workers only register in a "secure context" — HTTPS, or `localhost`/`127.0.0.1`.

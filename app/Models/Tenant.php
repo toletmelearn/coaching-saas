@@ -22,6 +22,7 @@ class Tenant extends Model
     protected $attributes = [
         'theme_color' => '#4f46e5',
         'branding_version' => 1,
+        'max_devices_per_student' => 1,
     ];
 
     /**
@@ -42,6 +43,7 @@ class Tenant extends Model
             'bunny_library_created_at' => 'datetime',
             'academic_year_end' => 'date',
             'branding_version' => 'integer',
+            'max_devices_per_student' => 'integer',
         ];
     }
 

@@ -40,6 +40,7 @@ class SettingsController extends Controller
             'contact_email' => ['nullable', 'email', 'max:255'],
             'theme_color' => ['sometimes', 'string', 'regex:/^#[0-9a-f]{6}$/i', 'in:'.implode(',', $presets)],
             'academic_year_end' => ['nullable', 'date', 'before_or_equal:'.now()->addYears(3)->toDateString()],
+            'max_devices_per_student' => ['sometimes', 'integer', 'between:1,3'],
         ], [
             'name.required' => __('settings.validation.name_required'),
             'name.max' => __('settings.validation.name_max'),
@@ -48,6 +49,7 @@ class SettingsController extends Controller
             'theme_color.in' => __('settings.validation.theme_color_invalid'),
             'academic_year_end.date' => __('settings.validation.academic_year_end_invalid'),
             'academic_year_end.before_or_equal' => __('settings.validation.academic_year_end_too_far'),
+            'max_devices_per_student.between' => __('settings.validation.max_devices_per_student_invalid'),
         ]);
 
         $data = $validator->validate();
@@ -65,6 +67,7 @@ class SettingsController extends Controller
             'contact_email' => $blankToNull($data['contact_email'] ?? null),
             'theme_color' => $data['theme_color'] ?? $tenant->theme_color,
             'academic_year_end' => $blankToNull($data['academic_year_end'] ?? null),
+            'max_devices_per_student' => $data['max_devices_per_student'] ?? $tenant->max_devices_per_student,
         ])->save();
 
         return redirect('/manage/settings')->with('status', __('settings.saved'));

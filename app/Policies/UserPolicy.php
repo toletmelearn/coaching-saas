@@ -117,6 +117,25 @@ class UserPolicy
         return false;
     }
 
+    /**
+     * Owner and staff may view/manage devices for students only — never for another
+     * owner or staff member, and never their own (there is no self-service "my
+     * devices" screen yet).
+     */
+    public function viewDevices(User $actor, User $target): bool
+    {
+        return $this->manageDevices($actor, $target);
+    }
+
+    public function manageDevices(User $actor, User $target): bool
+    {
+        if ($target->role !== UserRole::Student) {
+            return false;
+        }
+
+        return in_array($actor->role, [UserRole::Owner, UserRole::Staff], true);
+    }
+
     private function activeOwnerCount(User $target): int
     {
         return User::query()
