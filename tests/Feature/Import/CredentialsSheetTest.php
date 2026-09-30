@@ -108,8 +108,9 @@ test('CSV download from the sheet is formula-safe', function () {
     $download = $this->actingAs($owner, 'tenant')->get("http://{$domain}/users/import/sheet/{$sheetToken}/download");
 
     $download->assertOk();
-    expect($download->getContent())->toContain("'=HYPERLINK");
-    expect($download->getContent())->not->toContain("\n=HYPERLINK(\"http://evil\"),");
+    $content = $download->streamedContent();
+    expect($content)->toContain("'=HYPERLINK");
+    expect($content)->not->toContain("\n=HYPERLINK(\"http://evil\"),");
 });
 
 test('Clear now removes the sheet immediately', function () {

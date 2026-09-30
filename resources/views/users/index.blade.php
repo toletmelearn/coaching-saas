@@ -4,6 +4,9 @@
     <x-page-header :title="__('users.index.heading')">
         <x-slot:actions>
             @can('create', \App\Models\User::class)
+                <a href="{{ url('/users/import') }}" class="inline-flex items-center justify-center min-h-[44px] px-4 py-2 rounded-md font-medium text-base bg-gray-100 text-gray-800 hover:bg-gray-200">
+                    {{ __('users.index.import') }}
+                </a>
                 <a href="{{ url('/users/create') }}" class="inline-flex items-center justify-center min-h-[44px] px-4 py-2 rounded-md font-medium text-base bg-indigo-600 text-white hover:bg-indigo-700">
                     {{ __('users.index.new') }}
                 </a>
@@ -22,7 +25,43 @@
         </div>
     @endif
 
-    <div class="overflow-x-auto">
+    {{-- Below sm: one card per person. From sm up: the table. Both render the same
+         users/_actions partial so the action set can never drift between the two. --}}
+    <div class="sm:hidden space-y-3">
+        @forelse ($users as $rowUser)
+            <div class="rounded-md border border-gray-200 p-3">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                    <a href="{{ url('/users/'.$rowUser->id) }}" class="font-medium">{{ $rowUser->name }}</a>
+                </div>
+                <div class="flex gap-2 mb-2 text-xs">
+                    <span class="px-2 py-0.5 rounded-full bg-gray-100">{{ __('users.roles.'.$rowUser->role->value) }}</span>
+                    <span class="px-2 py-0.5 rounded-full bg-gray-100">{{ __('users.statuses.'.$rowUser->status->value) }}</span>
+                </div>
+                @if ($rowUser->phone)
+                    <div class="text-sm text-gray-700">{{ $rowUser->phone }}</div>
+                @endif
+                @if ($rowUser->email)
+                    <div class="text-sm text-gray-700">{{ $rowUser->email }}</div>
+                @endif
+                @if ($rowUser->role->value === 'student')
+                    <div class="text-xs text-gray-500 mt-1 mb-2">
+                        {{ __('users.devices.count', ['count' => $rowUser->active_device_count]) }}
+                        —
+                        {{ $rowUser->last_device_active_at
+                            ? __('users.devices.last_active', ['time' => \Illuminate\Support\Carbon::parse($rowUser->last_device_active_at)->diffForHumans()])
+                            : __('users.devices.never_active') }}
+                    </div>
+                @endif
+                <div class="mt-2">
+                    @include('users._actions', ['rowUser' => $rowUser])
+                </div>
+            </div>
+        @empty
+            <p class="text-sm text-gray-500">{{ __('users.index.empty') }}</p>
+        @endforelse
+    </div>
+
+    <div class="hidden sm:block overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
                 <tr class="text-left border-b border-gray-300">
@@ -55,30 +94,7 @@
                         @endif
                     </td>
                     <td class="py-2 pr-2">
-                        <div class="flex flex-col gap-2">
-                            @can('resetPassword', $rowUser)
-                                <form method="POST" action="{{ url('/users/'.$rowUser->id.'/reset-password') }}">
-                                    @csrf
-                                    <x-button variant="secondary" class="w-full">{{ __('users.actions.reset_password') }}</x-button>
-                                </form>
-                            @endcan
-
-                            @if ($rowUser->status->value === 'active')
-                                @can('disable', $rowUser)
-                                    <form method="POST" action="{{ url('/users/'.$rowUser->id.'/disable') }}" onsubmit="return confirm(@js(__('users.actions.confirm_disable')))">
-                                        @csrf
-                                        <x-button variant="danger" class="w-full">{{ __('users.actions.disable') }}</x-button>
-                                    </form>
-                                @endcan
-                            @else
-                                @can('enable', $rowUser)
-                                    <form method="POST" action="{{ url('/users/'.$rowUser->id.'/enable') }}">
-                                        @csrf
-                                        <x-button variant="secondary" class="w-full">{{ __('users.actions.enable') }}</x-button>
-                                    </form>
-                                @endcan
-                            @endif
-                        </div>
+                        @include('users._actions', ['rowUser' => $rowUser])
                     </td>
                 </tr>
             @empty

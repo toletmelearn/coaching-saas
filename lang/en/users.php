@@ -5,6 +5,7 @@ return [
     'index' => [
         'heading' => 'People',
         'new' => 'Add person',
+        'import' => 'Import from spreadsheet',
         'update_action' => 'Update',
         'remove_action' => 'Remove',
         'empty' => 'No one here yet.',

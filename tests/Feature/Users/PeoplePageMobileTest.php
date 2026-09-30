@@ -40,9 +40,12 @@ test('card and table renderings expose the identical action set per viewer', fun
     $html = $response->getContent();
 
     // Staff manages the student: reset/disable appear twice — once in the card, once
-    // in the table row — both rendered from the same partial.
-    expect(substr_count($html, __('users.actions.reset_password')))->toBe(2);
-    expect(substr_count($html, __('users.actions.disable')))->toBe(2);
+    // in the table row — both rendered from the same partial. Matched as the rendered
+    // button element specifically (not a raw label substring): the disable button's own
+    // onsubmit confirm() text also contains the word "Disable", which would otherwise
+    // double-count and mask a real regression.
+    expect(substr_count($html, '>'.__('users.actions.reset_password').'</button>'))->toBe(2);
+    expect(substr_count($html, '>'.__('users.actions.disable').'</button>'))->toBe(2);
 
     // Staff cannot manage the owner row: zero occurrences in either rendering.
     expect(substr_count($html, __('users.actions.reset_password').'-owner-row'))->toBe(0);

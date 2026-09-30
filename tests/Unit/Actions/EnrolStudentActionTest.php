@@ -13,9 +13,11 @@ test('the shared enrolment action class exists with the expected invokable inter
     $method = new ReflectionMethod(EnrolStudentAction::class, '__invoke');
     $paramNames = collect($method->getParameters())->map->getName()->all();
 
-    // Interface assumed for Step 2: __invoke(Course $course, User $student, ?Carbon
+    // Interface: __invoke(Course $course, User $student, Carbon $startsAt, ?Carbon
     // $endsAt, ?string $paymentNote, int $enrolledBy): Enrolment — mirrors the fields
-    // EnrolmentController::store already builds an Enrolment from.
-    expect($paramNames)->toBe(['course', 'student', 'endsAt', 'paymentNote', 'enrolledBy']);
+    // EnrolmentController::store already builds an Enrolment from. (Step 1's assumed
+    // interface omitted startsAt; corrected here once the manual screen's starts_at
+    // handling — a plain date, not "now" — was checked.)
+    expect($paramNames)->toBe(['course', 'student', 'startsAt', 'endsAt', 'paymentNote', 'enrolledBy']);
     expect((string) $method->getReturnType())->toBe('App\Models\Enrolment');
 });

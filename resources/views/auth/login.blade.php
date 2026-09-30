@@ -31,4 +31,14 @@
 
         <x-button>{{ __('auth.login.submit') }}</x-button>
     </form>
+
+    <div class="mt-6 text-sm text-gray-600">
+        <p>{{ __('auth.help.generic') }}</p>
+        @if ($tenant?->contact_phone)
+            <p class="mt-1">
+                <a href="tel:{{ $tenant->contact_phone }}" class="text-indigo-600 underline">{{ __('auth.help.contact', ['phone' => $tenant->contact_phone]) }}</a>
+                <a href="https://wa.me/91{{ $tenant->contact_phone }}" class="text-indigo-600 underline ml-2">{{ __('auth.help.whatsapp') }}</a>
+            </p>
+        @endif
+    </div>
 @endsection

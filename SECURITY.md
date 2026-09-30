@@ -260,6 +260,40 @@ recordings are traceable to an individual viewer rather than only proving *a* le
   replacements in the last 7 days, `config('coaching.device_switch_flag')`) is the
   intended detection mechanism for this pattern, not an automatic block.
 
+## Bulk student import (Phase 9)
+
+- **Temporary passwords are never stored in plain text anywhere** — not the database, not
+  logs, not a queue payload. Between preview and confirm, and between confirm and the
+  credentials sheet being viewed/downloaded/cleared, the only place a plaintext temporary
+  password exists is an **encrypted payload in the creator's own PHP session**
+  (`App\Support\Import\ImportSessionStore`, `Crypt::encryptString`), never readable by
+  anyone else — every read re-checks the payload's own `tenant_id` and `created_by` against
+  the current request's tenant and authenticated user, not just PHP session boundaries (see
+  TENANCY.md: an ambient scope alone is never trusted as the isolation boundary).
+- **Both the import token and the credentials sheet expire after 15 minutes.** The
+  credentials sheet is additionally served with `Cache-Control: no-store, private` and
+  `X-Robots-Tag: noindex`. "Clear now" removes the plaintext rows immediately by
+  overwriting the session payload with only its identity fields (`tenant_id`,
+  `created_by`, no `created_at`) — the ownership check on the next request still works
+  correctly (a 404 for anyone but the creator), but there is nothing left to show, and the
+  same "no longer available" page is shown as a genuine 15-minute expiry.
+- **CSV formula injection** (both the credentials-sheet download and the progress export):
+  any cell whose value begins with `=`, `+`, `-`, `@`, a tab, or a carriage return is
+  prefixed with a single quote before being written (`App\Support\Csv\CsvFormulaGuard`),
+  the standard mitigation — a student or CSV row can never get a formula to execute when
+  the file is opened in Excel/Sheets.
+- **Import limits**: `.csv` extension required, 1 MB max file size, and a data-row cap
+  (`CsvImportPreviewBuilder::MAX_ROWS`, **45** — see docs/specs/phase-9-pilot.md for why
+  this was lowered from the brief's default 100 after measuring real bcrypt cost) enforced
+  before any row is parsed. The upload is rate limited to 10 attempts/hour/user
+  (`throttle:10,60` on `POST /users/import`).
+- **Content-based file check, deliberately not MIME-sniffing-based**: Laravel's `mimes:`
+  rule (finfo content sniffing) can misclassify a legitimate CSV row containing
+  markup-like text (e.g. a student named with an HTML tag) as `text/html` and wrongly
+  reject it. The upload is instead checked for a high share of raw control bytes in its
+  first 8KB — a reliable binary/text signal that a real CSV never trips, regardless of
+  what a cell's text happens to contain.
+
 ## Custom domains and TLS
 
 - Tenants may eventually bring a custom domain instead of `*.coaching.test`

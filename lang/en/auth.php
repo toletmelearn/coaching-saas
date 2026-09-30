@@ -16,6 +16,12 @@ return [
 
     'device_revoked' => 'You were signed out because your account was opened on another device.',
 
+    'help' => [
+        'generic' => "Forgot your password or can't log in? Ask your teacher to reset it.",
+        'contact' => 'Call or WhatsApp :phone',
+        'whatsapp' => 'WhatsApp',
+    ],
+
     'change_password' => [
         'heading' => 'Update your password',
         'new_password' => 'New password',

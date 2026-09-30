@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Manage;
 
+use App\Actions\EnrolStudentAction;
 use App\Enums\CourseStatus;
 use App\Enums\EnrolmentStatus;
 use App\Enums\UserRole;
@@ -19,6 +20,8 @@ use Illuminate\View\View;
 
 class EnrolmentController extends Controller
 {
+    public function __construct(private readonly EnrolStudentAction $enrolStudent) {}
+
     public function index(Course $course, Request $request): View
     {
         Gate::authorize('manageEnrolments', $course);
@@ -95,6 +98,8 @@ class EnrolmentController extends Controller
         $enrolled = 0;
         $alreadyEnrolled = 0;
 
+        $startsAt = Carbon::parse($data['starts_at']);
+
         foreach ($data['user_ids'] as $userId) {
             $existing = Enrolment::where('course_id', $course->id)->where('user_id', $userId)->first();
 
@@ -104,26 +109,8 @@ class EnrolmentController extends Controller
                 continue;
             }
 
-            if ($existing !== null) {
-                $existing->forceFill([
-                    'status' => EnrolmentStatus::Active,
-                    'starts_at' => $data['starts_at'],
-                    'ends_at' => $data['ends_at'] ?? null,
-                    'payment_note' => $data['payment_note'] ?? null,
-                    'revoked_at' => null,
-                    'revoked_by' => null,
-                ])->save();
-            } else {
-                $enrolment = new Enrolment([
-                    'course_id' => $course->id,
-                    'user_id' => $userId,
-                    'starts_at' => $data['starts_at'],
-                    'ends_at' => $data['ends_at'] ?? null,
-                    'payment_note' => $data['payment_note'] ?? null,
-                ]);
-                $enrolment->forceFill(['enrolled_by' => $actor->id]);
-                $enrolment->save();
-            }
+            $student = User::find($userId);
+            ($this->enrolStudent)($course, $student, $startsAt, $data['ends_at'] ?? null, $data['payment_note'] ?? null, $actor->id);
 
             $enrolled++;
         }

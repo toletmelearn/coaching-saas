@@ -21,4 +21,8 @@
 
         <x-button>{{ __('users.create.submit') }}</x-button>
     </form>
+
+    <p class="mt-6 text-sm">
+        <a href="{{ url('/users/import') }}" class="text-indigo-600 underline">{{ __('import.nav_label') }}</a>
+    </p>
 @endsection

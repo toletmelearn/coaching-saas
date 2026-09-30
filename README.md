@@ -128,6 +128,16 @@ disabling a student also revoke devices — see [SECURITY.md](SECURITY.md). Stal
 rows (60+ days unseen) are cleaned up by the scheduled `php artisan devices:prune`
 command. See [docs/specs/phase-8-devices.md](docs/specs/phase-8-devices.md).
 
+### Bulk student import, WhatsApp credential sharing, progress export
+
+Owners/staff can add many students at once from `/users/import`: download a CSV template,
+upload it, review a row-by-row preview (nothing is created yet), then confirm. Each
+student's login and temporary password appears on a one-time credentials sheet
+(`/users/import/sheet/{token}`, 15-minute window, creator only) with a ready-to-send
+WhatsApp link per student — nothing is emailed or texted automatically. A course's progress
+can be exported as CSV from its progress page. See
+[docs/specs/phase-9-pilot.md](docs/specs/phase-9-pilot.md) and [SECURITY.md](SECURITY.md).
+
 ### PWA testing locally
 
 Service workers only register in a "secure context" — HTTPS, or `localhost`/`127.0.0.1`.

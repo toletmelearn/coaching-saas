@@ -19,6 +19,7 @@ use App\Http\Controllers\Manage\ChapterController as ManageChapterController;
 use App\Http\Controllers\Manage\CourseController as ManageCourseController;
 use App\Http\Controllers\Manage\CourseProgressController as ManageCourseProgressController;
 use App\Http\Controllers\Manage\EnrolmentController as ManageEnrolmentController;
+use App\Http\Controllers\Manage\HelpController as ManageHelpController;
 use App\Http\Controllers\Manage\LessonAttachmentController as ManageLessonAttachmentController;
 use App\Http\Controllers\Manage\LessonController as ManageLessonController;
 use App\Http\Controllers\Manage\LessonVideoController as ManageLessonVideoController;
@@ -28,6 +29,8 @@ use App\Http\Controllers\PlatformAdminDashboardController;
 use App\Http\Controllers\PlatformHomeController;
 use App\Http\Controllers\PwaController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\UserImportController;
+use App\Http\Controllers\UserImportCredentialsController;
 use App\Support\TenantContext;
 use Illuminate\Support\Facades\Route;
 
@@ -137,6 +140,18 @@ Route::middleware('require.tenant')->group(function () {
                 Route::get('users', [UserController::class, 'index'])->name('users.index');
                 Route::get('users/create', [UserController::class, 'create']);
                 Route::post('users', [UserController::class, 'store']);
+
+                // Registered before users/{user} — "import" must never be swallowed by
+                // the {user} wildcard (which would otherwise attempt to route-model-bind
+                // a User with id/route-key "import").
+                Route::get('users/import/template', [UserImportController::class, 'template']);
+                Route::get('users/import', [UserImportController::class, 'create']);
+                Route::post('users/import', [UserImportController::class, 'store'])->middleware('throttle:10,60');
+                Route::post('users/import/confirm', [UserImportController::class, 'confirm']);
+                Route::get('users/import/sheet/{token}', [UserImportCredentialsController::class, 'show']);
+                Route::get('users/import/sheet/{token}/download', [UserImportCredentialsController::class, 'download']);
+                Route::post('users/import/sheet/{token}/clear', [UserImportCredentialsController::class, 'clear']);
+
                 Route::get('users/{user}', [UserController::class, 'show']);
                 Route::patch('users/{user}', [UserController::class, 'update']);
                 Route::post('users/{user}/disable', [UserController::class, 'disable']);
@@ -147,6 +162,10 @@ Route::middleware('require.tenant')->group(function () {
                 Route::post('users/{user}/devices/sign-out-all', [ManageUserDeviceController::class, 'signOutAll']);
 
                 Route::prefix('manage')->group(function () {
+                    Route::post('getting-started/dismiss', [DashboardController::class, 'dismissGettingStarted']);
+
+                    Route::get('help', [ManageHelpController::class, 'show']);
+
                     Route::get('settings', [ManageSettingsController::class, 'show']);
                     Route::patch('settings', [ManageSettingsController::class, 'update']);
                     Route::post('settings/logo', [ManageSettingsController::class, 'storeLogo']);
@@ -191,6 +210,7 @@ Route::middleware('require.tenant')->group(function () {
                     Route::post('enrolments/{enrolment}/reenrol', [ManageEnrolmentController::class, 'reenrol']);
 
                     Route::get('courses/{course}/progress', [ManageCourseProgressController::class, 'index']);
+                    Route::get('courses/{course}/progress/export', [ManageCourseProgressController::class, 'export']);
                     Route::get('courses/{course}/progress/{user}', [ManageCourseProgressController::class, 'show']);
                 });
             });

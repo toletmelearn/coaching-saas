@@ -2,21 +2,40 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserRole;
 use App\Models\Enrolment;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
+use App\Support\GettingStartedChecklist;
 use App\Support\LessonAccess;
+use App\Support\TenantContext;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function show(LessonAccess $access): View
+    public function show(LessonAccess $access, TenantContext $tenantContext): View
     {
         $user = Auth::guard('tenant')->user();
 
         if ($user->role->canManageUsers()) {
-            return view('dashboard.staff', ['user' => $user]);
+            $checklist = null;
+            $showGettingStarted = false;
+
+            if ($user->role === UserRole::Owner) {
+                $tenant = $tenantContext->get();
+                $checklist = GettingStartedChecklist::forTenant($tenant);
+                $showGettingStarted = $tenant->getting_started_dismissed_at === null
+                    && ! GettingStartedChecklist::allDone($checklist);
+            }
+
+            return view('dashboard.staff', [
+                'user' => $user,
+                'checklist' => $checklist,
+                'showGettingStarted' => $showGettingStarted,
+            ]);
         }
 
         $enrolments = Enrolment::where('user_id', $user->id)->with('course')->get();
@@ -57,5 +76,15 @@ class DashboardController extends Controller
             'ended' => $ended,
             'courseProgress' => $courseProgress,
         ]);
+    }
+
+    public function dismissGettingStarted(TenantContext $tenantContext): RedirectResponse
+    {
+        $tenant = $tenantContext->get();
+        Gate::authorize('manageSettings', $tenant);
+
+        $tenant->forceFill(['getting_started_dismissed_at' => now()])->save();
+
+        return redirect('/dashboard');
     }
 }

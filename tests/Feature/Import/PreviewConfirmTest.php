@@ -212,7 +212,7 @@ test('a student already enrolled in the chosen course is handled without a dupli
 
     inTenant($tenant, function () use ($course, $existingStudent) {
         $action = app(EnrolStudentAction::class);
-        $action($course, $existingStudent, null, null, $existingStudent->id);
+        $action($course, $existingStudent, now(), null, null, $existingStudent->id);
 
         expect(Enrolment::where('course_id', $course->id)->where('user_id', $existingStudent->id)->count())->toBe(1);
     });

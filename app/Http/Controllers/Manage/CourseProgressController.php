@@ -9,9 +9,13 @@ use App\Models\Enrolment;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Models\User;
+use App\Support\Csv\CsvFormulaGuard;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CourseProgressController extends Controller
 {
@@ -19,10 +23,76 @@ class CourseProgressController extends Controller
     {
         Gate::authorize('viewProgress', $course);
 
+        $totalLessons = $this->totalLessonsFor($course);
+        [$query, $filter, $sort, $inactiveDays] = $this->filteredSortedQuery($course, $request, $totalLessons);
+
+        $enrolments = $query->paginate(25)->withQueryString();
+
+        return view('manage.courses.progress.index', [
+            'course' => $course,
+            'enrolments' => $enrolments,
+            'totalLessons' => $totalLessons,
+            'filter' => $filter,
+            'sort' => $sort,
+            'inactiveDays' => $inactiveDays,
+        ]);
+    }
+
+    public function export(Course $course, Request $request): StreamedResponse
+    {
+        Gate::authorize('viewProgress', $course);
+
+        $totalLessons = $this->totalLessonsFor($course);
+        [$query] = $this->filteredSortedQuery($course, $request, $totalLessons);
+
+        $enrolments = $query->get();
+        $filename = sprintf('progress-%s-%s.csv', $course->slug, now()->timezone('Asia/Kolkata')->format('Y-m-d'));
+
+        return response()->streamDownload(function () use ($enrolments, $totalLessons) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['name', 'phone', 'email', 'enrolled_since', 'lessons_completed', 'lessons_total', 'percent', 'last_active', 'enrolment_status']);
+
+            foreach ($enrolments as $enrolment) {
+                $completed = (int) ($enrolment->completed_count ?? 0);
+                $percent = $totalLessons > 0 ? (int) round($completed / $totalLessons * 100) : 0;
+                $lastActivityAt = $enrolment->getAttribute('last_activity_at');
+                $lastActive = $lastActivityAt
+                    ? Carbon::parse($lastActivityAt)->timezone('Asia/Kolkata')->toDateString()
+                    : '';
+
+                fputcsv($out, [
+                    CsvFormulaGuard::escape($enrolment->user->name),
+                    CsvFormulaGuard::escape($enrolment->user->phone),
+                    CsvFormulaGuard::escape($enrolment->user->email),
+                    $enrolment->starts_at->timezone('Asia/Kolkata')->toDateString(),
+                    $completed,
+                    $totalLessons,
+                    $percent,
+                    $lastActive,
+                    $enrolment->status->value,
+                ]);
+            }
+
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function totalLessonsFor(Course $course): int
+    {
+        return Lesson::where('course_id', $course->id)
+            ->where('status', LessonStatus::Published)
+            ->count();
+    }
+
+    /**
+     * @return array{0: Builder<Enrolment>, 1: ?string, 2: ?string, 3: int}
+     */
+    private function filteredSortedQuery(Course $course, Request $request, int $totalLessons): array
+    {
         $publishedLessonIds = Lesson::where('course_id', $course->id)
             ->where('status', LessonStatus::Published)
             ->pluck('id');
-        $totalLessons = $publishedLessonIds->count();
 
         // Aggregated once in SQL (grouped by student), never one query per student —
         // see docs/specs/phase-7-progress.md "Teacher table" and the query-count test.
@@ -58,16 +128,7 @@ class CourseProgressController extends Controller
             default => $query->orderByDesc('enrolments.created_at'),
         };
 
-        $enrolments = $query->paginate(25)->withQueryString();
-
-        return view('manage.courses.progress.index', [
-            'course' => $course,
-            'enrolments' => $enrolments,
-            'totalLessons' => $totalLessons,
-            'filter' => $filter,
-            'sort' => $sort,
-            'inactiveDays' => $inactiveDays,
-        ]);
+        return [$query, $filter, $sort, $inactiveDays];
     }
 
     public function show(Course $course, User $user): View

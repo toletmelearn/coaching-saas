@@ -2,6 +2,7 @@
 
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\Import\CsvImportPreviewBuilder;
 
 function importFixture(): array
 {
@@ -22,7 +23,7 @@ test('the template download is a CSV with a BOM and the expected headers', funct
 
     $response->assertOk();
     $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
-    expect(str_starts_with($response->streamedContent() ?? $response->getContent(), "\xEF\xBB\xBF"))->toBeTrue();
+    expect(str_starts_with($response->getContent(), "\xEF\xBB\xBF"))->toBeTrue();
     expect($response->getContent())->toContain('name,phone,email');
 });
 
@@ -149,10 +150,13 @@ test('a file over 1 MB is rejected', function () {
         ->assertSessionHasErrors('file');
 });
 
-test('a file with more than 100 data rows is rejected', function () {
+test('a file with more than the row cap is rejected', function () {
+    // Cap lowered from the brief's default 100 to 45 after measuring bcrypt timing on
+    // this dev machine at the app's real BCRYPT_ROUNDS=12 (~44s for 100 hashes, over
+    // the brief's ~20s budget) — see CsvImportPreviewBuilder::MAX_ROWS.
     [, $domain, $owner] = importFixture();
     $rows = "name,phone,email\n";
-    for ($i = 0; $i < 101; $i++) {
+    for ($i = 0; $i < CsvImportPreviewBuilder::MAX_ROWS + 1; $i++) {
         $rows .= "Student {$i},98765432{$i},student{$i}@example.com\n";
     }
 
@@ -161,10 +165,10 @@ test('a file with more than 100 data rows is rejected', function () {
         ->assertSessionHasErrors('file');
 });
 
-test('exactly 100 data rows is accepted (positive control)', function () {
+test('exactly the row cap is accepted (positive control)', function () {
     [, $domain, $owner] = importFixture();
     $rows = "name,phone,email\n";
-    for ($i = 0; $i < 100; $i++) {
+    for ($i = 0; $i < CsvImportPreviewBuilder::MAX_ROWS; $i++) {
         $rows .= sprintf("Student %d,9%09d,student%d@example.com\n", $i, $i, $i);
     }
 

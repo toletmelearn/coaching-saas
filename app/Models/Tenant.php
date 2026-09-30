@@ -44,6 +44,7 @@ class Tenant extends Model
             'academic_year_end' => 'date',
             'branding_version' => 'integer',
             'max_devices_per_student' => 'integer',
+            'getting_started_dismissed_at' => 'datetime',
         ];
     }
 

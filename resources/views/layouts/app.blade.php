@@ -43,6 +43,10 @@
                         <a href="{{ url('/dashboard') }}" class="min-h-[44px] flex items-center">{{ __('nav.my_courses') }}</a>
                     @endif
 
+                    @if ($tenantUser->role->canManageUsers())
+                        <a href="{{ url('/manage/help') }}" class="min-h-[44px] flex items-center">{{ __('help.nav_label') }}</a>
+                    @endif
+
                     @if ($tenantUser->role->isOwner())
                         <a href="{{ url('/manage/settings') }}" class="min-h-[44px] flex items-center">{{ __('nav.settings') }}</a>
                     @endif

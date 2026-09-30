@@ -35,9 +35,10 @@ test('the export contains the expected columns and rows for enrolled students', 
 
     $response->assertOk();
     $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
-    expect($response->getContent())->toContain('name,phone,email,enrolled_since,lessons_completed,lessons_total,percent,last_active,enrolment_status');
-    expect($response->getContent())->toContain('Asha Rao');
-    expect($response->getContent())->toContain('9876543210');
+    $content = $response->streamedContent();
+    expect($content)->toContain('name,phone,email,enrolled_since,lessons_completed,lessons_total,percent,last_active,enrolment_status');
+    expect($content)->toContain('Asha Rao');
+    expect($content)->toContain('9876543210');
 });
 
 test('the filename includes the course slug and today\'s date', function () {
@@ -45,8 +46,12 @@ test('the filename includes the course slug and today\'s date', function () {
 
     $response = $this->actingAs($owner, 'tenant')->get("http://{$domain}/manage/courses/{$course->id}/progress/export");
 
-    $expected = "progress-{$course->slug}-".now()->format('Y-m-d').'.csv';
-    $response->assertHeader('content-disposition', "attachment; filename=\"{$expected}\"");
+    // Symfony's Content-Disposition builder only quotes a filename when the raw
+    // filename needs it (spaces, non-ASCII, etc.) — a plain slug-date.csv name is a
+    // valid HTTP token and is legitimately sent unquoted. Assert on the filename
+    // value itself rather than an assumed quoting style.
+    $expected = "progress-{$course->slug}-".now()->timezone('Asia/Kolkata')->format('Y-m-d').'.csv';
+    expect($response->headers->get('content-disposition'))->toContain('filename='.$expected);
 });
 
 test('the filter and sort query parameters are applied and the export is not paginated', function () {
@@ -62,7 +67,7 @@ test('the filter and sort query parameters are applied and the export is not pag
         ->get("http://{$domain}/manage/courses/{$course->id}/progress/export?filter=not_started&sort=last_active");
 
     $response->assertOk();
-    $lines = array_filter(explode("\n", $response->getContent()));
+    $lines = array_filter(explode("\n", $response->streamedContent()));
     // header + 30 data rows, never truncated to a page size like 25.
     expect(count($lines))->toBe(31);
 });
@@ -76,7 +81,7 @@ test('formula injection in a student name is neutralised with a leading quote', 
 
     $response = $this->actingAs($owner, 'tenant')->get("http://{$domain}/manage/courses/{$course->id}/progress/export");
 
-    expect($response->getContent())->toContain('\'=HYPERLINK');
+    expect($response->streamedContent())->toContain('\'=HYPERLINK');
 });
 
 test('a staff member can export progress (positive control)', function () {
