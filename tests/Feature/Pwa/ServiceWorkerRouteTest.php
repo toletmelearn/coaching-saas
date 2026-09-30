@@ -3,6 +3,13 @@
 use App\Enums\TenantStatus;
 use App\Models\Tenant;
 
+function extractCacheVersion(string $swContent): string
+{
+    preg_match("/CACHE_NAME = 'coaching-saas-' \+ '([^']+)';/", $swContent, $match);
+
+    return $match[1] ?? '';
+}
+
 test('sw.js is served with the correct headers', function () {
     $tenant = Tenant::factory()->create();
     $domain = 'tenant-a.coaching.test';
@@ -29,6 +36,31 @@ test('sw.js has the __CACHE_VERSION__ placeholder replaced with a real value', f
     $response->assertOk();
     $response->assertDontSee('__CACHE_VERSION__', false);
     expect($response->getContent())->toContain("const CACHE_NAME = 'coaching-saas-");
+});
+
+test('the version embedded in sw.js changes when the built asset manifest changes', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    $manifestPath = public_path('build/manifest.json');
+    $originalManifest = file_exists($manifestPath) ? file_get_contents($manifestPath) : null;
+
+    try {
+        file_put_contents($manifestPath, '{"marker":"phase-6-1-test-a"}');
+        $versionA = extractCacheVersion($this->get("http://{$domain}/sw.js")->getContent());
+
+        file_put_contents($manifestPath, '{"marker":"phase-6-1-test-b"}');
+        $versionB = extractCacheVersion($this->get("http://{$domain}/sw.js")->getContent());
+
+        expect($versionA)->not->toBe($versionB);
+    } finally {
+        if ($originalManifest === null) {
+            @unlink($manifestPath);
+        } else {
+            file_put_contents($manifestPath, $originalManifest);
+        }
+    }
 });
 
 test('sw.js works on a tenant domain and 404s on a central domain', function () {

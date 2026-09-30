@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\Branding\BrandingImageService;
+use App\Support\Pwa\ServiceWorkerVersion;
 use App\Support\TenantContext;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\View;
@@ -89,7 +90,7 @@ class PwaController extends Controller
     {
         $source = file_get_contents(resource_path('js/sw.js'));
 
-        $script = str_replace('__CACHE_VERSION__', $this->cacheVersion(), $source);
+        $script = str_replace('__CACHE_VERSION__', $this->cacheVersion($source), $source);
 
         return response($script, 200, [
             'Content-Type' => 'application/javascript',
@@ -105,20 +106,11 @@ class PwaController extends Controller
         return response(View::make('pwa.offline', ['tenant' => $tenant]));
     }
 
-    /**
-     * A stable cache-bust value for the service worker's own precache version,
-     * derived from the built assets rather than a hand-maintained constant — a new
-     * `npm run build` (and therefore a new manifest hash) naturally invalidates the
-     * previous service worker's caches on activate.
-     */
-    private function cacheVersion(): string
+    private function cacheVersion(string $swSource): string
     {
         $manifestPath = public_path('build/manifest.json');
+        $manifest = is_file($manifestPath) ? file_get_contents($manifestPath) : null;
 
-        if (is_file($manifestPath)) {
-            return substr(hash('crc32b', (string) file_get_contents($manifestPath)), 0, 12);
-        }
-
-        return 'dev';
+        return ServiceWorkerVersion::compute($manifest === false ? null : $manifest, $swSource);
     }
 }

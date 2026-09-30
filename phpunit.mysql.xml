@@ -38,6 +38,7 @@
         </testsuite>
         <testsuite name="Pwa">
             <directory>tests/Feature/Pwa</directory>
+            <directory>tests/Unit/Support/Pwa</directory>
         </testsuite>
     </testsuites>
     <source>

@@ -27,7 +27,7 @@
         <div class="max-w-3xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
             <span class="flex items-center gap-2 font-semibold text-gray-900">
                 @if ($tenant->logo_path)
-                    <img src="/branding/logo" alt="" class="h-8 w-8 rounded object-contain">
+                    <img src="/branding/logo?v={{ $tenant->branding_version }}" alt="" class="h-8 w-8 rounded object-contain">
                 @endif
                 {{ $tenant->name }}
             </span>

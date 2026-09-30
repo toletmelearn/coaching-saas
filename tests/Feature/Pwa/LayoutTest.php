@@ -2,7 +2,19 @@
 
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Vite;
+
+function layoutTestLogoUpload(): UploadedFile
+{
+    $image = imagecreatetruecolor(512, 512);
+    imagefill($image, 0, 0, imagecolorallocate($image, 79, 70, 229));
+    $path = tempnam(sys_get_temp_dir(), 'logo').'.png';
+    imagepng($image, $path);
+    imagedestroy($image);
+
+    return new UploadedFile($path, 'logo.png', 'image/png', null, true);
+}
 
 test('tenant pages include the manifest link, theme-color meta, apple-touch-icon and bundled pwa script; central-domain pages do not', function () {
     $tenant = Tenant::factory()->create();
@@ -34,13 +46,13 @@ test('the tenant header shows the logo when set, and the institute name always',
     // No logo yet: name still shown, no <img> pointing at the branding route.
     $noLogo = $this->get("http://{$domain}/login");
     $noLogo->assertSee('Bright Future Academy');
-    $noLogo->assertDontSee('src="/branding/logo"', false);
+    $noLogo->assertDontSee('src="/branding/logo?v=', false);
 
     inTenant($tenant, fn () => $tenant->forceFill(['logo_path' => "tenants/{$tenant->id}/branding/fake.png"])->save());
 
     $withLogo = $this->get("http://{$domain}/login");
     $withLogo->assertSee('Bright Future Academy');
-    $withLogo->assertSee('src="/branding/logo"', false);
+    $withLogo->assertSee('src="/branding/logo?v=', false);
 });
 
 test('the login page shows the logo above the heading when set', function () {
@@ -49,7 +61,46 @@ test('the login page shows the logo above the heading when set', function () {
     $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
     inTenant($tenant, fn () => $tenant->forceFill(['logo_path' => "tenants/{$tenant->id}/branding/fake.png"])->save());
 
-    $this->get("http://{$domain}/login")->assertSee('src="/branding/logo"', false);
+    $this->get("http://{$domain}/login")->assertSee('src="/branding/logo?v=', false);
+});
+
+test('the header/login logo URL is versioned, and the version increases when the logo is replaced', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+    $owner = inTenant($tenant, fn () => User::factory()->owner()->create());
+
+    $this->actingAs($owner, 'tenant')
+        ->post("http://{$domain}/manage/settings/logo", ['logo' => layoutTestLogoUpload()])
+        ->assertRedirect();
+
+    $firstHtml = $this->get("http://{$domain}/login")->getContent();
+    preg_match('/src="\/branding\/logo\?v=(\d+)"/', $firstHtml, $firstMatch);
+    expect($firstMatch)->not->toBeEmpty();
+    $firstVersion = (int) $firstMatch[1];
+
+    freshRequestCycle();
+
+    $this->actingAs($owner, 'tenant')
+        ->post("http://{$domain}/manage/settings/logo", ['logo' => layoutTestLogoUpload()])
+        ->assertRedirect();
+
+    $secondHtml = $this->get("http://{$domain}/login")->getContent();
+    preg_match('/src="\/branding\/logo\?v=(\d+)"/', $secondHtml, $secondMatch);
+    expect($secondMatch)->not->toBeEmpty();
+    $secondVersion = (int) $secondMatch[1];
+
+    expect($secondVersion)->toBeGreaterThan($firstVersion);
+
+    // The settings page's own logo preview must be versioned the same way, so the
+    // owner immediately sees the new logo there too, not a browser-cached old one.
+    freshRequestCycle();
+    $settingsHtml = $this->actingAs($owner, 'tenant')
+        ->get("http://{$domain}/manage/settings")
+        ->getContent();
+    preg_match('/src="\/branding\/logo\?v=(\d+)"/', $settingsHtml, $settingsMatch);
+    expect($settingsMatch)->not->toBeEmpty();
+    expect((int) $settingsMatch[1])->toBe($secondVersion);
 });
 
 test('accent colour and institute name are only ever rendered from validated/escaped values, never raw request input', function () {
