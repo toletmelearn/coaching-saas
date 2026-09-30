@@ -17,6 +17,7 @@
         "@laravel/multiplex": "^0.4.1"
     },
     "dependencies": {
+        "player.js": "0.1.0",
         "tus-js-client": "^4.3.1"
     }
 }

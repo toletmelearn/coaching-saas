@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 function completionFixture(array $lessonOverrides = []): array
 {
     $tenant = Tenant::factory()->create();
-    $domain = Str::random(8).'.coaching.test';
+    $domain = strtolower(Str::random(8)).'.coaching.test';
     $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
 
     [$lesson, $student] = inTenant($tenant, function () use ($lessonOverrides) {
@@ -104,11 +104,7 @@ test('an auto-completed video lesson cannot be unmarked via the manual endpoint'
         LessonVideo::factory()->for($lesson)->ready()->create();
         $student = User::factory()->student()->create();
         Enrolment::factory()->for($course)->for($student, 'user')->active()->create();
-        LessonProgress::create([
-            'lesson_id' => $lesson->id,
-            'course_id' => $course->id,
-            'user_id' => $student->id,
-        ]);
+        LessonProgress::factory()->for($lesson)->for($course)->for($student, 'user')->completed()->create();
 
         return [$lesson, $student];
     });

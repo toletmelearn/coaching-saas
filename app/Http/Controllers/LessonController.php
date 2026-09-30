@@ -6,8 +6,10 @@ use App\Contracts\VideoProvider;
 use App\Enums\VideoStatus;
 use App\Models\Course;
 use App\Models\Lesson;
+use App\Models\LessonProgress;
 use App\Models\User;
 use App\Support\LessonAccess;
+use App\Support\ProgressRecorder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -15,7 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class LessonController extends Controller
 {
-    public function show(Course $course, Lesson $lesson, LessonAccess $access, VideoProvider $videoProvider): View|Response
+    public function show(Course $course, Lesson $lesson, LessonAccess $access, VideoProvider $videoProvider, ProgressRecorder $recorder): View|Response
     {
         $user = Auth::guard('tenant')->user();
 
@@ -52,6 +54,23 @@ class LessonController extends Controller
             ];
         }
 
+        // A "recordable" viewer is exactly who LessonAccess deems eligible for progress
+        // recording (App\Http\Controllers\LessonProgressController mirrors this same
+        // rule): a genuinely enrolled, active student — never a guest (even on a free
+        // preview) and never owner/staff previewing. Built by CALLING LessonAccess, not
+        // by re-deriving the rule here.
+        $isRecordableStudent = $user !== null
+            && ! $access->isStaffOrOwner($user)
+            && $access->hasValidEnrolment($user, $course);
+
+        $progress = $isRecordableStudent
+            ? LessonProgress::where('lesson_id', $lesson->id)->where('user_id', $user->id)->first()
+            : null;
+
+        $resumePosition = $progress !== null
+            ? $recorder->resumePosition($progress->last_position_seconds, $progress->duration_seconds)
+            : 0;
+
         [$previous, $next] = $this->siblingLessons($course, $lesson);
 
         return view('lessons.show', [
@@ -60,6 +79,9 @@ class LessonController extends Controller
             'previous' => $previous,
             'next' => $next,
             'videoPlayback' => $videoPlayback,
+            'isRecordableStudent' => $isRecordableStudent,
+            'progress' => $progress,
+            'resumePosition' => $resumePosition,
         ]);
     }
 

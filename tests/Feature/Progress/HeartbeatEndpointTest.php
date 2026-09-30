@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
 function heartbeatFixture(bool $publish = true): array
 {
     $tenant = Tenant::factory()->create();
-    $domain = Str::random(8).'.coaching.test';
+    $domain = strtolower(Str::random(8)).'.coaching.test';
     $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
 
     $lesson = inTenant($tenant, function () use ($publish) {
@@ -113,8 +113,15 @@ test('a disabled student is logged out and cannot post a heartbeat', function ()
     $this->actingAs($student, 'tenant');
     inTenant($tenant, fn () => $student->forceFill(['status' => 'disabled'])->save());
 
+    // EnsureActiveTenantUser (active.tenant.user) always redirects to /login and logs
+    // the session out — it doesn't content-negotiate on Accept like auth:tenant's
+    // default unauthenticated() handling does, matching its behaviour everywhere else
+    // in the app (e.g. tests/Feature/Users, tests/Feature/Video). Not something Phase 7
+    // should special-case.
     $this->postJson("http://{$domain}/lessons/{$lesson->id}/progress", heartbeatPayload())
-        ->assertUnauthorized();
+        ->assertRedirect("http://{$domain}/login");
+
+    $this->assertGuest('tenant');
 });
 
 test('a must-change-password student is redirected instead of recording progress', function () {

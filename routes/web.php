@@ -12,10 +12,12 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DemoRequestController;
 use App\Http\Controllers\LessonAttachmentController;
 use App\Http\Controllers\LessonController;
+use App\Http\Controllers\LessonProgressController;
 use App\Http\Controllers\LessonVideoStreamController;
 use App\Http\Controllers\LessonVideoUploadController;
 use App\Http\Controllers\Manage\ChapterController as ManageChapterController;
 use App\Http\Controllers\Manage\CourseController as ManageCourseController;
+use App\Http\Controllers\Manage\CourseProgressController as ManageCourseProgressController;
 use App\Http\Controllers\Manage\EnrolmentController as ManageEnrolmentController;
 use App\Http\Controllers\Manage\LessonAttachmentController as ManageLessonAttachmentController;
 use App\Http\Controllers\Manage\LessonController as ManageLessonController;
@@ -121,6 +123,14 @@ Route::middleware('require.tenant')->group(function () {
             Route::middleware('must.change.password')->group(function () {
                 Route::get('dashboard', [DashboardController::class, 'show']);
 
+                // Lesson progress — heartbeat/completion. Deliberately NOT nested under
+                // /manage: these are student-facing endpoints, gated by the same
+                // auth:tenant -> active.tenant.user -> must.change.password stack as
+                // /dashboard, so a guest gets the normal redirect/401 the middleware
+                // already produces rather than a bespoke check in the controller.
+                Route::post('lessons/{lesson}/progress', [LessonProgressController::class, 'heartbeat']);
+                Route::put('lessons/{lesson}/completion', [LessonProgressController::class, 'completion']);
+
                 Route::get('users', [UserController::class, 'index'])->name('users.index');
                 Route::get('users/create', [UserController::class, 'create']);
                 Route::post('users', [UserController::class, 'store']);
@@ -173,6 +183,9 @@ Route::middleware('require.tenant')->group(function () {
                     Route::post('courses/{course}/enrolments', [ManageEnrolmentController::class, 'store']);
                     Route::post('enrolments/{enrolment}/revoke', [ManageEnrolmentController::class, 'revoke']);
                     Route::post('enrolments/{enrolment}/reenrol', [ManageEnrolmentController::class, 'reenrol']);
+
+                    Route::get('courses/{course}/progress', [ManageCourseProgressController::class, 'index']);
+                    Route::get('courses/{course}/progress/{user}', [ManageCourseProgressController::class, 'show']);
                 });
             });
         });

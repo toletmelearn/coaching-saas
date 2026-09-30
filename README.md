@@ -106,6 +106,16 @@ second course,
 testing the "draft course is invisible" behavior). See
 [docs/specs/phase-4-courses.md](docs/specs/phase-4-courses.md).
 
+### Lesson progress tracking
+
+Students see how far they've got (a tick + percentage on the course page, a progress bar
+and "Continue" link on the dashboard) and can resume a video where they left off. Video
+lessons complete automatically at 85% watched; everything else (notes-only lessons,
+YouTube previews) is completed with a "Mark as complete" tap. Owners/staff see it from
+`/manage/courses/{course}/progress` (filters for inactive/not-started, sort by progress or
+last active) and a per-student detail page. See
+[docs/specs/phase-7-progress.md](docs/specs/phase-7-progress.md).
+
 ### PWA testing locally
 
 Service workers only register in a "secure context" — HTTPS, or `localhost`/`127.0.0.1`.
@@ -155,6 +165,7 @@ into `C:\Windows\System32\drivers\etc\hosts` instead of typing them by hand.
 |--------------------------|-------------------------------------------------------------------|
 | `composer test`          | Run the full Pest suite against an in-memory SQLite database.     |
 | `composer test:mysql`    | Run `tests/Feature/Tenancy` against the `coaching_saas_test` MySQL database (set `DB_TEST_*` in `.env`). |
+| `composer test:js`       | Run the Node test-runner suite for `resources/js/{sw,progress-tracker}.js` (no browser needed). |
 | `composer lint`          | Format code with Laravel Pint.                                    |
 | `composer analyse`       | Static analysis with Larastan (PHPStan) at level 5.                |
 

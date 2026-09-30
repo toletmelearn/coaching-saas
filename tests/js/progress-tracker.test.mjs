@@ -19,7 +19,7 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { test } from 'node:test';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const modulePath = path.resolve(__dirname, '../../resources/js/progress-tracker.js');
@@ -29,7 +29,9 @@ async function loadModule() {
         throw new Error(`resources/js/progress-tracker.js does not exist yet at ${modulePath}`);
     }
 
-    return import(modulePath);
+    // A raw Windows path (C:\...) isn't a valid specifier for dynamic import() — it
+    // must be a proper file:// URL.
+    return import(pathToFileURL(modulePath).href);
 }
 
 test('accumulates played deltas between successive timeupdate events', async () => {
@@ -122,6 +124,37 @@ test('does not flush while paused or the tab is hidden (no playback events)', as
 
     // No further timeupdate events while paused — nothing new to send.
     tracker.onHidden(5_000);
+    assert.equal(sent.length, 0);
+});
+
+test('stop() prevents all future sends, even after new playback events', async () => {
+    const { createTracker } = await loadModule();
+    const sent = [];
+    const tracker = createTracker({ onSend: (payload) => sent.push(payload) });
+
+    tracker.onTimeUpdate(1, 600, 1_000);
+    tracker.onTimeUpdate(2, 600, 2_000);
+    tracker.onPause(2_100);
+    assert.equal(sent.length, 1, 'sanity check: the tracker sends normally before stop()');
+
+    // A logged-out/disabled student's still-open tab must not keep hitting the login
+    // page every 15s of "playback" once the server has said no (redirect/401/403).
+    tracker.stop();
+    assert.equal(tracker.isStopped(), true);
+
+    sent.length = 0;
+    let t = 2;
+    let wall = 2_100;
+    for (let i = 0; i < 20; i++) {
+        t += 1;
+        wall += 1_000;
+        tracker.onTimeUpdate(t, 600, wall);
+    }
+    tracker.onPause(wall + 100);
+    tracker.onEnded(wall + 200);
+    tracker.onHidden(wall + 300);
+    tracker.onPageHide(wall + 400);
+
     assert.equal(sent.length, 0);
 });
 

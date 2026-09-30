@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 function teacherProgressFixture(int $lessonsCount = 3): array
 {
     $tenant = Tenant::factory()->create();
-    $domain = Str::random(8).'.coaching.test';
+    $domain = strtolower(Str::random(8)).'.coaching.test';
     $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
 
     [$owner, $course, $lessons] = inTenant($tenant, function () use ($lessonsCount) {
@@ -36,13 +36,7 @@ test('owner sees the progress table with correct per-student counts', function (
     inTenant($tenant, function () use ($course, $lessons) {
         $student = User::factory()->student()->create(['name' => 'Rita Sharma']);
         Enrolment::factory()->for($course)->for($student, 'user')->active()->create();
-        LessonProgress::create([
-            'lesson_id' => $lessons->first()->id,
-            'course_id' => $course->id,
-            'user_id' => $student->id,
-            'completed_at' => now(),
-            'completed_manually' => true,
-        ]);
+        LessonProgress::factory()->for($lessons->first())->for($course)->for($student, 'user')->manuallyCompleted()->create();
     });
 
     $response = $this->actingAs($owner, 'tenant')
@@ -84,21 +78,11 @@ test('the "not active for 7+ days" filter matches only inactive students', funct
     inTenant($tenant, function () use ($course, $lessons) {
         $stale = User::factory()->student()->create(['name' => 'Stale Student']);
         Enrolment::factory()->for($course)->for($stale, 'user')->active()->create();
-        LessonProgress::create([
-            'lesson_id' => $lessons->first()->id,
-            'course_id' => $course->id,
-            'user_id' => $stale->id,
-            'last_activity_at' => now()->subDays(10),
-        ]);
+        LessonProgress::factory()->for($lessons->first())->for($course)->for($stale, 'user')->inactiveSince(10)->create();
 
         $fresh = User::factory()->student()->create(['name' => 'Fresh Student']);
         Enrolment::factory()->for($course)->for($fresh, 'user')->active()->create();
-        LessonProgress::create([
-            'lesson_id' => $lessons->first()->id,
-            'course_id' => $course->id,
-            'user_id' => $fresh->id,
-            'last_activity_at' => now()->subDay(),
-        ]);
+        LessonProgress::factory()->for($lessons->first())->for($course)->for($fresh, 'user')->inactiveSince(1)->create();
     });
 
     $response = $this->actingAs($owner, 'tenant')
@@ -115,21 +99,20 @@ test('the "not started" filter matches only students with no accepted activity',
         $notStarted = User::factory()->student()->create(['name' => 'Not Started Student']);
         Enrolment::factory()->for($course)->for($notStarted, 'user')->active()->create();
 
-        $started = User::factory()->student()->create(['name' => 'Started Student']);
-        Enrolment::factory()->for($course)->for($started, 'user')->active()->create();
-        LessonProgress::create([
-            'lesson_id' => $lessons->first()->id,
-            'course_id' => $course->id,
-            'user_id' => $started->id,
-            'last_activity_at' => now(),
-        ]);
+        // Deliberately NOT a substring of "Not Started Student" (an earlier version of
+        // this test used "Started Student", which "Not Started Student" itself
+        // contains — making the assertDontSee below always fail regardless of whether
+        // filtering actually worked).
+        $active = User::factory()->student()->create(['name' => 'Active Learner']);
+        Enrolment::factory()->for($course)->for($active, 'user')->active()->create();
+        LessonProgress::factory()->for($lessons->first())->for($course)->for($active, 'user')->inactiveSince(0)->create();
     });
 
     $response = $this->actingAs($owner, 'tenant')
         ->get("http://{$domain}/manage/courses/{$course->id}/progress?filter=not_started");
 
     $response->assertSee('Not Started Student');
-    $response->assertDontSee('Started Student');
+    $response->assertDontSee('Active Learner');
 });
 
 test('the progress table is paginated at 25 per page', function () {
@@ -145,7 +128,13 @@ test('the progress table is paginated at 25 per page', function () {
         ->get("http://{$domain}/manage/courses/{$course->id}/progress");
 
     $response->assertOk();
-    $response->assertSee('26', false); // pagination affordance / "of 30" style text expected somewhere
+    // The pagination footer's total-results figure proves the full 30-student result
+    // set is known, while exactly 25 row markers proves the page itself was truncated
+    // to 25 — together these prove real pagination, not just an unpaginated list of
+    // everyone. Laravel's default tailwind pagination view puts the total inside its
+    // own <span>, so "of 30" never appears as contiguous text.
+    $response->assertSee('<span class="font-medium">30</span>', false);
+    expect(substr_count($response->getContent(), 'data-student-row'))->toBe(25);
 });
 
 test('viewing the progress table for 30 students issues a bounded number of queries (no N+1)', function () {
@@ -154,12 +143,7 @@ test('viewing the progress table for 30 students issues a bounded number of quer
     inTenant($tenant, function () use ($course, $lessons) {
         User::factory()->count(30)->student()->create()->each(function (User $student) use ($course, $lessons) {
             Enrolment::factory()->for($course)->for($student, 'user')->active()->create();
-            LessonProgress::create([
-                'lesson_id' => $lessons->first()->id,
-                'course_id' => $course->id,
-                'user_id' => $student->id,
-                'last_activity_at' => now(),
-            ]);
+            LessonProgress::factory()->for($lessons->first())->for($course)->for($student, 'user')->inactiveSince(0)->create();
         });
     });
 
@@ -179,13 +163,7 @@ test('the per-student page shows every published lesson with its status', functi
     $student = inTenant($tenant, function () use ($course, $lessons) {
         $student = User::factory()->student()->create(['name' => 'Deepak Verma']);
         Enrolment::factory()->for($course)->for($student, 'user')->active()->create();
-        LessonProgress::create([
-            'lesson_id' => $lessons->first()->id,
-            'course_id' => $course->id,
-            'user_id' => $student->id,
-            'completed_at' => now(),
-            'completed_manually' => true,
-        ]);
+        LessonProgress::factory()->for($lessons->first())->for($course)->for($student, 'user')->manuallyCompleted()->create();
 
         return $student;
     });
@@ -214,16 +192,24 @@ test('a student cannot view another student\'s per-student progress page', funct
         ->assertForbidden();
 });
 
-test('tenant isolation: tenant B cannot view tenant A\'s course progress table', function () {
+test('tenant isolation: tenant A\'s domain cannot resolve tenant B\'s course id for progress', function () {
     [$tenantA, $domainA, $ownerA, $courseA] = teacherProgressFixture();
-    [$tenantB, , $ownerB] = teacherProgressFixture();
+    [, , , $courseB] = teacherProgressFixture();
 
-    // Positive control: tenant A's own owner can view tenant A's course progress.
+    // Positive control: tenant A's own owner viewing tenant A's own course, on tenant
+    // A's own domain, works — proves the negative below is real route-scoping, not a
+    // route that's broken outright.
     $this->actingAs($ownerA, 'tenant')
         ->get("http://{$domainA}/manage/courses/{$courseA->id}/progress")
         ->assertOk();
 
-    $this->actingAs($ownerB, 'tenant')
-        ->get("http://{$domainA}/manage/courses/{$courseA->id}/progress")
+    // Negative: the SAME actor, SAME domain, but tenant B's course id — {course} route
+    // binding is scoped to tenant A (resolved from domainA), so tenant B's course
+    // simply doesn't exist in that scope. Deliberately not using actingAs() with a
+    // cross-tenant user here (that bypasses the real tenant-scoped session/user-provider
+    // resolution entirely and would never happen via an actual login), matching the
+    // established pattern in tests/Feature/Video/PlaybackAccessTest.php.
+    $this->actingAs($ownerA, 'tenant')
+        ->get("http://{$domainA}/manage/courses/{$courseB->id}/progress")
         ->assertNotFound();
 });

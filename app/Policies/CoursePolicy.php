@@ -46,4 +46,9 @@ class CoursePolicy
     {
         return $actor->role->isOwner();
     }
+
+    public function viewProgress(User $actor, Course $course): bool
+    {
+        return $actor->role->canManageCourses();
+    }
 }

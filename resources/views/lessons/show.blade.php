@@ -1,5 +1,11 @@
 @extends('layouts.app')
 
+@if ($isRecordableStudent && $videoPlayback)
+    @push('scripts')
+        @vite('resources/js/lesson-progress.js')
+    @endpush
+@endif
+
 @section('content')
     <p class="mb-2">
         <a href="{{ url('/courses/'.$course->slug) }}" class="text-sm text-gray-600">&larr; {{ __('lessons.back_to_course') }}</a>
@@ -12,7 +18,24 @@
     @endif
 
     @if ($videoPlayback)
-        <div id="video-wrapper-{{ $lesson->id }}" class="relative aspect-video w-full mb-4 bg-black">
+        @if ($isRecordableStudent && $resumePosition > 0)
+            <p class="mb-2 text-sm text-gray-600">{{ __('progress.resuming_from', ['time' => gmdate($resumePosition >= 3600 ? 'H:i:s' : 'i:s', $resumePosition)]) }}</p>
+        @endif
+
+        <div
+            id="video-wrapper-{{ $lesson->id }}"
+            class="relative aspect-video w-full mb-4 bg-black"
+            @if ($isRecordableStudent)
+                data-progress-url="{{ url('/lessons/'.$lesson->id.'/progress') }}"
+                data-start-position="{{ $resumePosition }}"
+                data-driver="{{ $videoPlayback['driver'] }}"
+                data-completed="{{ ($progress !== null && $progress->isCompleted()) ? 'true' : 'false' }}"
+            @endif
+        >
+            @if ($isRecordableStudent && $progress !== null && $progress->isCompleted())
+                <span class="absolute top-2 right-2 z-10 rounded-full px-2 py-0.5 text-xs bg-green-600 text-white">{{ __('progress.completed') }}</span>
+            @endif
+
             @if ($videoPlayback['driver'] === 'bunny')
                 <iframe
                     class="w-full h-full"
@@ -82,6 +105,20 @@
         </div>
     @else
         <p class="mb-4 text-gray-600">{{ __('lessons.video_coming_soon') }}</p>
+    @endif
+
+    @if ($isRecordableStudent && ! $videoPlayback)
+        <form method="POST" action="{{ url('/lessons/'.$lesson->id.'/completion') }}" class="mb-4">
+            @csrf
+            @method('PUT')
+            @if ($progress !== null && $progress->isCompleted())
+                <input type="hidden" name="completed" value="0">
+                <x-button type="submit" variant="secondary">{{ __('progress.completed_check') }} — {{ __('progress.mark_not_complete') }}</x-button>
+            @else
+                <input type="hidden" name="completed" value="1">
+                <x-button type="submit">{{ __('progress.mark_complete') }}</x-button>
+            @endif
+        </form>
     @endif
 
     <p class="mb-6">{{ $lesson->description }}</p>

@@ -10,6 +10,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -33,6 +34,21 @@ return Application::configure(basePath: dirname(__DIR__))
             'active.tenant.user' => EnsureActiveTenantUser::class,
             'must.change.password' => RedirectIfMustChangePassword::class,
         ]);
+
+        // Laravel's default middleware priority list runs SubstituteBindings (implicit
+        // route-model binding) before any route-specific middleware that isn't itself
+        // in the priority list — including require.tenant. Left unfixed, a request to
+        // any require.tenant route with a tenant-scoped bound Eloquent parameter (e.g.
+        // Lesson, Course) hits TenantScope with no tenant context on the central
+        // domain, throwing an uncaught MissingTenantContextException (500) instead of
+        // require.tenant's intended 404. Pinning require.tenant immediately before
+        // SubstituteBindings in the priority list closes that gap at the root: no
+        // route-model binding for a tenant-scoped model can ever run before the tenant
+        // is confirmed to exist. See tests/Feature/Tenancy/CentralDomainRouteBindingTest.php.
+        $middleware->prependToPriorityList(
+            before: SubstituteBindings::class,
+            prepend: RequireTenant::class,
+        );
 
         $middleware->redirectGuestsTo(
             fn (Request $request) => $request->is('admin/*') ? '/admin/login' : '/login',

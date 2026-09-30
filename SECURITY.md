@@ -159,6 +159,55 @@ recordings are traceable to an individual viewer rather than only proving *a* le
   routinely share phones; nothing that could belong to one student's session may ever land
   in another user's Cache Storage on the same device.
 
+## Lesson progress endpoints (Phase 7)
+
+- `POST /lessons/{lesson}/progress` (heartbeat) and `PUT /lessons/{lesson}/completion`
+  (manual mark/unmark) sit behind the same `auth:tenant` -> `active.tenant.user` ->
+  `must.change.password` stack as `/dashboard` — a guest gets the framework's normal
+  401 (JSON) / redirect (HTML), never a bespoke check in the controller.
+- **Progress is recorded only for a student with a genuinely valid enrolment** —
+  `App\Http\Controllers\LessonProgressController` calls `LessonAccess::lessonAccess()`
+  **and** `LessonAccess::hasValidEnrolment()`, exactly mirroring (never re-deriving) the
+  rule the lesson page itself uses. This matters specifically for a free-preview lesson:
+  `lessonAccess()` returns `'ok'` for anyone (that's the point of a preview), but a
+  non-enrolled viewer still gets a 403 from these two endpoints and nothing is stored —
+  owner/staff previewing get a `204` and nothing is stored either.
+- **All server-side capping, never trusting the client's numbers.**
+  `App\Support\ProgressRecorder` is a pure class (plain arrays in, plain arrays out, no
+  Eloquent, no ambient clock) that: accepts a `duration` only within 10% of the
+  previously-stored value once one is set; caps accepted watched-time per heartbeat at
+  `min(played, secondsSinceLastHeartbeat + 5, 60)` (20s on the very first heartbeat);
+  never lets `watched_seconds` decrease or exceed `duration`; and completion (auto at
+  85% watched, or manual) is sticky — no heartbeat, duplicate, or out-of-order request
+  can ever un-complete a lesson. `watched_seconds`, `completed_at`, `completed_manually`,
+  `last_heartbeat_at`, and `last_activity_at` are guarded (never mass-assignable) on
+  `LessonProgress`, matching this: they're set only via `ProgressRecorder`'s computed
+  output through `forceFill()`, never from raw request input.
+- **Row-locked read-modify-write.** The controller loads (creating if needed) and
+  `lockForUpdate()`s the student's `lesson_progress` row inside a single
+  `DB::transaction()` that also does the save — two concurrent heartbeats for the same
+  `(tenant, lesson, user)` (two tabs/devices) can't race each other's update.
+- **Throttled** to `config('coaching.progress_heartbeat_max_attempts')` (12) requests per
+  minute, keyed by tenant + user + lesson id, independently for the heartbeat and
+  completion endpoints. `abort(429)` — the friendly `errors/429.blade.php` page for an
+  HTML request, plain JSON otherwise (Laravel's default `expectsJson()` negotiation).
+- **No third-party scripts anywhere on the lesson page.** `resources/js/progress-
+  tracker.js` (the pure playback-accounting logic) and `resources/js/lesson-
+  progress.js` (the DOM/fetch wiring) are both bundled through Vite — no Google/YouTube
+  IFrame API script, no analytics, no CDN `<script>` tag. `player.js` (Bunny's embed
+  protocol library) is an npm dependency, pinned, and only ever `import()`-ed
+  dynamically when `data-driver="bunny"` — a `fake`-driver or non-video lesson page
+  never loads it at all.
+- **A stopped-access tab stops sending heartbeats.** If a heartbeat/completion request
+  comes back 401, 403, or redirected (a session that's been logged out, a disabled
+  student, or a revoked enrolment mid-session), the tracker calls `.stop()` and never
+  sends another request for the rest of that page view — a student whose access just
+  ended doesn't keep hammering the login page every 15 seconds of "playback".
+- The service worker (`resources/js/sw.js`) only ever intercepts `GET` requests (see
+  "Institute branding and the installable PWA" below) — the heartbeat/completion `POST`/
+  `PUT` requests are never touched by it, and `sw.js` itself was not changed for this
+  phase.
+
 ## Custom domains and TLS
 
 - Tenants may eventually bring a custom domain instead of `*.coaching.test`

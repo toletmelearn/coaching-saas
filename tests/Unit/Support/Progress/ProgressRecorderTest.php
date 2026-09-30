@@ -144,18 +144,26 @@ test('completion is sticky: a later low-played heartbeat never un-completes the 
 
 test('watched_seconds never decreases even when a heartbeat arrives out of order', function () {
     $now = Carbon::parse('2026-01-01 10:00:00');
+
+    // First heartbeat: capped at 20s regardless of the claimed played time.
     $state = $this->recorder->applyHeartbeat(freshState(), [
         'position' => 40, 'duration' => 600, 'played' => 40, 'ended' => false,
     ], $now);
-    expect($state['watched_seconds'])->toBe(40);
+    expect($state['watched_seconds'])->toBe(20);
 
-    // Duplicate / out-of-order heartbeat reporting a smaller played amount than
-    // what has already been recorded for this position.
+    // A later heartbeat, after real elapsed wall-clock time, ADDS to watched_seconds.
+    $state = $this->recorder->applyHeartbeat($state, [
+        'position' => 50, 'duration' => 600, 'played' => 10, 'ended' => false,
+    ], $now->copy()->addSeconds(10));
+    expect($state['watched_seconds'])->toBe(30);
+
+    // Duplicate / out-of-order heartbeat reporting a smaller position and no new
+    // played time must not reduce what's already been recorded.
     $result = $this->recorder->applyHeartbeat($state, [
         'position' => 10, 'duration' => 600, 'played' => 0, 'ended' => false,
-    ], $now->copy()->addSeconds(1));
+    ], $now->copy()->addSeconds(11));
 
-    expect($result['watched_seconds'])->toBeGreaterThanOrEqual(40);
+    expect($result['watched_seconds'])->toBe(30);
 });
 
 test('watched_seconds is capped at the duration and never exceeds it', function () {

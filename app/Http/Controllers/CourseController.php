@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\CourseStatus;
 use App\Enums\LessonStatus;
 use App\Models\Course;
+use App\Models\LessonProgress;
 use App\Support\LessonAccess;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -40,6 +41,38 @@ class CourseController extends Controller
             }
         }
 
-        return view('courses.show', ['course' => $course, 'viewer' => $user, 'access' => $access]);
+        $progressSummary = null;
+
+        // Only a viewer with a genuinely valid enrolment sees their progress — never
+        // owner/staff previewing, never a guest or non-enrolled student browsing a
+        // free-preview lesson.
+        if ($user !== null && ! $access->isStaffOrOwner($user) && $access->hasValidEnrolment($user, $course)) {
+            $publishedLessonIds = $course->chapters
+                ->flatMap(fn ($chapter) => $chapter->lessons)
+                ->where('status', LessonStatus::Published)
+                ->pluck('id');
+
+            $totalLessons = $publishedLessonIds->count();
+
+            $completedLessonIds = LessonProgress::where('course_id', $course->id)
+                ->where('user_id', $user->id)
+                ->whereNotNull('completed_at')
+                ->whereIn('lesson_id', $publishedLessonIds)
+                ->pluck('lesson_id');
+
+            $progressSummary = [
+                'completed' => $completedLessonIds->count(),
+                'total' => $totalLessons,
+                'percent' => $totalLessons > 0 ? (int) round($completedLessonIds->count() / $totalLessons * 100) : 0,
+                'completedLessonIds' => $completedLessonIds,
+            ];
+        }
+
+        return view('courses.show', [
+            'course' => $course,
+            'viewer' => $user,
+            'access' => $access,
+            'progressSummary' => $progressSummary,
+        ]);
     }
 }

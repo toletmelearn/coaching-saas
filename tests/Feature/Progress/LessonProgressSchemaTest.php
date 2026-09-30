@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\LessonProgressCourseMismatchException;
 use App\Models\Chapter;
 use App\Models\Course;
 use App\Models\Lesson;
@@ -7,6 +8,7 @@ use App\Models\LessonProgress;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 
 function progressFixtures(Tenant $tenant): array
 {
@@ -46,7 +48,41 @@ test('lesson progress cannot reference a lesson from another tenant', function (
     }))->toThrow(QueryException::class);
 });
 
-test('lesson progress cannot reference a course from another tenant', function () {
+test('the composite FK rejects a course from another tenant independently of model events', function () {
+    // Bypasses Eloquent (and therefore LessonProgress's own saving hook) entirely, so
+    // this proves the DB-level composite FK (tenant_id, course_id) -> courses(tenant_id,
+    // id) rejects a cross-tenant course_id on its own — not just the model-level guard
+    // that the next test covers, which would otherwise mask this at the app layer.
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+    [$courseA] = progressFixtures($tenantA);
+    [$courseB, $lessonB, $studentB] = progressFixtures($tenantB);
+    $studentB2 = inTenant($tenantB, fn () => User::factory()->student()->create());
+
+    // Positive control: a raw insert with tenantB's own course_id succeeds.
+    expect(fn () => DB::table('lesson_progress')->insert([
+        'tenant_id' => $tenantB->id,
+        'lesson_id' => $lessonB->id,
+        'course_id' => $courseB->id,
+        'user_id' => $studentB->id,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]))->not->toThrow(QueryException::class);
+
+    // A different (lesson, user) pair from the positive control above, so this insert
+    // can only fail on the cross-tenant course_id — never on the (tenant, lesson, user)
+    // unique constraint, which would otherwise mask what this test is proving.
+    expect(fn () => DB::table('lesson_progress')->insert([
+        'tenant_id' => $tenantB->id,
+        'lesson_id' => $lessonB->id,
+        'course_id' => $courseA->id,
+        'user_id' => $studentB2->id,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]))->toThrow(QueryException::class);
+});
+
+test('lesson progress cannot reference a course from another tenant (model path)', function () {
     $tenantA = Tenant::factory()->create();
     $tenantB = Tenant::factory()->create();
     [$courseA] = progressFixtures($tenantA);
@@ -58,7 +94,7 @@ test('lesson progress cannot reference a course from another tenant', function (
             'course_id' => $courseA->id,
             'user_id' => $studentB->id,
         ]);
-    }))->toThrow(QueryException::class);
+    }))->toThrow(LessonProgressCourseMismatchException::class);
 });
 
 test('lesson progress cannot reference a user from another tenant', function () {
@@ -107,7 +143,7 @@ test('course_id must match the lesson\'s own course_id', function () {
             'course_id' => $otherCourse->id,
             'user_id' => $student->id,
         ]);
-    }))->toThrow(Throwable::class);
+    }))->toThrow(LessonProgressCourseMismatchException::class);
 
     // Positive control: matching course_id succeeds.
     inTenant($tenant, function () use ($lesson, $course, $student) {
@@ -126,7 +162,7 @@ test('guarded progress fields cannot be set via mass assignment', function () {
     $otherTenant = Tenant::factory()->create();
     [$course, $lesson, $student] = progressFixtures($tenant);
 
-    inTenant($tenant, function () use ($course, $lesson, $student, $otherTenant) {
+    inTenant($tenant, function () use ($tenant, $course, $lesson, $student, $otherTenant) {
         $viaMassAssignment = LessonProgress::create([
             'lesson_id' => $lesson->id,
             'course_id' => $course->id,

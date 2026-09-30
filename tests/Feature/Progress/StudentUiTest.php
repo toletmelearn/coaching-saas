@@ -34,13 +34,7 @@ test('the course page shows ticks for completed lessons and a percentage progres
 
     inTenant($tenant, function () use ($course, $lessons, $student) {
         foreach ($lessons->take(2) as $lesson) {
-            LessonProgress::create([
-                'lesson_id' => $lesson->id,
-                'course_id' => $course->id,
-                'user_id' => $student->id,
-                'completed_at' => now(),
-                'completed_manually' => true,
-            ]);
+            LessonProgress::factory()->for($lesson)->for($course)->for($student, 'user')->manuallyCompleted()->create();
         }
     });
 
@@ -83,15 +77,7 @@ test('draft lessons are excluded from the course progress denominator', function
 test('publishing a new lesson lowers the course completion percentage', function () {
     [$tenant, $domain, $course, $lessons, $student] = studentUiFixture(2);
 
-    inTenant($tenant, function () use ($course, $lessons, $student) {
-        LessonProgress::create([
-            'lesson_id' => $lessons->first()->id,
-            'course_id' => $course->id,
-            'user_id' => $student->id,
-            'completed_at' => now(),
-            'completed_manually' => true,
-        ]);
-    });
+    inTenant($tenant, fn () => LessonProgress::factory()->for($lessons->first())->for($course)->for($student, 'user')->manuallyCompleted()->create());
 
     $this->actingAs($student, 'tenant')
         ->get("http://{$domain}/courses/{$course->slug}")
@@ -110,15 +96,7 @@ test('publishing a new lesson lowers the course completion percentage', function
 test('the student dashboard shows a progress bar per course and Continue targets the first not-completed lesson', function () {
     [$tenant, $domain, $course, $lessons, $student] = studentUiFixture(3);
 
-    inTenant($tenant, function () use ($course, $lessons, $student) {
-        LessonProgress::create([
-            'lesson_id' => $lessons->get(0)->id,
-            'course_id' => $course->id,
-            'user_id' => $student->id,
-            'completed_at' => now(),
-            'completed_manually' => true,
-        ]);
-    });
+    inTenant($tenant, fn () => LessonProgress::factory()->for($lessons->get(0))->for($course)->for($student, 'user')->manuallyCompleted()->create());
 
     $response = $this->actingAs($student, 'tenant')
         ->get("http://{$domain}/dashboard");
@@ -130,15 +108,7 @@ test('the student dashboard shows a progress bar per course and Continue targets
 test('the dashboard falls back to the course page with a completion message when every lesson is done', function () {
     [$tenant, $domain, $course, $lessons, $student] = studentUiFixture(1);
 
-    inTenant($tenant, function () use ($course, $lessons, $student) {
-        LessonProgress::create([
-            'lesson_id' => $lessons->first()->id,
-            'course_id' => $course->id,
-            'user_id' => $student->id,
-            'completed_at' => now(),
-            'completed_manually' => true,
-        ]);
-    });
+    inTenant($tenant, fn () => LessonProgress::factory()->for($lessons->first())->for($course)->for($student, 'user')->manuallyCompleted()->create());
 
     $response = $this->actingAs($student, 'tenant')
         ->get("http://{$domain}/dashboard");

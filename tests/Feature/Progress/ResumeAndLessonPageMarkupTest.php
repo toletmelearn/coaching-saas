@@ -34,13 +34,7 @@ function lessonPageFixture(): array
 test('the lesson page resumes from the stored position when within the 10s-95% window', function () {
     [$tenant, $domain, $course, $lesson, $student] = lessonPageFixture();
 
-    inTenant($tenant, fn () => LessonProgress::create([
-        'lesson_id' => $lesson->id,
-        'course_id' => $course->id,
-        'user_id' => $student->id,
-        'duration_seconds' => 600,
-        'last_position_seconds' => 300,
-    ]));
+    inTenant($tenant, fn () => LessonProgress::factory()->for($lesson)->for($course)->for($student, 'user')->atPosition(300, 600)->create());
 
     $response = $this->actingAs($student, 'tenant')
         ->get("http://{$domain}/courses/{$course->slug}/lessons/{$lesson->id}");
@@ -52,13 +46,7 @@ test('the lesson page resumes from the stored position when within the 10s-95% w
 test('the lesson page starts from zero when the stored position is below 10 seconds', function () {
     [$tenant, $domain, $course, $lesson, $student] = lessonPageFixture();
 
-    inTenant($tenant, fn () => LessonProgress::create([
-        'lesson_id' => $lesson->id,
-        'course_id' => $course->id,
-        'user_id' => $student->id,
-        'duration_seconds' => 600,
-        'last_position_seconds' => 5,
-    ]));
+    inTenant($tenant, fn () => LessonProgress::factory()->for($lesson)->for($course)->for($student, 'user')->atPosition(5, 600)->create());
 
     $response = $this->actingAs($student, 'tenant')
         ->get("http://{$domain}/courses/{$course->slug}/lessons/{$lesson->id}");
@@ -69,13 +57,7 @@ test('the lesson page starts from zero when the stored position is below 10 seco
 test('the lesson page starts from zero when the stored position is at or beyond 95% of duration', function () {
     [$tenant, $domain, $course, $lesson, $student] = lessonPageFixture();
 
-    inTenant($tenant, fn () => LessonProgress::create([
-        'lesson_id' => $lesson->id,
-        'course_id' => $course->id,
-        'user_id' => $student->id,
-        'duration_seconds' => 600,
-        'last_position_seconds' => 590,
-    ]));
+    inTenant($tenant, fn () => LessonProgress::factory()->for($lesson)->for($course)->for($student, 'user')->atPosition(590, 600)->create());
 
     $response = $this->actingAs($student, 'tenant')
         ->get("http://{$domain}/courses/{$course->slug}/lessons/{$lesson->id}");
@@ -129,6 +111,12 @@ test('a guest never sees the progress data attributes', function () {
     $this->actingAs($student, 'tenant')
         ->get("http://{$domain}/courses/{$course->slug}/lessons/{$lesson->id}")
         ->assertSee('data-progress-url', false);
+
+    // actingAs() sets the guard's resolved user for the rest of this test method, not
+    // just the next request — without resetting it here, this "guest" request would
+    // still silently be authenticated as $student (see Tests\Pest.php's
+    // freshRequestCycle() doc comment).
+    freshRequestCycle();
 
     $response = $this->get("http://{$domain}/courses/{$course->slug}/lessons/{$lesson->id}");
 

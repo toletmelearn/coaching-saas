@@ -15,6 +15,7 @@
         <link rel="apple-touch-icon" href="/pwa/icons/180.png">
         @vite('resources/js/pwa.js')
     @endif
+    @stack('scripts')
 </head>
 <body class="min-w-[360px] bg-gray-50 text-gray-900 font-sans">
 @php

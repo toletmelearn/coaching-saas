@@ -32,4 +32,14 @@ return [
     ],
 
     'max_logo_mb' => 2,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Lesson progress (Phase 7)
+    |--------------------------------------------------------------------------
+    */
+
+    'progress_heartbeat_max_attempts' => 12,
+    'progress_heartbeat_decay_seconds' => 60,
+    'inactive_days' => env('COACHING_INACTIVE_DAYS', 7),
 ];
