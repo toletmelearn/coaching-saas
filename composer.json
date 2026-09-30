@@ -56,7 +56,7 @@
             "@php artisan config:clear --ansi @no_additional_args",
             "@php vendor/bin/pest --configuration=phpunit.mysql.xml"
         ],
-        "test:js": "node --test tests/js",
+        "test:js": "node --test tests/js/**/*.test.mjs",
         "lint": "@php vendor/bin/pint",
         "analyse": "@php vendor/bin/phpstan analyse --memory-limit=1G",
         "post-autoload-dump": [

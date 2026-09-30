@@ -16,22 +16,38 @@ test('each supported icon size is served with the right headers', function (stri
     expect($response->headers->get('Content-Type'))->toContain('image/png');
 })->with(['180', '192', '512', '512-maskable']);
 
-test('an unsupported icon size 404s', function () {
+test('a supported icon size serves fine; an unsupported size 404s on the same tenant', function () {
     $tenant = Tenant::factory()->create();
     $domain = 'tenant-a.coaching.test';
     $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
 
+    // Positive control: a supported size works on this tenant (proves the 404 below is
+    // the size being rejected, not the route being unregistered).
+    $this->get("http://{$domain}/pwa/icons/512.png")->assertOk();
+
     $this->get("http://{$domain}/pwa/icons/64.png")->assertNotFound();
 });
 
-test('icons are 404 on a central domain', function () {
+test('icons work on a tenant domain and 404 on a central domain', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    // Positive control: the route works on the tenant's own domain.
+    $this->get("http://{$domain}/pwa/icons/512.png")->assertOk();
+
     $this->get('http://coaching.test/pwa/icons/512.png')->assertNotFound();
 });
 
-test('icons are 503 for a suspended institute', function () {
-    $tenant = Tenant::factory()->create(['status' => TenantStatus::Suspended]);
+test('icons are 200 for an active institute and 503 for a suspended one', function () {
+    $tenant = Tenant::factory()->create(['status' => TenantStatus::Active]);
     $domain = 'tenant-a.coaching.test';
     $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    // Positive control: active tenant serves the icon fine.
+    $this->get("http://{$domain}/pwa/icons/512.png")->assertOk();
+
+    $tenant->forceFill(['status' => TenantStatus::Suspended])->save();
 
     $this->get("http://{$domain}/pwa/icons/512.png")->assertStatus(503);
 });

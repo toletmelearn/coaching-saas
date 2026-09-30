@@ -30,6 +30,14 @@ test('the header logo route serves the stored logo at 256px max side with cachin
     expect(max($w, $h))->toBeLessThanOrEqual(256);
 });
 
-test('the header logo route 404s on a central domain', function () {
+test('the header logo route works on a tenant domain and 404s on a central domain', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    // Positive control: the route works on the tenant's own domain (proves the 404 below
+    // is actually central-domain routing, not the route being unregistered everywhere).
+    $this->get("http://{$domain}/branding/logo")->assertOk();
+
     $this->get('http://coaching.test/branding/logo')->assertNotFound();
 });

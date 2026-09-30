@@ -58,7 +58,15 @@ test("tenant A's manifest never leaks tenant B's name, colour or icons", functio
     expect($manifestA['theme_color'])->not->toBe('#dc2626');
 });
 
-test('manifest is 404 on a central domain', function () {
+test('manifest works on a tenant domain and 404s on a central domain', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    // Positive control: the manifest route works on the tenant's own domain (proves the
+    // 404 below is central-domain routing, not the route being unregistered).
+    $this->get("http://{$domain}/manifest.webmanifest")->assertOk();
+
     $this->get('http://coaching.test/manifest.webmanifest')->assertNotFound();
 });
 

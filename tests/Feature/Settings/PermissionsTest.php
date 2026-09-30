@@ -35,6 +35,14 @@ test('staff sees the friendly 403 page for settings', function () {
 
     $staff = inTenant($tenant, fn () => User::factory()->staff()->create());
 
+    // Positive control: staff CAN reach an ordinary tenant page (proves the request
+    // reaches a real, working route, not a routing-level 404, before hitting the 403).
+    $this->actingAs($staff, 'tenant')
+        ->get("http://{$domain}/dashboard")
+        ->assertOk();
+
+    freshRequestCycle();
+
     $response = $this->actingAs($staff, 'tenant')->get("http://{$domain}/manage/settings");
     $response->assertForbidden();
     $response->assertSee(__('errors.403.heading'));
@@ -54,6 +62,13 @@ test('student sees the friendly 403 page for settings', function () {
 
     $student = inTenant($tenant, fn () => User::factory()->student()->create());
 
+    // Positive control: student CAN reach the public course catalogue.
+    $this->actingAs($student, 'tenant')
+        ->get("http://{$domain}/courses")
+        ->assertOk();
+
+    freshRequestCycle();
+
     $response = $this->actingAs($student, 'tenant')->get("http://{$domain}/manage/settings");
     $response->assertForbidden();
     $response->assertSee(__('errors.403.heading'));
@@ -63,6 +78,10 @@ test('guest is redirected to login', function () {
     $tenant = Tenant::factory()->create();
     $domain = 'tenant-a.coaching.test';
     $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    // Positive control: the tenant's domain resolves and serves a public page fine for a
+    // guest, proving the redirect below is auth-driven, not the domain failing to resolve.
+    $this->get("http://{$domain}/courses")->assertOk();
 
     $this->get("http://{$domain}/manage/settings")
         ->assertRedirect("http://{$domain}/login");
