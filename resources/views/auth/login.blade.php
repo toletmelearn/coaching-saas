@@ -1,6 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
+    @php $tenant = app(\App\Support\TenantContext::class)->has() ? app(\App\Support\TenantContext::class)->get() : null; @endphp
+    @if ($tenant?->logo_path)
+        <img src="/branding/logo" alt="" class="h-16 w-16 mb-4 rounded object-contain">
+    @endif
+
     <x-page-header :title="__('auth.login.submit')" />
 
     @if ($errors->any())

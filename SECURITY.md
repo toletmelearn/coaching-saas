@@ -136,6 +136,29 @@ recordings are traceable to an individual viewer rather than only proving *a* le
   "too many attempts" response, so neither limiter leaks which one tripped or whether the
   identifier exists (`tests/Feature/Auth/RateLimitTest.php`).
 
+## Institute branding and the installable PWA (Phase 6)
+
+- **Uploaded logos are never trusted as-is.** No SVG is accepted (script/XSS risk from
+  embedded `<script>`/event-handler attributes in SVG markup) — only PNG, JPG and WebP.
+  Dimensions are checked via `getimagesize()` *before* the file is decoded, to reject an
+  oversized or decompression-bomb-style image without ever handing it to GD. The accepted
+  file is then decoded and **always re-encoded to a fresh PNG** — this strips any embedded
+  metadata or payload from the original file (a GIF or arbitrary binary renamed to `.png`
+  is rejected by content-based MIME sniffing before it ever reaches the decode step, but
+  the re-encode is a second, independent line of defence). The stored file always gets a
+  random filename under `tenants/{id}/branding/` on the **private** disk — the client's
+  original filename is never used for anything, including the stored path.
+- **The service worker (`resources/js/sw.js`, served at `GET /sw.js`) never stores
+  anything user-specific.** It precaches only the generic offline page, and its fetch
+  handler only ever caches static, non-personalized responses: built assets under
+  `/build/…`, PWA icons, and the header logo. It explicitly never intercepts
+  `/lesson-videos/…`, any `/attachments/…` URL, `/manage`, `/users`, `/admin`, `/auth`,
+  `/login`, `/logout`, `/dashboard` or `/courses` pages, any request carrying a `Range`
+  header, or a non-2xx/non-`basic` response — and it never caches a navigation response
+  (an HTML page) at all, even the offline page's own network-first attempt. Students
+  routinely share phones; nothing that could belong to one student's session may ever land
+  in another user's Cache Storage on the same device.
+
 ## Custom domains and TLS
 
 - Tenants may eventually bring a custom domain instead of `*.coaching.test`

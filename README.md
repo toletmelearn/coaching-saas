@@ -106,6 +106,32 @@ second course,
 testing the "draft course is invisible" behavior). See
 [docs/specs/phase-4-courses.md](docs/specs/phase-4-courses.md).
 
+### PWA testing locally
+
+Service workers only register in a "secure context" — HTTPS, or `localhost`/`127.0.0.1`.
+`http://demo.coaching.test:8000` is **not** a secure context, so `navigator.serviceWorker
+.register()` silently fails there. The seeder also registers a second domain,
+**`demo.localhost`**, for exactly this reason — Chrome treats any `*.localhost` hostname as
+secure and resolves it to `127.0.0.1` automatically, with no hosts file entry needed:
+
+```
+php artisan serve
+```
+
+then open **`http://demo.localhost:8000`** and log in as the demo owner/student above. This is
+where to test the manifest, install prompt, and offline page (`docs/specs/phase-6-branding-pwa.md`).
+
+If you'd rather use `demo.coaching.test`, Chrome can be told to treat it as secure anyway:
+visit `chrome://flags/#unsafely-treat-insecure-origin-as-secure`, add
+`http://demo.coaching.test:8000`, and relaunch the browser. This is a local-only workaround —
+never rely on it for anything other than your own dev machine.
+
+**Installing on a real phone needs HTTPS.** Neither `demo.localhost` nor the Chrome flag
+above exist on a phone; the PWA is only actually installable from a deployed, HTTPS-served
+tenant domain (see [DEPLOY.md](docs/DEPLOY.md)). `php artisan app:preflight` fails in
+production if the `demo.localhost` domain exists — it must never be created outside
+local/testing.
+
 `php artisan migrate:fresh --seed` also creates a **local-only** platform admin account
 (same local/testing-only guard as the demo tenant above — never seeded in production, and
 `php artisan app:preflight` fails in production if this account exists):

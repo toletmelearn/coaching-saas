@@ -23,7 +23,11 @@ test('the header logo route serves the stored logo at 256px max side with cachin
 
     $response = $this->get("http://{$domain}/branding/logo");
     $response->assertOk();
-    $response->assertHeader('Cache-Control', 'public, max-age=86400');
+    // Symfony's ResponseHeaderBag reserializes Cache-Control directives in its own
+    // order ("max-age=86400, public"), so assert the directives rather than the
+    // exact string.
+    $cacheControl = $response->headers->get('Cache-Control');
+    expect($cacheControl)->toContain('public')->toContain('max-age=86400');
     $response->assertHeader('X-Content-Type-Options', 'nosniff');
 
     [$w, $h] = getimagesizefromstring($response->getContent());

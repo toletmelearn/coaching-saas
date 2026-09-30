@@ -14,6 +14,17 @@ class Tenant extends Model
     protected $fillable = ['name', 'status', 'timezone', 'currency'];
 
     /**
+     * The DB applies these defaults at insert time (see the branding-columns
+     * migration), but Eloquent doesn't automatically re-fetch DB-level defaults after
+     * an insert — without this, a freshly created Tenant instance would have these
+     * as null in memory until the next ->refresh(). Mirrors User::$attributes.
+     */
+    protected $attributes = [
+        'theme_color' => '#4f46e5',
+        'branding_version' => 1,
+    ];
+
+    /**
      * The Bunny library credential is never mass-assignable (set only via forceFill from
      * BunnyVideoProvider::ensureLibraryProvisioned) and never serialized to an array/JSON
      * response — defence in depth alongside the encrypted cast below. It doubles as the
@@ -29,6 +40,8 @@ class Tenant extends Model
             'status' => TenantStatus::class,
             'bunny_library_api_key' => 'encrypted',
             'bunny_library_created_at' => 'datetime',
+            'academic_year_end' => 'date',
+            'branding_version' => 'integer',
         ];
     }
 

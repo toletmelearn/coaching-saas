@@ -47,6 +47,21 @@ class TenantSeeder extends Seeder
             return;
         }
 
+        // demo.localhost, local/testing only: Chrome treats *.localhost as a secure
+        // context and resolves it to 127.0.0.1 without a hosts entry, unlike
+        // demo.coaching.test over plain http — needed to test service worker
+        // registration and PWA install locally. app:preflight fails in production if
+        // this domain exists (see AppPreflightCommand::checkNoLocalhostDemoDomain).
+        TenantDomain::query()->firstOrCreate(
+            ['domain' => 'demo.localhost'],
+            [
+                'tenant_id' => $tenant->id,
+                'type' => DomainType::Subdomain,
+                'is_primary' => false,
+                'verified_at' => now(),
+            ],
+        );
+
         // Local dev/demo credentials — see README "Local credentials". Never seeded
         // outside local/testing (guarded above).
         app(TenantContext::class)->runAs($tenant, function () {

@@ -65,6 +65,18 @@ between major versions), but the approach itself is standard Nginx and will work
    Cloudflare's published IP ranges (`config/cloudflare.php`) — Cloudflare rotates these
    occasionally; refresh via `curl -s https://www.cloudflare.com/ips-v4` and `ips-v6`, see
    the comment at the top of that file.
+5. **Cache Rule for `/sw.js` and `/manifest.webmanifest` (Phase 6 — installable PWA):**
+   Cloudflare dashboard → Caching → Cache Rules → create a rule matching
+   `(http.request.uri.path eq "/sw.js") or (http.request.uri.path eq "/manifest.webmanifest")`
+   with **Cache eligibility: Bypass cache** (or, if you'd rather cache it briefly, an Edge TTL
+   of a few minutes at most — never "respect existing headers" left to Cloudflare's own
+   long default). An owner changing their institute's name, colour or logo must take effect
+   for visitors within minutes, not whatever Cloudflare's default TTL for static-looking
+   paths would otherwise be. Static build assets under `/build/…` are fine to leave on
+   Cloudflare's normal (long) cache behavior — they're already content-hashed by Vite.
+   **HTTPS is mandatory** for the PWA to be installable at all (service workers only
+   register in a secure context — see README.md "PWA testing locally"); §1.2's Full
+   (strict) SSL/TLS mode already covers this end to end.
 
 ## 2. Server prerequisites
 
@@ -197,8 +209,11 @@ Fails (non-zero exit) in production if any of: `APP_DEBUG=true`, `APP_KEY` empty
 not `https://`, `PLATFORM_DOMAIN`/`TENANT_BASE_DOMAIN`/`CENTRAL_DOMAINS` still at the local
 dev default, `SESSION_SECURE_COOKIE` not `true`, `storage/` or `bootstrap/cache/` not
 writable, the database unreachable, MySQL/MariaDB below the CHECK-constraint-enforcing
-minimum (8.0.16 / 10.2.1), a demo tenant/account exists, `VIDEO_DRIVER=fake`, or
-`VIDEO_DRIVER=bunny` with no `BUNNY_STREAM_ACCOUNT_API_KEY`. Per-tenant Bunny library
+minimum (8.0.16 / 10.2.1), a demo tenant/account exists, the local-only `demo.localhost`
+PWA-testing domain exists (Phase 6 — see README.md "PWA testing locally"), the GD PHP
+extension or its FreeType support is missing (Phase 6 — needed to generate the default
+institute icon and re-encode uploaded logos), `VIDEO_DRIVER=fake`, or `VIDEO_DRIVER=bunny`
+with no `BUNNY_STREAM_ACCOUNT_API_KEY`. Per-tenant Bunny library
 credentials are *not* checked here — they don't exist yet for a tenant that has never
 uploaded video — and are instead validated lazily at first use, surfacing a teacher-facing
 error if library creation fails. Outside production it's a no-op (informational only) — safe

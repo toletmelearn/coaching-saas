@@ -21,6 +21,10 @@ function passingPreflightConfig(): array
         'preflight.writable_paths' => [storage_path()],
         'coaching.video_driver' => 'bunny',
         'services.bunny.account_api_key' => 'test-account-key',
+        // Mocked rather than relying on the test runner's own PHP build actually having
+        // GD/FreeType — see config/preflight.php.
+        'preflight.gd_extension_loaded' => true,
+        'preflight.gd_freetype_supported' => true,
     ];
 }
 

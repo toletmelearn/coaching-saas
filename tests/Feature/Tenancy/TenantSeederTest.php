@@ -21,8 +21,11 @@ test('running the seeder twice does not create duplicate tenants', function () {
     $this->seed(TenantSeeder::class);
     $this->seed(TenantSeeder::class);
 
+    // 2, not 1: demo.coaching.test and demo.localhost (Phase 6 — the second domain
+    // lets the PWA be tested over a secure context locally; see TenantSeeder). Still
+    // exactly 2 after seeding twice is the actual "no duplicates" assertion here.
     expect(Tenant::query()->count())->toBe(1)
-        ->and(TenantDomain::query()->count())->toBe(1);
+        ->and(TenantDomain::query()->count())->toBe(2);
 });
 
 // === Demo user seeding is local/testing only ===

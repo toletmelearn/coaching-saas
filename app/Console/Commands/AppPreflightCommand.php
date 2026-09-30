@@ -34,7 +34,9 @@ class AppPreflightCommand extends Command
             $this->checkDatabaseReachable(),
             $this->checkMysqlVersion(),
             $this->checkNoDemoData(),
+            $this->checkNoLocalhostDemoDomain(),
             $this->checkVideoDriver(),
+            $this->checkGdFreetype(),
         ]);
 
         if ($failures === []) {
@@ -153,6 +155,44 @@ class AppPreflightCommand extends Command
         return $demoExists
             ? 'A demo tenant/account exists — never seed demo data in production (see README.md "Local credentials" and docs/DEPLOY.md).'
             : null;
+    }
+
+    /**
+     * The local-only demo.localhost domain (registered by TenantSeeder so the PWA can be
+     * tested over a secure context without HTTPS — see README.md "Local credentials")
+     * must never exist in production.
+     */
+    private function checkNoLocalhostDemoDomain(): ?string
+    {
+        try {
+            $exists = TenantDomain::query()->where('domain', 'demo.localhost')->exists();
+        } catch (Throwable) {
+            return null;
+        }
+
+        return $exists
+            ? 'The demo.localhost domain exists — this is a local PWA-testing-only domain and must never exist in production.'
+            : null;
+    }
+
+    /**
+     * The default institute icon (Phase 6) is drawn with GD's imagettftext(), which
+     * needs FreeType support compiled into GD. Read from config (see
+     * config/preflight.php) rather than calling extension_loaded('gd')/gd_info()
+     * directly, so this is mockable in tests without needing a PHP build that's
+     * actually missing the extension.
+     */
+    private function checkGdFreetype(): ?string
+    {
+        if (! config('preflight.gd_extension_loaded')) {
+            return 'The GD PHP extension is not loaded — required to generate institute icons and re-encode uploaded logos.';
+        }
+
+        if (! config('preflight.gd_freetype_supported')) {
+            return "GD is loaded but was built without FreeType support — required to draw the default institute icon's letter.";
+        }
+
+        return null;
     }
 
     /**

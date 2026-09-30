@@ -20,8 +20,10 @@ use App\Http\Controllers\Manage\EnrolmentController as ManageEnrolmentController
 use App\Http\Controllers\Manage\LessonAttachmentController as ManageLessonAttachmentController;
 use App\Http\Controllers\Manage\LessonController as ManageLessonController;
 use App\Http\Controllers\Manage\LessonVideoController as ManageLessonVideoController;
+use App\Http\Controllers\Manage\SettingsController as ManageSettingsController;
 use App\Http\Controllers\PlatformAdminDashboardController;
 use App\Http\Controllers\PlatformHomeController;
+use App\Http\Controllers\PwaController;
 use App\Http\Controllers\UserController;
 use App\Support\TenantContext;
 use Illuminate\Support\Facades\Route;
@@ -82,6 +84,16 @@ Route::middleware('require.tenant')->group(function () {
     Route::get('login', [TenantLoginController::class, 'show'])->name('login');
     Route::post('login', [TenantLoginController::class, 'store']);
 
+    // PWA endpoints — no auth required (a guest's browser needs the manifest/icons/
+    // service worker too), scoped to the tenant only via require.tenant (404 on a
+    // central domain) and the global CheckTenantSuspended middleware (503 while
+    // suspended). See docs/specs/phase-6-branding-pwa.md.
+    Route::get('manifest.webmanifest', [PwaController::class, 'manifest']);
+    Route::get('pwa/icons/{sizeParam}', [PwaController::class, 'icon']);
+    Route::get('branding/logo', [PwaController::class, 'logo']);
+    Route::get('sw.js', [PwaController::class, 'serviceWorker']);
+    Route::get('offline', [PwaController::class, 'offline']);
+
     // Public catalogue and free-preview lessons — no login required. Both middleware are
     // no-ops for guests (they check for a resolved tenant user first), so a guest still
     // passes through untouched; a logged-in student who is disabled or must change their
@@ -119,6 +131,11 @@ Route::middleware('require.tenant')->group(function () {
                 Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword']);
 
                 Route::prefix('manage')->group(function () {
+                    Route::get('settings', [ManageSettingsController::class, 'show']);
+                    Route::patch('settings', [ManageSettingsController::class, 'update']);
+                    Route::post('settings/logo', [ManageSettingsController::class, 'storeLogo']);
+                    Route::delete('settings/logo', [ManageSettingsController::class, 'destroyLogo']);
+
                     Route::get('courses', [ManageCourseController::class, 'index']);
                     Route::get('courses/create', [ManageCourseController::class, 'create']);
                     Route::post('courses', [ManageCourseController::class, 'store']);

@@ -11,7 +11,11 @@ test('each supported icon size is served with the right headers', function (stri
     $response = $this->get("http://{$domain}/pwa/icons/{$size}.png");
 
     $response->assertOk();
-    $response->assertHeader('Cache-Control', 'public, max-age=86400');
+    // Symfony's ResponseHeaderBag reserializes Cache-Control directives in its own
+    // order ("max-age=86400, public"), so assert the directives rather than the
+    // exact string.
+    $cacheControl = $response->headers->get('Cache-Control');
+    expect($cacheControl)->toContain('public')->toContain('max-age=86400');
     $response->assertHeader('X-Content-Type-Options', 'nosniff');
     expect($response->headers->get('Content-Type'))->toContain('image/png');
 })->with(['180', '192', '512', '512-maskable']);

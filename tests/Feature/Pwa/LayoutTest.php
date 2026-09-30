@@ -2,6 +2,7 @@
 
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Support\Facades\Vite;
 
 test('tenant pages include the manifest link, theme-color meta, apple-touch-icon and bundled pwa script; central-domain pages do not', function () {
     $tenant = Tenant::factory()->create();
@@ -16,7 +17,7 @@ test('tenant pages include the manifest link, theme-color meta, apple-touch-icon
     $tenantResponse->assertSee('name="theme-color"', false);
     $tenantResponse->assertSee('rel="apple-touch-icon"', false);
     $tenantResponse->assertSee('href="/pwa/icons/180.png"', false);
-    $tenantResponse->assertSee('resources/js/pwa.js', false);
+    $tenantResponse->assertSee(Vite::asset('resources/js/pwa.js'), false);
 
     // The same shared layout, on a central domain, must carry none of it.
     $centralResponse = $this->get('http://coaching.test/');

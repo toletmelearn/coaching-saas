@@ -18,4 +18,21 @@ return [
         storage_path(),
         base_path('bootstrap/cache'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | GD / FreeType availability
+    |--------------------------------------------------------------------------
+    |
+    | The default institute icon (Phase 6) is drawn with GD's imagettftext(),
+    | which needs FreeType support compiled into GD. Read from a config value
+    | (rather than calling extension_loaded('gd')/gd_info() directly in the
+    | command) so tests can mock a missing extension without needing a PHP
+    | build that's actually missing it. Both true here in every real
+    | environment that has GD compiled with FreeType (as production must).
+    |
+    */
+
+    'gd_extension_loaded' => extension_loaded('gd'),
+    'gd_freetype_supported' => extension_loaded('gd') && (gd_info()['FreeType Support'] ?? false),
 ];

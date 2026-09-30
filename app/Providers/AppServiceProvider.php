@@ -7,9 +7,11 @@ use App\Contracts\VideoProvider;
 use App\Macros\BlueprintTenancyMacro;
 use App\Models\Course;
 use App\Models\Enrolment;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Policies\CoursePolicy;
 use App\Policies\EnrolmentPolicy;
+use App\Policies\TenantPolicy;
 use App\Policies\UserPolicy;
 use App\Services\Video\BunnyVideoProvider;
 use App\Services\Video\FakeVideoProvider;
@@ -49,5 +51,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Course::class, CoursePolicy::class);
         Gate::policy(Enrolment::class, EnrolmentPolicy::class);
+        Gate::policy(Tenant::class, TenantPolicy::class);
     }
 }

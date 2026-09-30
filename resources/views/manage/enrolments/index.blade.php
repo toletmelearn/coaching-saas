@@ -69,7 +69,7 @@
         </div>
 
         <x-field name="starts_at" type="date" :label="__('courses.manage.starts_at')" :value="now()->toDateString()" />
-        <x-field name="ends_at" type="date" :label="__('courses.manage.ends_at')" :value="null" />
+        <x-field name="ends_at" type="date" :label="__('courses.manage.ends_at')" :value="optional(app(\App\Support\TenantContext::class)->get()->academic_year_end)->toDateString()" />
         <x-field name="payment_note" :label="__('courses.manage.payment_note')" :value="null" />
 
         <x-button>{{ __('courses.manage.enrol_students') }}</x-button>

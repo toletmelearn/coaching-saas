@@ -12,6 +12,7 @@ use App\Models\Enrolment;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
@@ -79,6 +80,16 @@ class EnrolmentController extends Controller
         });
 
         $data = $validator->validate();
+
+        // A date-only "Ends" value (whether pre-filled from the institute's academic
+        // year end or typed in directly) means the enrolment is valid through the end
+        // of that day in India, not from midnight at its start. An empty string (the
+        // teacher explicitly cleared the pre-filled value) means no expiry at all —
+        // normalized to null rather than left as '' (Carbon::parse('') means "now",
+        // not "no value").
+        $data['ends_at'] = empty($data['ends_at'])
+            ? null
+            : Carbon::parse($data['ends_at'], 'Asia/Kolkata')->endOfDay()->utc();
 
         $actor = $request->user('tenant');
         $enrolled = 0;

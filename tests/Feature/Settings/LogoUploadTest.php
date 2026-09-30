@@ -239,6 +239,11 @@ test('the stored logo file is not reachable through any public storage URL', fun
 
     expect(Storage::disk('public')->allFiles())->not->toContain($tenant->logo_path);
 
+    // The 'local' disk's built-in /storage/{path} route (filesystems.php
+    // 'serve' => true) requires a valid signature and returns 403 for a plain,
+    // unsigned guess rather than 404 — either status means the file isn't reachable
+    // this way, which is the actual property under test.
     $guessedPublicUrl = '/storage/'.$tenant->logo_path;
-    $this->get("http://{$domain}{$guessedPublicUrl}")->assertNotFound();
+    $status = $this->get("http://{$domain}{$guessedPublicUrl}")->getStatusCode();
+    expect($status)->toBeIn([403, 404]);
 });

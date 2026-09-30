@@ -12,8 +12,23 @@ test('sw.js is served with the correct headers', function () {
 
     $response->assertOk();
     expect($response->headers->get('Content-Type'))->toContain('javascript');
-    $response->assertHeader('Cache-Control', 'no-cache');
+    // Symfony's ResponseHeaderBag appends ", private" to a bare "no-cache" directive
+    // unless the response is explicitly marked public — assert the directive is
+    // present rather than the exact string.
+    expect($response->headers->get('Cache-Control'))->toContain('no-cache');
     $response->assertHeader('Service-Worker-Allowed', '/');
+});
+
+test('sw.js has the __CACHE_VERSION__ placeholder replaced with a real value', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    $response = $this->get("http://{$domain}/sw.js");
+
+    $response->assertOk();
+    $response->assertDontSee('__CACHE_VERSION__', false);
+    expect($response->getContent())->toContain("const CACHE_NAME = 'coaching-saas-");
 });
 
 test('sw.js works on a tenant domain and 404s on a central domain', function () {
