@@ -48,6 +48,18 @@
             <directory>tests/Feature/Devices</directory>
             <directory>tests/Unit/Support/Devices</directory>
         </testsuite>
+        <testsuite name="Import">
+            <directory>tests/Feature/Import</directory>
+        </testsuite>
+        <testsuite name="Dashboard">
+            <directory>tests/Feature/Dashboard</directory>
+        </testsuite>
+        <testsuite name="Help">
+            <directory>tests/Feature/Help</directory>
+        </testsuite>
+        <testsuite name="MobileGuards">
+            <directory>tests/Feature/MobileGuards</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

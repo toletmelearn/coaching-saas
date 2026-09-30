@@ -36,3 +36,17 @@ function freshRequestCycle(): void
 {
     app('auth')->forgetGuards();
 }
+
+/**
+ * Writes $content to a real temp file and wraps it as an UploadedFile, so import
+ * tests exercise the same file-based validation rules (mimes, content sniffing)
+ * a real multipart upload would hit — a Symfony UploadedFile backed by a string
+ * has no real file to sniff.
+ */
+function csvUploadFile(string $content, string $filename = 'students.csv'): Illuminate\Http\UploadedFile
+{
+    $path = tempnam(sys_get_temp_dir(), 'csv');
+    file_put_contents($path, $content);
+
+    return new Illuminate\Http\UploadedFile($path, $filename, 'text/csv', null, true);
+}
