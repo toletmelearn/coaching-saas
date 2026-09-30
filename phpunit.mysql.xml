@@ -33,6 +33,12 @@
         <testsuite name="Platform">
             <directory>tests/Feature/Platform</directory>
         </testsuite>
+        <testsuite name="Settings">
+            <directory>tests/Feature/Settings</directory>
+        </testsuite>
+        <testsuite name="Pwa">
+            <directory>tests/Feature/Pwa</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

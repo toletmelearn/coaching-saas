@@ -1,0 +1,74 @@
+<?php
+
+use App\Models\Course;
+use App\Models\Enrolment;
+use App\Models\Tenant;
+use App\Models\User;
+
+test('academic year end pre-fills the enrolment form Ends field', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    inTenant($tenant, fn () => $tenant->forceFill(['academic_year_end' => '2027-03-31'])->save());
+
+    [$owner, $course] = inTenant($tenant, function () {
+        $owner = User::factory()->owner()->create();
+        $course = Course::factory()->published()->create();
+
+        return [$owner, $course];
+    });
+
+    $response = $this->actingAs($owner, 'tenant')
+        ->get("http://{$domain}/manage/courses/{$course->id}/enrolments");
+
+    $response->assertOk();
+    $response->assertSee('value="2027-03-31"', false);
+});
+
+test('an empty academic year end setting leaves the Ends field empty', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    [$owner, $course] = inTenant($tenant, function () {
+        $owner = User::factory()->owner()->create();
+        $course = Course::factory()->published()->create();
+
+        return [$owner, $course];
+    });
+
+    $response = $this->actingAs($owner, 'tenant')
+        ->get("http://{$domain}/manage/courses/{$course->id}/enrolments");
+
+    $response->assertOk();
+    $response->assertDontSee('name="ends_at" id="ends_at" value="20', false);
+});
+
+test('the academic year end default is only ever a starting point; the teacher can still clear or change it per enrolment', function () {
+    $tenant = Tenant::factory()->create();
+    $domain = 'tenant-a.coaching.test';
+    $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
+
+    inTenant($tenant, fn () => $tenant->forceFill(['academic_year_end' => '2027-03-31'])->save());
+
+    [$owner, $course, $student] = inTenant($tenant, function () {
+        $owner = User::factory()->owner()->create();
+        $course = Course::factory()->published()->create();
+        $student = User::factory()->student()->create();
+
+        return [$owner, $course, $student];
+    });
+
+    // Teacher explicitly clears the pre-filled expiry when submitting the form.
+    $this->actingAs($owner, 'tenant')
+        ->post("http://{$domain}/manage/courses/{$course->id}/enrolments", [
+            'user_ids' => [$student->id],
+            'starts_at' => now()->toDateString(),
+            'ends_at' => '',
+        ])
+        ->assertRedirect();
+
+    $enrolment = inTenant($tenant, fn () => Enrolment::where('user_id', $student->id)->firstOrFail());
+    expect($enrolment->ends_at)->toBeNull();
+});

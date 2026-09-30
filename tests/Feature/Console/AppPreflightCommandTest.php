@@ -127,3 +127,23 @@ test('fails when the local demo platform admin account exists', function () {
 
     $this->artisan('app:preflight')->assertFailed();
 });
+
+test('fails when GD is not available', function () {
+    app()->instance('env', 'production');
+    config(passingPreflightConfig());
+    // A config flag (rather than calling extension_loaded('gd') directly) so this is
+    // mockable without actually uninstalling the GD extension from the test runner.
+    config(['preflight.gd_extension_loaded' => false]);
+
+    $this->artisan('app:preflight')->assertFailed();
+});
+
+test('fails when the demo.localhost PWA-testing domain exists', function () {
+    app()->instance('env', 'production');
+    config(passingPreflightConfig());
+
+    $tenant = Tenant::factory()->create(['name' => 'Demo Institute local']);
+    $tenant->domains()->create(['domain' => 'demo.localhost', 'type' => 'subdomain']);
+
+    $this->artisan('app:preflight')->assertFailed();
+});
