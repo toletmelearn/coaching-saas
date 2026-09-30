@@ -208,28 +208,31 @@ test('last_seen_at is updated at most once per minute', function () {
 
 // === Query-count budget ===
 
-test('device.limit enforcement adds at most 2 extra queries for an authenticated student request', function () {
+test('device.limit touches user_devices with at most one SELECT and one throttled UPDATE per request', function () {
     $tenant = Tenant::factory()->create();
     $domain = 'tenant-a.coaching.test';
     $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
-    $owner = inTenant($tenant, fn () => User::factory()->owner()->create());
     [$student, $deviceId] = activeDeviceStudent($tenant);
 
-    // Recently-seen device: no last_seen_at write should occur on this request, so the
-    // difference below isolates the cost of device.limit's own lookup, not a throttled
-    // write it happens to skip on some requests but not others.
-    inTenant($tenant, fn () => UserDevice::where('user_id', $student->id)->update(['last_seen_at' => now()]));
+    // The device row is already registered (activeDeviceStudent) but its last_seen_at is
+    // old enough that the throttled write should fire on this request too — exercising
+    // both bounds (the read and the conditional write) in the one request being measured.
+    inTenant($tenant, fn () => UserDevice::where('user_id', $student->id)->update(['last_seen_at' => now()->subMinutes(5)]));
 
     DB::enableQueryLog();
-    $this->actingAs($owner, 'tenant')->get("http://{$domain}/dashboard")->assertOk();
-    $ownerQueries = count(DB::getQueryLog());
-    DB::flushQueryLog();
-
     $this->actingAs($student, 'tenant')->withCookie('device_id', $deviceId)->get("http://{$domain}/dashboard")->assertOk();
-    $studentQueries = count(DB::getQueryLog());
+    $deviceQueries = collect(DB::getQueryLog())->filter(fn ($entry) => str_contains($entry['query'], 'user_devices'));
     DB::disableQueryLog();
 
-    expect($studentQueries)->toBeLessThanOrEqual($ownerQueries + 2);
+    $selects = $deviceQueries->filter(fn ($entry) => str_starts_with(trim($entry['query']), 'select'));
+    $updates = $deviceQueries->filter(fn ($entry) => str_starts_with(trim($entry['query']), 'update'));
+
+    // Positive control: device.limit must actually have looked the row up — a budget of
+    // "at most one" is only meaningful once at least one real query is proven to happen.
+    expect($selects->count())->toBeGreaterThan(0);
+
+    expect($selects->count())->toBeLessThanOrEqual(1);
+    expect($updates->count())->toBeLessThanOrEqual(1);
 });
 
 // === Login-page notice for a revoked-but-unauthenticated device ===
