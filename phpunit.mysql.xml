@@ -40,6 +40,10 @@
             <directory>tests/Feature/Pwa</directory>
             <directory>tests/Unit/Support/Pwa</directory>
         </testsuite>
+        <testsuite name="Progress">
+            <directory>tests/Feature/Progress</directory>
+            <directory>tests/Unit/Support/Progress</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>
