@@ -7,24 +7,37 @@
 @endif
 
 @section('content')
-    <p class="mb-2">
-        <a href="{{ url('/courses/'.$course->slug) }}" class="text-sm text-gray-600">&larr; {{ __('lessons.back_to_course') }}</a>
+    <p style="margin-bottom: 1rem;">
+        <x-link href="{{ url('/courses/'.$course->slug) }}" variant="ghost" size="sm">
+            <x-icon name="arrow-left" :size="16" />
+            {{ __('lessons.back_to_course') }}
+        </x-link>
     </p>
 
     <x-page-header :title="$lesson->title" />
 
-    @if ($lesson->board_tag)
-        <span class="inline-block rounded-full px-2 py-0.5 text-xs bg-gray-200 text-gray-700 mb-4">{{ $lesson->board_tag }}</span>
-    @endif
-
-    @if ($videoPlayback)
-        @if ($isRecordableStudent && $resumePosition > 0)
-            <p class="mb-2 text-sm text-gray-600">{{ __('progress.resuming_from', ['time' => gmdate($resumePosition >= 3600 ? 'H:i:s' : 'i:s', $resumePosition)]) }}</p>
+    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem;">
+        @if ($lesson->board_tag)
+            <x-badge tone="brand">{{ $lesson->board_tag }}</x-badge>
         @endif
 
+        @if ($progress !== null && $progress->isCompleted() && $isRecordableStudent)
+            <x-badge tone="success">
+                <x-icon name="check" :size="13" />
+                {{ __('progress.completed') }}
+            </x-badge>
+        @endif
+
+        @if ($videoPlayback && $isRecordableStudent && $resumePosition > 0)
+            <x-badge tone="neutral">{{ __('progress.resuming_from', ['time' => gmdate($resumePosition >= 3600 ? 'H:i:s' : 'i:s', $resumePosition)]) }}</x-badge>
+        @endif
+    </div>
+
+    @if ($videoPlayback)
         <div
             id="video-wrapper-{{ $lesson->id }}"
-            class="relative aspect-video w-full mb-4 bg-black"
+            class="relative aspect-video w-full mb-4 bg-black ui-card"
+            style="overflow: hidden; padding: 0;"
             @if ($isRecordableStudent)
                 data-progress-url="{{ url('/lessons/'.$lesson->id.'/progress') }}"
                 data-start-position="{{ $resumePosition }}"
@@ -32,10 +45,6 @@
                 data-completed="{{ ($progress !== null && $progress->isCompleted()) ? 'true' : 'false' }}"
             @endif
         >
-            @if ($isRecordableStudent && $progress !== null && $progress->isCompleted())
-                <span class="absolute top-2 right-2 z-10 rounded-full px-2 py-0.5 text-xs bg-green-600 text-white">{{ __('progress.completed') }}</span>
-            @endif
-
             @if ($videoPlayback['driver'] === 'bunny')
                 <iframe
                     class="w-full h-full"
@@ -65,7 +74,7 @@
             <button
                 type="button"
                 class="video-fullscreen-button"
-                style="position: absolute; bottom: 0.5rem; right: 0.5rem; min-height: 32px; padding: 0 0.5rem; font-size: 0.75rem; background: rgba(0,0,0,0.6); color: #fff; border-radius: 0.25rem; border: 0;"
+                style="position: absolute; bottom: 0.5rem; right: 0.5rem; min-height: 32px; padding: 0 0.75rem; font-size: 0.75rem; font-weight: 600; background: rgba(0,0,0,0.6); color: #fff; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.25); backdrop-filter: blur(6px);"
                 onclick="document.getElementById('video-wrapper-{{ $lesson->id }}').requestFullscreen()"
             >{{ __('lessons.video.fullscreen') }}</button>
         </div>
@@ -93,7 +102,7 @@
             })();
         </script>
     @elseif ($lesson->youtube_video_id)
-        <div class="aspect-video w-full mb-4">
+        <div class="aspect-video w-full mb-4 ui-card" style="overflow: hidden; padding: 0;">
             <iframe
                 class="w-full h-full"
                 src="https://www.youtube-nocookie.com/embed/{{ $lesson->youtube_video_id }}?rel=0"
@@ -104,11 +113,14 @@
             ></iframe>
         </div>
     @else
-        <p class="mb-4 text-gray-600">{{ __('lessons.video_coming_soon') }}</p>
+        <div class="ui-panel ui-fade" style="padding: 1.125rem 1.25rem; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.75rem;">
+            <span class="ui-empty-icon"><x-icon name="play" :size="18" /></span>
+            <span style="color: var(--brand-ink); font-weight: 550;">{{ __('lessons.video_coming_soon') }}</span>
+        </div>
     @endif
 
     @if ($isRecordableStudent && ! $videoPlayback)
-        <form method="POST" action="{{ url('/lessons/'.$lesson->id.'/completion') }}" class="mb-4">
+        <form method="POST" action="{{ url('/lessons/'.$lesson->id.'/completion') }}" class="mb-5">
             @csrf
             @method('PUT')
             @if ($progress !== null && $progress->isCompleted())
@@ -116,41 +128,67 @@
                 <x-button type="submit" variant="secondary">{{ __('progress.completed_check') }} — {{ __('progress.mark_not_complete') }}</x-button>
             @else
                 <input type="hidden" name="completed" value="1">
-                <x-button type="submit">{{ __('progress.mark_complete') }}</x-button>
+                <x-button type="submit">
+                    <x-icon name="check" :size="17" />
+                    {{ __('progress.mark_complete') }}
+                </x-button>
             @endif
         </form>
     @endif
 
-    <p class="mb-6">{{ $lesson->description }}</p>
+    @if ($lesson->description)
+        <div class="ui-card ui-fade" style="margin-bottom: 1.5rem; padding: 1rem 1.125rem;">
+            <p style="margin: 0; color: var(--ink-muted);">{{ $lesson->description }}</p>
+        </div>
+    @endif
 
-    <h2 class="text-lg font-semibold mb-2">{{ __('lessons.notes') }}</h2>
-    <ul class="divide-y divide-gray-100 mb-6">
+    <div class="ui-section-title">
+        <h2 class="ui-h2">{{ __('lessons.notes') }}</h2>
+    </div>
+    <ul class="ui-list ui-fade" style="margin-bottom: 1.5rem;">
         @forelse ($lesson->attachments as $attachment)
             <li>
                 <a
                     href="{{ url('/courses/'.$course->slug.'/lessons/'.$lesson->id.'/attachments/'.$attachment->id) }}"
                     target="_blank"
-                    class="flex items-center justify-between gap-2 py-3 min-h-[44px]"
+                    class="ui-list-item"
+                    style="text-decoration: none;"
                 >
-                    <span>{{ $attachment->original_name }}</span>
-                    <span class="text-sm text-indigo-600">{{ __('lessons.open_note') }}</span>
+                    <span style="display: inline-flex; align-items: center; gap: 0.625rem;">
+                        <span class="ui-empty-icon" style="width: 30px; height: 30px;"><x-icon name="document" :size="15" /></span>
+                        <span style="font-weight: 550;">{{ $attachment->original_name }}</span>
+                    </span>
+                    <span class="ui-link" style="font-size: 0.875rem;">{{ __('lessons.open_note') }}</span>
                 </a>
             </li>
         @empty
-            <li class="py-3 text-gray-500">{{ __('lessons.no_notes') }}</li>
+            <li>
+                <div class="ui-list-item" style="color: var(--ink-subtle);">
+                    <span>{{ __('lessons.no_notes') }}</span>
+                </div>
+            </li>
         @endforelse
     </ul>
 
-    <div class="flex items-center justify-between gap-2">
-        <div>
+    {{-- Deliberately unlabelled: the two links already begin with "Previous lesson" and
+         "Next lesson", which is a better accessible name than any generic label, and
+         no untranslated copy is invented for it. --}}
+    <nav class="ui-panel" style="padding: 0.875rem 1rem; display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; justify-content: space-between;">
+        <div class="min-w-0">
             @if ($previous)
-                <a href="{{ url('/courses/'.$course->slug.'/lessons/'.$previous->id) }}" class="text-sm">&larr; {{ __('lessons.previous_lesson') }}: {{ $previous->title }}</a>
+                <a href="{{ url('/courses/'.$course->slug.'/lessons/'.$previous->id) }}" class="ui-link" style="font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.375rem;">
+                    <x-icon name="arrow-left" :size="15" />
+                    {{ __('lessons.previous_lesson') }}: {{ $previous->title }}
+                </a>
             @endif
         </div>
-        <div>
+        <div class="min-w-0">
             @if ($next)
-                <a href="{{ url('/courses/'.$course->slug.'/lessons/'.$next->id) }}" class="text-sm">{{ __('lessons.next_lesson') }}: {{ $next->title }} &rarr;</a>
+                <a href="{{ url('/courses/'.$course->slug.'/lessons/'.$next->id) }}" class="ui-link" style="font-size: 0.875rem; display: inline-flex; align-items: center; gap: 0.375rem;">
+                    {{ __('lessons.next_lesson') }}: {{ $next->title }}
+                    <x-icon name="arrow-right" :size="15" />
+                </a>
             @endif
         </div>
-    </div>
+    </nav>
 @endsection

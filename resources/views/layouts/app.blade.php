@@ -4,12 +4,26 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="description" content="{{ __('meta.description') }}">
     <title>{{ config('app.name', 'Coaching SaaS') }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @php
         $tenant = app(\App\Support\TenantContext::class)->has() ? app(\App\Support\TenantContext::class)->get() : null;
     @endphp
     @if ($tenant)
+        {{-- Per-tenant accent. Everything downstream (buttons, links, progress bars,
+             focus rings, badges) reads --brand and derives --brand-ink/--brand-soft/
+             --brand-line from it in resources/css/app.css, so one runtime override
+             themes the whole product. Only --brand is written here on purpose: the
+             derived names must never appear in the document, because
+             CredentialsSheetTest extracts the temporary password from
+             strip_tags(response) and strip_tags() keeps <style> contents — a selector
+             such as `brand-line` would be matched before the real password. --}}
+        <style>
+            :root {
+                --brand: {{ $tenant->theme_color }};
+            }
+        </style>
         <link rel="manifest" href="/manifest.webmanifest">
         <meta name="theme-color" content="{{ $tenant->theme_color }}">
         <link rel="apple-touch-icon" href="/pwa/icons/180.png">
@@ -17,93 +31,147 @@
     @endif
     @stack('scripts')
 </head>
-<body class="min-w-[360px] bg-gray-50 text-gray-900 font-sans">
+<body class="min-w-[360px] antialiased">
 @php
     $tenantUser = auth('tenant')->user();
     $platformAdmin = auth('platform_admin')->user();
+    $isOwner = (bool) ($tenantUser?->role->isOwner());
+    $canTeach = (bool) ($tenantUser?->role->canManageUsers());
+
+    $isCurrent = fn (string $path): string => request()->is(trim($path, '/').'*')
+        || request()->is(trim($path, '/'))
+        ? ' aria-current="page"'
+        : '';
 @endphp
 
-@if ($tenant)
-    <header class="bg-white border-b border-gray-200">
-        <div class="max-w-3xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-            <span class="flex items-center gap-2 font-semibold text-gray-900">
+<a href="#main-content" class="ui-skip">Skip to content</a>
+
+<header class="ui-header">
+    <div class="ui-shell ui-header-inner">
+        @if ($tenant)
+            <a href="{{ url('/dashboard') }}" class="ui-brand">
                 @if ($tenant->logo_path)
-                    <img src="/branding/logo?v={{ $tenant->branding_version }}" alt="" class="h-8 w-8 rounded object-contain">
+                    <span class="ui-brand-mark"><img src="/branding/logo?v={{ $tenant->branding_version }}" alt=""></span>
+                @else
+                    <span class="ui-brand-mark" aria-hidden="true">{{ strtoupper(substr($tenant->name, 0, 1)) }}</span>
                 @endif
-                {{ $tenant->name }}
-            </span>
+                <span class="truncate max-w-[10rem] sm:max-w-[16rem]">{{ $tenant->name }}</span>
+            </a>
+        @else
+            <a href="{{ url('/') }}" class="ui-brand">
+                <span class="ui-brand-mark" aria-hidden="true">{{ strtoupper(substr(config('app.name', 'Coaching SaaS'), 0, 1)) }}</span>
+                <span>{{ config('app.name', 'Coaching SaaS') }}</span>
+            </a>
+        @endif
 
-            <nav class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+        <nav class="ui-nav" aria-label="Primary">
+            @if ($tenant)
                 @if ($tenantUser)
-                    @if ($tenantUser->role->canManageUsers())
-                        <a href="{{ url('/dashboard') }}" class="min-h-[44px] flex items-center">{{ __('nav.dashboard') }}</a>
-                        <a href="{{ url('/manage/courses') }}" class="min-h-[44px] flex items-center">{{ __('nav.courses') }}</a>
-                        <a href="{{ url('/users') }}" class="min-h-[44px] flex items-center">{{ __('nav.people') }}</a>
+                    @if ($canTeach)
+                        <a href="{{ url('/dashboard') }}" class="ui-nav-link"{!! $isCurrent('/dashboard') !!}>
+                            <x-icon name="home" :size="17" />{{ __('nav.dashboard') }}
+                        </a>
+                        <a href="{{ url('/manage/courses') }}" class="ui-nav-link"{!! $isCurrent('/manage/courses') !!}>
+                            <x-icon name="book" :size="17" />{{ __('nav.courses') }}
+                        </a>
+                        <a href="{{ url('/users') }}" class="ui-nav-link"{!! $isCurrent('/users') !!}>
+                            <x-icon name="users" :size="17" />{{ __('nav.people') }}
+                        </a>
                     @else
-                        <a href="{{ url('/dashboard') }}" class="min-h-[44px] flex items-center">{{ __('nav.my_courses') }}</a>
+                        <a href="{{ url('/dashboard') }}" class="ui-nav-link"{!! $isCurrent('/dashboard') !!}>
+                            <x-icon name="home" :size="17" />{{ __('nav.my_courses') }}
+                        </a>
+                        <a href="{{ url('/courses') }}" class="ui-nav-link"{!! $isCurrent('/courses') !!}>
+                            <x-icon name="book" :size="17" />{{ __('nav.courses') }}
+                        </a>
                     @endif
 
-                    @if ($tenantUser->role->canManageUsers())
-                        <a href="{{ url('/manage/help') }}" class="min-h-[44px] flex items-center">{{ __('help.nav_label') }}</a>
+                    <span class="ui-nav-divider" aria-hidden="true"></span>
+
+                    @if ($canTeach)
+                        <a href="{{ url('/manage/help') }}" class="ui-nav-link"{!! $isCurrent('/manage/help') !!}>
+                            <x-icon name="help" :size="17" />{{ __('help.nav_label') }}
+                        </a>
                     @endif
 
-                    @if ($tenantUser->role->isOwner())
-                        <a href="{{ url('/manage/settings') }}" class="min-h-[44px] flex items-center">{{ __('nav.settings') }}</a>
+                    @if ($isOwner)
+                        <a href="{{ url('/manage/settings') }}" class="ui-nav-link"{!! $isCurrent('/manage/settings') !!}>
+                            <x-icon name="settings" :size="17" />{{ __('nav.settings') }}
+                        </a>
                     @endif
 
                     <form method="POST" action="{{ url('/logout') }}">
                         @csrf
-                        <button type="submit" class="min-h-[44px] text-left">{{ __('nav.logout') }}</button>
+                        <button type="submit" class="ui-nav-link">
+                            <x-icon name="logout" :size="17" />{{ __('nav.logout') }}
+                        </button>
                     </form>
                 @else
-                    <a href="{{ url('/courses') }}" class="min-h-[44px] flex items-center">{{ __('nav.courses') }}</a>
-                    <a href="{{ url('/login') }}" class="min-h-[44px] flex items-center">{{ __('nav.login') }}</a>
+                    <a href="{{ url('/courses') }}" class="ui-nav-link"{!! $isCurrent('/courses') !!}>
+                        <x-icon name="book" :size="17" />{{ __('nav.courses') }}
+                    </a>
+                    <a href="{{ url('/login') }}" class="ui-nav-link ui-nav-cta"{!! $isCurrent('/login') !!}>
+                        {{ __('nav.login') }}
+                    </a>
                 @endif
 
-                <button type="button" id="pwa-install-button" hidden class="min-h-[44px] px-3 rounded-md bg-indigo-600 text-white">
+                <button type="button" id="pwa-install-button" hidden class="ui-btn ui-btn-secondary ui-btn-sm">
                     {{ __('settings.pwa.install') }}
                 </button>
-            </nav>
-        </div>
-    </header>
+            @elseif ($platformAdmin)
+                <a href="{{ url('/admin/dashboard') }}" class="ui-nav-link"{!! $isCurrent('/admin/dashboard') !!}>
+                    <x-icon name="chart" :size="17" />{{ __('platform.admin.nav.dashboard') }}
+                </a>
+                <a href="{{ url('/admin/institutes') }}" class="ui-nav-link"{!! $isCurrent('/admin/institutes') !!}>
+                    <x-icon name="shield" :size="17" />{{ __('platform.admin.nav.institutes') }}
+                </a>
+                <a href="{{ url('/admin/demo-requests') }}" class="ui-nav-link"{!! $isCurrent('/admin/demo-requests') !!}>
+                    <x-icon name="inbox" :size="17" />{{ __('platform.admin.nav.demo_requests') }}
+                </a>
 
-    <div id="pwa-ios-hint" hidden class="bg-indigo-50 border-b border-indigo-100 text-sm text-indigo-900">
-        <div class="max-w-3xl mx-auto px-4 py-2 flex items-center justify-between gap-2">
-            <span>{{ __('settings.pwa.ios_hint') }}</span>
-            <button type="button" id="pwa-ios-hint-dismiss" class="min-h-[44px] px-2 font-medium">{{ __('settings.pwa.dismiss') }}</button>
-        </div>
-    </div>
-@elseif ($platformAdmin)
-    <header class="bg-white border-b border-gray-200">
-        <div class="max-w-3xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-            <span class="font-semibold text-gray-900">{{ config('app.name', 'Coaching SaaS') }}</span>
-
-            <nav class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-                <a href="{{ url('/admin/dashboard') }}" class="min-h-[44px] flex items-center">{{ __('platform.admin.nav.dashboard') }}</a>
-                <a href="{{ url('/admin/institutes') }}" class="min-h-[44px] flex items-center">{{ __('platform.admin.nav.institutes') }}</a>
-                <a href="{{ url('/admin/demo-requests') }}" class="min-h-[44px] flex items-center">{{ __('platform.admin.nav.demo_requests') }}</a>
+                <span class="ui-nav-divider" aria-hidden="true"></span>
 
                 <form method="POST" action="{{ url('/admin/logout') }}">
                     @csrf
-                    <button type="submit" class="min-h-[44px] text-left">{{ __('platform.admin.nav.logout') }}</button>
+                    <button type="submit" class="ui-nav-link">
+                        <x-icon name="logout" :size="17" />{{ __('platform.admin.nav.logout') }}
+                    </button>
                 </form>
-            </nav>
-        </div>
-    </header>
-@else
-    <header class="bg-white border-b border-gray-200">
-        <div class="max-w-3xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-            <span class="font-semibold text-gray-900">{{ config('app.name', 'Coaching SaaS') }}</span>
+            @else
+                <a href="{{ url('/admin/login') }}" class="ui-nav-link">
+                    {{ __('platform.admin_login_link') }}
+                </a>
+            @endif
+        </nav>
+    </div>
+</header>
 
-            <nav class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-                <a href="{{ url('/admin/login') }}" class="min-h-[44px] flex items-center">{{ __('platform.admin_login_link') }}</a>
-            </nav>
+@if ($tenant)
+    <div id="pwa-ios-hint" hidden class="ui-fade" style="background: var(--brand-soft); border-bottom: 1px solid var(--brand-line);">
+        <div class="ui-shell" style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding-block: 0.5rem; font-size: 0.875rem; color: var(--brand-ink);">
+            <span>{{ __('settings.pwa.ios_hint') }}</span>
+            <button type="button" id="pwa-ios-hint-dismiss" class="ui-nav-link" style="font-weight: 650;">{{ __('settings.pwa.dismiss') }}</button>
         </div>
-    </header>
+    </div>
 @endif
 
-<main class="max-w-3xl mx-auto px-4 py-6">
+<main id="main-content" class="ui-shell ui-main" tabindex="-1">
     @yield('content')
 </main>
+
+@if ($tenant || $platformAdmin)
+    {{-- The signed-in product gets a quiet chrome footer; the public landing page carries
+         its own marketing footer instead, so the two never stack. --}}
+    <footer class="ui-shell" style="padding-bottom: 2.5rem;">
+        {{-- `--ink-muted` rather than `--ink-subtle`: on the #f6f6f7 canvas the subtle
+             step lands at 4.44:1, just under the 4.5:1 minimum (Lighthouse caught it).
+             The subtle step is still fine inside white cards, which is where it is
+             used everywhere else. --}}
+        <div style="border-top: 1px solid var(--line); padding-top: 1.25rem; display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; justify-content: space-between; font-size: 0.8125rem; color: var(--ink-muted);">
+            <span>{{ config('app.name', 'Coaching SaaS') }}</span>
+            <span>{{ now()->year }}</span>
+        </div>
+    </footer>
+@endif
 </body>
 </html>

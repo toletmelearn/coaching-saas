@@ -3,18 +3,44 @@
 @section('content')
     <x-page-header :title="__('courses.index.heading')" />
 
-    <ul class="divide-y divide-gray-100">
+    <ul class="ui-list ui-fade">
         @forelse ($courses as $course)
-            <li class="py-3">
-                <a href="{{ url('/courses/'.$course->slug) }}" class="font-medium">{{ $course->title }}</a>
-                <span class="text-sm text-gray-600">
-                    @if ($course->class_level) — {{ $course->class_level }} @endif
-                    @if ($course->subject) — {{ $course->subject }} @endif
-                    — {{ __('courses.index.lessons_count', ['count' => $course->lessons_count]) }}
-                </span>
+            <li>
+                <div class="ui-list-item">
+                    <div class="min-w-0 flex-1">
+                        <a href="{{ url('/courses/'.$course->slug) }}" class="ui-h2" style="display: block; text-decoration: none;">
+                            {{ $course->title }}
+                        </a>
+
+                        <p class="ui-subtle" style="margin-top: 0.125rem;">
+                            @if ($course->class_level)
+                                {{ $course->class_level }}
+                            @endif
+                            @if ($course->class_level && $course->subject)
+                                ·
+                            @endif
+                            @if ($course->subject)
+                                {{ $course->subject }}
+                            @endif
+                            @if ($course->class_level || $course->subject)
+                                ·
+                            @endif
+                            {{ __('courses.index.lessons_count', ['count' => $course->lessons_count]) }}
+                        </p>
+                    </div>
+
+                    <span class="ui-empty-icon" aria-hidden="true" style="flex: none;">
+                        <x-icon name="arrow-right" :size="18" />
+                    </span>
+                </div>
             </li>
         @empty
-            <li class="py-3 text-gray-500">{{ __('courses.index.empty') }}</li>
+            <li>
+                <div class="ui-empty" style="border: 0;">
+                    <span class="ui-empty-icon"><x-icon name="book" :size="20" /></span>
+                    <p class="ui-h2" style="margin: 0;">{{ __('courses.index.empty') }}</p>
+                </div>
+            </li>
         @endforelse
     </ul>
 

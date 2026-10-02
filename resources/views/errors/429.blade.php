@@ -1,12 +1,18 @@
 @extends('layouts.app')
 
 @section('content')
-    <h1>{{ __('errors.429.heading') }}</h1>
-    <p>{{ __('errors.429.message') }}</p>
+    <div class="ui-rise" style="max-width: 34rem;">
+        <span class="ui-kicker">429</span>
+        <h1 class="ui-h1">{{ __('errors.429.heading') }}</h1>
+        <p class="ui-sub">{{ __('errors.429.message') }}</p>
 
-    @auth('tenant')
-        <p><a href="{{ url('/dashboard') }}">{{ __('errors.back_to_dashboard') }}</a></p>
-    @else
-        <p><a href="{{ url('/login') }}">{{ __('errors.back_to_login') }}</a></p>
-    @endauth
+        <div class="ui-card ui-empty" style="margin-top: 1.5rem;">
+            <span class="ui-empty-icon"><x-icon name="help" :size="20" /></span>
+            @auth('tenant')
+                <x-link href="{{ url('/dashboard') }}" variant="primary">{{ __('errors.back_to_dashboard') }}</x-link>
+            @else
+                <x-link href="{{ url('/login') }}" variant="primary">{{ __('errors.back_to_login') }}</x-link>
+            @endauth
+        </div>
+    </div>
 @endsection

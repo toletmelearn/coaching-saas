@@ -18,16 +18,21 @@
     } else {
         $isChecked = old($name, $checked);
     }
+
+    // The input must stay the first thing inside the label: EnrolmentUiTest matches
+    // `/<label for="…"[^>]*>\s*<input type="checkbox" name="…" id="…" value="…"/`
+    // to prove each label points at its own uniquely-identified input. Never add
+    // markup between the label opening tag and this input.
 @endphp
 
-<label for="{{ $fieldId }}" class="flex items-center gap-3 py-2 min-h-[44px] cursor-pointer select-none">
+<label for="{{ $fieldId }}" class="ui-check-label">
     <input
         type="checkbox"
         name="{{ $name }}"
         id="{{ $fieldId }}"
         value="{{ $value }}"
         @checked($isChecked)
-        {{ $attributes->merge(['class' => 'h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500']) }}
+        {{ $attributes->merge(['class' => 'ui-check']) }}
     >
-    <span class="text-base">{{ $label }}</span>
+    <span class="ui-check-text">{{ $label }}</span>
 </label>

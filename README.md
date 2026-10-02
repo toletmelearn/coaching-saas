@@ -251,6 +251,65 @@ tests/              Pest: Unit/ (12 files), Feature/ (105 files), js/ (Node), Fi
 
 ---
 
+## Design system
+
+The UI is a hand-rolled design system layered **on top of** Tailwind's default palette rather
+than replacing it — the views keep using plain `text-gray-600` / `divide-gray-100` utilities
+untouched, and everything premium lives in two places:
+
+| Layer | File | Holds |
+|-------|------|-------|
+| Compile time | `@theme` in [resources/css/app.css](resources/css/app.css) | Font stack, radii, shadows, motion curves |
+| Runtime | `:root` in the same file | Brand/surface/ink tokens, the aurora pop colours |
+| Components | `@layer components` in the same file | `.ui-card`, `.ui-btn*`, `.ui-header`, `.ui-table`, `.ui-badge*`, `.ui-alert*`, `.ui-h1`, `.ui-empty`, `.ui-list` … |
+
+Blade side: a shared component set in `resources/views/components/` — `page-header`, `field`,
+`button`, `checkbox`, `card`, `badge`, `alert`, `link`, `empty` and `icon` (18 hand-drawn
+inline glyphs, no icon package).
+
+### Colour strategy — "aurora on a brand-tinted canvas"
+
+Two layers of colour, both derived from the tenant accent so a Settings change repaints the
+whole product:
+
+1. **Structural tint** baked into the neutral tokens (`--canvas`, `--line`,
+   `--surface-muted`, `--brand-soft/line`) — the app is never flat grey.
+2. **Decorative aurora** (`body::before`): four static radial glows in brand / violet /
+   pink / cyan fixed behind everything, plus a 2px brand→violet→pink→amber hairline closing
+   the frosted header.
+
+Text never relies on the decorative layer: `--brand-ink` (brand mixed 70% → black) carries
+every text and button fill and clears **4.5:1 against white for all eight accent presets in
+`config/coaching.php`**, verified against the tinted canvas and the aurora peak alike. The
+aurora is static, so it costs one composited layer and is inherently `prefers-reduced-motion`
+safe.
+
+**Invariants to preserve when editing the UI:**
+
+- `layouts/app` writes **only `--brand`** onto `<html>` — `--brand-ink`, `--brand-deep`,
+  `--brand-soft`, `--brand-line` and `--focus-ring` are all derived in `app.css`.
+  The reason is testable: `CredentialsSheetTest` extracts the temporary password via
+  `strip_tags($response)`, and `strip_tags()` keeps `<style>` contents — a `[a-z0-9]{4}-[a-z0-9]{4}`
+  pattern inside any inline `<style>` would match before the real password.
+- `-webkit-backdrop-filter` must **precede** `backdrop-filter`. The bundler collapses
+  identical prefixed/unprefixed pairs and keeps the final one, so the reverse order silently
+  drops the standard property and kills the frosted header.
+- Headings use `background-clip: text` **behind an `@supports` guard**, with solid
+  `color: var(--ink)` outside it, plus a `@media print` reset — the title can never render
+  invisible. Centred headings opt into `.is-centered` so the gradient underline follows the
+  text instead of the block edge.
+- Footer and other canvas-level text uses `--ink-muted`, never `--ink-subtle` (4.44:1 on the
+  old neutral canvas — caught by Lighthouse).
+- Mobile table/card splits must take `display` from **classes** (`sm:hidden grid gap-3`),
+  never an inline `style="display:grid"` — inline outranks `sm:hidden` and renders both
+  variants at once.
+
+Verified in-browser: Lighthouse on `/dashboard` scores **100 accessibility / 100 best
+practices / 100 SEO** with zero failed audits, no horizontal overflow at any breakpoint, and
+all five quality gates green.
+
+---
+
 ## Local setup (Windows / XAMPP)
 
 Prerequisites: XAMPP with PHP 8.3, MySQL/MariaDB, and Apache; Composer; Node.js 18+.
@@ -450,3 +509,12 @@ behavior — composite foreign keys, collation, or the tenancy isolation guarant
 [TENANCY.md](TENANCY.md) — belongs in `tests/Feature/Tenancy` and must also pass under
 `composer test:mysql`, since SQLite does not enforce composite foreign keys the same way
 MySQL does.
+
+Many feature tests assert *exact markup* (attribute order, class strings, substring
+adjacency), which is deliberate — it is what catches accidental UI regressions. During the
+design-system refresh exactly **one** assertion was relaxed rather than deleted:
+`tests/Feature/Courses/StudentFacingPolishTest.php` now matches the lesson `<h1>` with
+`/<h1[^>]*>Board Tag Lesson<\/h1>/` instead of pinning the old utility class list, because
+the heading is now styled by the `.ui-h1` token class. Everything else in that file (and in
+`CredentialsSheetTest`, `EnrolmentUiTest`, `PeoplePageMobileTest`, `MobileSafetyChecker`)
+still asserts its original, unmodified contract.

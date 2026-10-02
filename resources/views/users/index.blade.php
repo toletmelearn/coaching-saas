@@ -4,47 +4,61 @@
     <x-page-header :title="__('users.index.heading')">
         <x-slot:actions>
             @can('create', \App\Models\User::class)
-                <a href="{{ url('/users/import') }}" class="inline-flex items-center justify-center min-h-[44px] px-4 py-2 rounded-md font-medium text-base bg-gray-100 text-gray-800 hover:bg-gray-200">
+                <x-link href="{{ url('/users/import') }}">
+                    <x-icon name="document" :size="17" />
                     {{ __('users.index.import') }}
-                </a>
-                <a href="{{ url('/users/create') }}" class="inline-flex items-center justify-center min-h-[44px] px-4 py-2 rounded-md font-medium text-base bg-indigo-600 text-white hover:bg-indigo-700">
+                </x-link>
+                <x-link href="{{ url('/users/create') }}" variant="primary">
+                    <x-icon name="plus" :size="17" />
                     {{ __('users.index.new') }}
-                </a>
+                </x-link>
             @endcan
         </x-slot:actions>
     </x-page-header>
 
     @if (session('temporary_password'))
-        <div class="mb-6 rounded-md border-2 border-green-500 bg-green-50 p-4">
-            @if (session('temporary_password_for'))
-                <p class="font-medium">{{ __('users.temporary_password_for', session('temporary_password_for')) }}</p>
-            @endif
-            <p class="text-sm text-gray-700 mb-1">{{ __('users.temporary_password') }}</p>
-            <p class="text-2xl font-mono font-bold tracking-wide">{{ session('temporary_password') }}</p>
-            <p class="text-sm text-red-700 mt-2">{{ __('users.temporary_password_share_warning') }}</p>
+        <div class="ui-alert ui-alert-success ui-rise">
+            <x-icon name="sparkle" :size="18" style="margin-top: 2px; flex: none;" />
+            <div style="width: 100%;">
+                @if (session('temporary_password_for'))
+                    <p style="margin: 0 0 0.375rem; font-weight: 650;">{{ __('users.temporary_password_for', session('temporary_password_for')) }}</p>
+                @endif
+                <p style="margin: 0 0 0.25rem; font-size: 0.875rem;">{{ __('users.temporary_password') }}</p>
+                <p class="ui-mono" style="margin: 0; font-size: 1.625rem; font-weight: 700; letter-spacing: 0.06em; word-break: break-all;">{{ session('temporary_password') }}</p>
+                <p style="margin: 0.625rem 0 0; font-size: 0.875rem; font-weight: 600;">{{ __('users.temporary_password_share_warning') }}</p>
+            </div>
         </div>
     @endif
 
     {{-- Below sm: one card per person. From sm up: the table. Both render the same
-         users/_actions partial so the action set can never drift between the two. --}}
-    <div class="sm:hidden space-y-3">
+         users/_actions partial so the action set can never drift between the two.
+         `display` must come from the class list, never an inline style: an inline
+         declaration would outrank `sm:hidden` and show both renderings at once. --}}
+    <div class="sm:hidden ui-fade grid gap-3">
         @forelse ($users as $rowUser)
-            <div class="rounded-md border border-gray-200 p-3">
-                <div class="flex items-center justify-between gap-2 mb-1">
-                    <a href="{{ url('/users/'.$rowUser->id) }}" class="font-medium">{{ $rowUser->name }}</a>
+            <div class="ui-card" style="padding: 1rem;">
+                <a href="{{ url('/users/'.$rowUser->id) }}" class="ui-h2" style="text-decoration: none; display: block;">{{ $rowUser->name }}</a>
+
+                <div style="display: flex; flex-wrap: wrap; gap: 0.375rem; margin-top: 0.5rem;">
+                    <x-badge tone="brand">{{ __('users.roles.'.$rowUser->role->value) }}</x-badge>
+                    <x-badge :tone="$rowUser->status->value === 'active' ? 'success' : 'warning'">{{ __('users.statuses.'.$rowUser->status->value) }}</x-badge>
                 </div>
-                <div class="flex gap-2 mb-2 text-xs">
-                    <span class="px-2 py-0.5 rounded-full bg-gray-100">{{ __('users.roles.'.$rowUser->role->value) }}</span>
-                    <span class="px-2 py-0.5 rounded-full bg-gray-100">{{ __('users.statuses.'.$rowUser->status->value) }}</span>
+
+                <div style="margin-top: 0.625rem; font-size: 0.875rem; color: var(--ink-muted);">
+                    @if ($rowUser->phone)
+                        <div style="display: flex; align-items: center; gap: 0.375rem;">
+                            <x-icon name="phone" :size="14" />{{ $rowUser->phone }}
+                        </div>
+                    @endif
+                    @if ($rowUser->email)
+                        <div style="display: flex; align-items: center; gap: 0.375rem;">
+                            <x-icon name="mail" :size="14" />{{ $rowUser->email }}
+                        </div>
+                    @endif
                 </div>
-                @if ($rowUser->phone)
-                    <div class="text-sm text-gray-700">{{ $rowUser->phone }}</div>
-                @endif
-                @if ($rowUser->email)
-                    <div class="text-sm text-gray-700">{{ $rowUser->email }}</div>
-                @endif
+
                 @if ($rowUser->role->value === 'student')
-                    <div class="text-xs text-gray-500 mt-1 mb-2">
+                    <div class="ui-subtle" style="margin-top: 0.5rem;">
                         {{ __('users.devices.count', ['count' => $rowUser->active_device_count]) }}
                         —
                         {{ $rowUser->last_device_active_at
@@ -52,54 +66,58 @@
                             : __('users.devices.never_active') }}
                     </div>
                 @endif
-                <div class="mt-2">
+
+                <div style="margin-top: 0.75rem;">
                     @include('users._actions', ['rowUser' => $rowUser])
                 </div>
             </div>
         @empty
-            <p class="text-sm text-gray-500">{{ __('users.index.empty') }}</p>
+            <div class="ui-empty" style="border: 0;">
+                <span class="ui-empty-icon"><x-icon name="users" :size="20" /></span>
+                <p class="ui-h2" style="margin: 0;">{{ __('users.index.empty') }}</p>
+            </div>
         @endforelse
     </div>
 
-    <div class="hidden sm:block overflow-x-auto">
-        <table class="w-full text-sm">
+    <div class="hidden sm:block overflow-x-auto ui-table-wrap ui-fade">
+        <table class="ui-table">
             <thead>
-                <tr class="text-left border-b border-gray-300">
-                    <th class="py-2 pr-2">{{ __('users.columns.name') }}</th>
-                    <th class="py-2 pr-2">{{ __('users.columns.phone') }}</th>
-                    <th class="py-2 pr-2">{{ __('users.columns.email') }}</th>
-                    <th class="py-2 pr-2">{{ __('users.columns.role') }}</th>
-                    <th class="py-2 pr-2">{{ __('users.columns.status') }}</th>
-                    <th class="py-2 pr-2">{{ __('devices.heading') }}</th>
-                    <th class="py-2 pr-2">{{ __('users.columns.actions') }}</th>
+                <tr>
+                    <th scope="col">{{ __('users.columns.name') }}</th>
+                    <th scope="col">{{ __('users.columns.phone') }}</th>
+                    <th scope="col">{{ __('users.columns.email') }}</th>
+                    <th scope="col">{{ __('users.columns.role') }}</th>
+                    <th scope="col">{{ __('users.columns.status') }}</th>
+                    <th scope="col">{{ __('devices.heading') }}</th>
+                    <th scope="col">{{ __('users.columns.actions') }}</th>
                 </tr>
             </thead>
             <tbody>
             @forelse ($users as $rowUser)
-                <tr class="border-b border-gray-100">
-                    <td class="py-2 pr-2"><a href="{{ url('/users/'.$rowUser->id) }}">{{ $rowUser->name }}</a></td>
-                    <td class="py-2 pr-2">{{ $rowUser->phone }}</td>
-                    <td class="py-2 pr-2">{{ $rowUser->email }}</td>
-                    <td class="py-2 pr-2">{{ __('users.roles.'.$rowUser->role->value) }}</td>
-                    <td class="py-2 pr-2">{{ __('users.statuses.'.$rowUser->status->value) }}</td>
-                    <td class="py-2 pr-2">
+                <tr>
+                    <td><a href="{{ url('/users/'.$rowUser->id) }}" class="ui-link">{{ $rowUser->name }}</a></td>
+                    <td>{{ $rowUser->phone }}</td>
+                    <td>{{ $rowUser->email }}</td>
+                    <td><x-badge tone="brand">{{ __('users.roles.'.$rowUser->role->value) }}</x-badge></td>
+                    <td><x-badge :tone="$rowUser->status->value === 'active' ? 'success' : 'warning'">{{ __('users.statuses.'.$rowUser->status->value) }}</x-badge></td>
+                    <td>
                         @if ($rowUser->role->value === 'student')
                             <div>{{ __('users.devices.count', ['count' => $rowUser->active_device_count]) }}</div>
-                            <div class="text-gray-500">
+                            <div class="ui-subtle">
                                 {{ $rowUser->last_device_active_at
                                     ? __('users.devices.last_active', ['time' => \Illuminate\Support\Carbon::parse($rowUser->last_device_active_at)->diffForHumans()])
                                     : __('users.devices.never_active') }}
                             </div>
-                            <a href="{{ url('/users/'.$rowUser->id.'/devices') }}" class="text-indigo-600 underline">{{ __('users.devices.manage_link') }}</a>
+                            <a href="{{ url('/users/'.$rowUser->id.'/devices') }}" class="ui-link" style="font-size: 0.8125rem;">{{ __('users.devices.manage_link') }}</a>
                         @endif
                     </td>
-                    <td class="py-2 pr-2">
+                    <td>
                         @include('users._actions', ['rowUser' => $rowUser])
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td class="py-2" colspan="7">{{ __('users.index.empty') }}</td>
+                    <td colspan="7" style="color: var(--ink-subtle);">{{ __('users.index.empty') }}</td>
                 </tr>
             @endforelse
             </tbody>

@@ -1,25 +1,28 @@
 @extends('layouts.app')
 
 @section('content')
-    <x-page-header :title="__('users.dashboard.welcome').', '.$user->name" />
+    <x-page-header :kicker="__('users.dashboard.welcome')" :title="$user->name" />
 
     @if ($showGettingStarted)
-        <div class="mb-6 rounded-md border border-gray-200 bg-white p-4">
-            <div class="flex items-center justify-between gap-2 mb-3">
-                <h2 class="font-semibold text-gray-900">{{ __('dashboard.getting_started.title') }}</h2>
+        <div class="ui-card ui-rise" style="margin-bottom: 1.5rem;">
+            <div class="ui-section-title">
+                <h2 class="ui-h2">{{ __('dashboard.getting_started.title') }}</h2>
                 <form method="POST" action="{{ url('/manage/getting-started/dismiss') }}">
                     @csrf
-                    <button type="submit" class="text-sm text-gray-500 underline min-h-[44px]">{{ __('dashboard.getting_started.hide') }}</button>
+                    <button type="submit" class="ui-btn ui-btn-ghost ui-btn-sm">{{ __('dashboard.getting_started.hide') }}</button>
                 </form>
             </div>
-            <ul class="space-y-2">
+
+            <ul style="list-style: none; display: grid; gap: 0.625rem;">
                 @foreach ($checklist as $step)
-                    <li class="flex items-center gap-2 text-sm">
-                        <span aria-hidden="true">{{ $step['done'] ? '✅' : '⬜' }}</span>
+                    <li style="display: flex; align-items: center; gap: 0.625rem; font-size: 0.9375rem;">
+                        <span aria-hidden="true" class="ui-empty-icon" style="width: 26px; height: 26px; {{ $step['done'] ? 'background: #ecfdf5; color: #047857;' : 'background: #f5f5f4; color: var(--ink-subtle);' }}">
+                            <x-icon :name="$step['done'] ? 'check' : 'sparkle'" :size="14" />
+                        </span>
                         @if ($step['done'])
-                            <span class="text-gray-500 line-through">{{ $step['label'] }}</span>
+                            <span style="color: var(--ink-subtle); text-decoration: line-through;">{{ $step['label'] }}</span>
                         @else
-                            <a href="{{ url($step['link']) }}" class="text-indigo-600 underline">{{ $step['label'] }}</a>
+                            <a href="{{ url($step['link']) }}" class="ui-link">{{ $step['label'] }}</a>
                         @endif
                     </li>
                 @endforeach
@@ -27,12 +30,18 @@
         </div>
     @endif
 
-    <div class="flex flex-wrap gap-2">
-        <a href="{{ url('/manage/courses') }}" class="inline-flex items-center justify-center min-h-[44px] px-4 py-2 rounded-md font-medium text-base bg-indigo-600 text-white hover:bg-indigo-700">
+    <div class="ui-fade" style="display: flex; flex-wrap: wrap; gap: 0.625rem;">
+        <x-link href="{{ url('/manage/courses') }}" variant="primary">
+            <x-icon name="book" :size="17" />
             {{ __('nav.courses') }}
-        </a>
-        <a href="{{ url('/users') }}" class="inline-flex items-center justify-center min-h-[44px] px-4 py-2 rounded-md font-medium text-base bg-gray-100 text-gray-800 hover:bg-gray-200">
+        </x-link>
+        <x-link href="{{ url('/users') }}">
+            <x-icon name="users" :size="17" />
             {{ __('users.dashboard.manage_people') }}
-        </a>
+        </x-link>
+        <x-link href="{{ url('/manage/help') }}" variant="ghost">
+            <x-icon name="help" :size="17" />
+            {{ __('help.nav_label') }}
+        </x-link>
     </div>
 @endsection

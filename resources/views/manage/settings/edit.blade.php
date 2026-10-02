@@ -4,20 +4,18 @@
     <x-page-header :title="__('settings.heading')" />
 
     @if (session('status'))
-        <div class="mb-4 rounded-md border border-green-300 bg-green-50 p-3 text-sm text-green-700">
-            {{ session('status') }}
-        </div>
+        <x-alert tone="success">{{ session('status') }}</x-alert>
     @endif
 
     @if ($errors->any())
-        <div class="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+        <x-alert tone="danger">
             @foreach ($errors->all() as $error)
                 <p>{{ $error }}</p>
             @endforeach
-        </div>
+        </x-alert>
     @endif
 
-    <form method="POST" action="{{ url('/manage/settings') }}" class="mb-8">
+    <form method="POST" action="{{ url('/manage/settings') }}" class="ui-card ui-rise" style="padding: 1.25rem; margin-bottom: 1.5rem;">
         @csrf
         @method('PATCH')
 
@@ -25,11 +23,11 @@
         <x-field name="contact_phone" :label="__('settings.fields.contact_phone')" :value="$tenant->contact_phone" />
         <x-field name="contact_email" type="email" :label="__('settings.fields.contact_email')" :value="$tenant->contact_email" />
 
-        <div class="mb-4">
-            <span class="block text-sm font-medium text-gray-700 mb-2">{{ __('settings.fields.theme_color') }}</span>
+        <div class="mb-5">
+            <span class="ui-label">{{ __('settings.fields.theme_color') }}</span>
             <div class="flex flex-wrap gap-3">
                 @foreach (config('coaching.theme_presets', []) as $preset)
-                    <label class="cursor-pointer">
+                    <label class="ui-swatch" title="{{ $preset }}">
                         <input
                             type="radio"
                             name="theme_color"
@@ -38,7 +36,7 @@
                             @checked(old('theme_color', $tenant->theme_color) === $preset)
                         >
                         <span
-                            class="block h-10 w-10 rounded-full border-2 border-transparent peer-checked:border-gray-900"
+                            class="ui-swatch-dot"
                             style="background-color: {{ $preset }}"
                         ></span>
                     </label>
@@ -51,42 +49,46 @@
             type="date"
             :label="__('settings.fields.academic_year_end')"
             :value="optional($tenant->academic_year_end)->toDateString()"
+            :hint="__('settings.academic_year_end_hint')"
         />
-        <p class="-mt-3 mb-4 text-sm text-gray-500">{{ __('settings.academic_year_end_hint') }}</p>
 
-        <div class="mb-4">
-            <label for="max_devices_per_student" class="block text-sm font-medium text-gray-700 mb-1">{{ __('settings.fields.max_devices_per_student') }}</label>
-            <select name="max_devices_per_student" id="max_devices_per_student" class="block w-full min-h-[44px] rounded-md border-gray-300">
+        <div class="mb-5">
+            <label for="max_devices_per_student" class="ui-label">{{ __('settings.fields.max_devices_per_student') }}</label>
+            <select name="max_devices_per_student" id="max_devices_per_student" class="ui-input">
                 @foreach ([1, 2, 3] as $option)
                     <option value="{{ $option }}" @selected(old('max_devices_per_student', $tenant->max_devices_per_student) == $option)>{{ $option }}</option>
                 @endforeach
             </select>
-            <p class="mt-1 text-sm text-gray-500">{{ __('settings.max_devices_per_student_hint') }}</p>
+            <p class="ui-help">{{ __('settings.max_devices_per_student_hint') }}</p>
         </div>
 
         <x-button>{{ __('settings.save') }}</x-button>
     </form>
 
-    <div class="border-t border-gray-200 pt-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-3">{{ __('settings.logo.heading') }}</h2>
-
-        <div class="mb-4">
-            <p class="text-sm text-gray-600 mb-2">{{ __('settings.logo.current') }}</p>
-            <img src="/branding/logo?v={{ $tenant->branding_version }}" alt="" class="h-16 w-16 rounded object-contain border border-gray-200">
-            @unless ($tenant->logo_path)
-                <p class="mt-2 text-sm text-gray-500">{{ __('settings.logo.none') }}</p>
-            @endunless
+    <div class="ui-card ui-rise" style="padding: 1.25rem;">
+        <div class="ui-section-title">
+            <h2 class="ui-h2">{{ __('settings.logo.heading') }}</h2>
         </div>
 
-        <form method="POST" action="{{ url('/manage/settings/logo') }}" enctype="multipart/form-data" class="flex flex-wrap items-end gap-2 mb-2">
-            @csrf
+        <div class="ui-inset" style="padding: 1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem;">
+            <img src="/branding/logo?v={{ $tenant->branding_version }}" alt="" class="ui-brand-mark" style="width: 64px; height: 64px;">
             <div>
-                <label for="logo" class="block text-sm font-medium text-gray-700 mb-1">{{ __('settings.logo.upload') }}</label>
-                <input type="file" name="logo" id="logo" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" class="block text-base">
+                <p class="ui-subtle" style="margin: 0;">{{ __('settings.logo.current') }}</p>
+                @unless ($tenant->logo_path)
+                    <p class="ui-subtle" style="margin: 0.25rem 0 0;">{{ __('settings.logo.none') }}</p>
+                @endunless
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url('/manage/settings/logo') }}" enctype="multipart/form-data" class="flex flex-wrap items-end gap-3" style="margin-bottom: 0.75rem;">
+            @csrf
+            <div class="flex-1" style="min-width: 12rem;">
+                <label for="logo" class="ui-label">{{ __('settings.logo.upload') }}</label>
+                <input type="file" name="logo" id="logo" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" class="ui-input" style="padding-block: 0.5rem;">
             </div>
             <x-button>{{ __('settings.logo.upload') }}</x-button>
         </form>
-        <p class="text-sm text-gray-500 mb-4">{{ __('settings.logo.hint') }}</p>
+        <p class="ui-help" style="margin-bottom: 1rem;">{{ __('settings.logo.hint') }}</p>
 
         @if ($tenant->logo_path)
             <form method="POST" action="{{ url('/manage/settings/logo') }}" onsubmit="return confirm(@js(__('settings.logo.confirm_remove')))">

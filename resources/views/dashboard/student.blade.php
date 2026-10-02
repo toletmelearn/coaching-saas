@@ -1,37 +1,87 @@
 @extends('layouts.app')
 
 @section('content')
-    <x-page-header :title="__('nav.my_courses')" />
+    <x-page-header :kicker="__('users.dashboard.welcome')" :title="__('nav.my_courses')" />
 
-    <ul class="divide-y divide-gray-100 mb-6">
+    <ul class="ui-list ui-fade mb-6">
         @forelse ($active as $enrolment)
             @php $progress = $courseProgress[$enrolment->course_id] ?? null; @endphp
-            <li class="py-3">
-                <div class="flex items-center justify-between gap-2">
-                    <a href="{{ url('/courses/'.$enrolment->course->slug) }}">{{ $enrolment->course->title }}</a>
-                    @if ($progress && $progress['nextLesson'])
-                        <a href="{{ url('/courses/'.$enrolment->course->slug.'/lessons/'.$progress['nextLesson']->id) }}" class="text-sm text-indigo-600">{{ __('lessons.continue') }}</a>
-                    @elseif ($progress && $progress['allCompleted'])
-                        <a href="{{ url('/courses/'.$enrolment->course->slug) }}" class="text-sm text-green-700">{{ __('progress.course_complete') }}</a>
-                    @endif
-                </div>
-                @if ($progress && $progress['total'] > 0)
-                    <div class="mt-1 h-1.5 w-full rounded-full bg-gray-200">
-                        <div class="h-1.5 rounded-full bg-indigo-600" style="width: {{ $progress['percent'] }}%"></div>
+            <li>
+                <div class="ui-list-item" style="align-items: flex-start;">
+                    <div class="min-w-0 flex-1">
+                        <a href="{{ url('/courses/'.$enrolment->course->slug) }}" class="ui-h2" style="display: block; text-decoration: none;">
+                            {{ $enrolment->course->title }}
+                        </a>
+
+                        @if ($enrolment->course->class_level || $enrolment->course->subject)
+                            <p class="ui-subtle" style="margin-top: 0.125rem;">
+                                {{ collect([$enrolment->course->class_level, $enrolment->course->subject])->filter()->implode(' · ') }}
+                            </p>
+                        @endif
+
+                        @if ($progress && $progress['total'] > 0)
+                            <div class="ui-progress" style="margin-top: 0.75rem;">
+                                <span style="width: {{ $progress['percent'] }}%"></span>
+                            </div>
+                            <p class="ui-subtle" style="margin-top: 0.375rem;">
+                                {{ __('progress.lessons_complete', ['completed' => $progress['completed'], 'total' => $progress['total'], 'percent' => $progress['percent']]) }}
+                            </p>
+                        @endif
                     </div>
-                @endif
+
+                    <div style="flex: none; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
+                        @if ($progress && $progress['nextLesson'])
+                            <x-link href="{{ url('/courses/'.$enrolment->course->slug.'/lessons/'.$progress['nextLesson']->id) }}" variant="primary" size="sm">
+                                {{ __('lessons.continue') }}
+                                <x-icon name="arrow-right" :size="15" />
+                            </x-link>
+                        @elseif ($progress && $progress['allCompleted'])
+                            <x-badge tone="success">
+                                <x-icon name="check" :size="13" />
+                                {{ __('progress.course_complete') }}
+                            </x-badge>
+                        @else
+                            <x-link href="{{ url('/courses/'.$enrolment->course->slug) }}" size="sm">
+                                {{ __('nav.courses') }}
+                            </x-link>
+                        @endif
+                    </div>
+                </div>
             </li>
         @empty
-            <li class="py-2 text-gray-500">{{ __('courses.index.empty') }}</li>
+            <li>
+                <div class="ui-empty" style="border: 0;">
+                    <span class="ui-empty-icon"><x-icon name="book" :size="20" /></span>
+                    <p class="ui-h2" style="margin: 0;">{{ __('courses.index.empty') }}</p>
+                </div>
+            </li>
         @endforelse
     </ul>
 
     @if ($ended->isNotEmpty())
-        <h2 class="text-sm font-semibold text-gray-500 mb-2">{{ __('users.dashboard.access_ended') }}</h2>
-        <ul class="divide-y divide-gray-100">
+        <div class="ui-section-title">
+            <h2 class="ui-h2" style="color: var(--ink-subtle);">{{ __('users.dashboard.access_ended') }}</h2>
+        </div>
+        <ul class="ui-list ui-fade mb-6">
             @foreach ($ended as $enrolment)
-                <li class="py-2 text-gray-500">{{ $enrolment->course->title }}</li>
+                <li>
+                    <div class="ui-list-item">
+                        <span style="color: var(--ink-muted);">{{ $enrolment->course->title }}</span>
+                        <x-badge tone="warning">{{ __('users.dashboard.access_ended') }}</x-badge>
+                    </div>
+                </li>
             @endforeach
         </ul>
     @endif
+
+    <div class="ui-panel ui-fade" style="padding: 1.125rem 1.25rem; display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span class="ui-empty-icon"><x-icon name="book" :size="18" /></span>
+            <span class="ui-h2">{{ __('nav.courses') }}</span>
+        </div>
+        <x-link href="{{ url('/courses') }}" variant="primary" size="sm">
+            {{ __('lessons.continue') }}
+            <x-icon name="arrow-right" :size="15" />
+        </x-link>
+    </div>
 @endsection
