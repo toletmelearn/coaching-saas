@@ -209,10 +209,14 @@ Cloudflare).
    channel anywhere in the codebase yet — and there is no QR: students copy the institute's
    UPI id and upload a screenshot. Enrolment itself is still a manual, owner-initiated
    action; paying never enrols anybody.
-8. **App-level security headers are thin.** Only `Referrer-Policy` is set globally, plus
-   `X-Content-Type-Options: nosniff` on attachment/stream/PWA responses. There is no CSP,
-   `X-Frame-Options`, or HSTS in the application — [docs/DEPLOY.md](docs/DEPLOY.md) assumes
-   Cloudflare supplies them, which is fine in production but unenforced by the app itself.
+8. **App-level security headers are thin — by decision, not by omission.** Only
+   `Referrer-Policy` is set globally, plus `X-Content-Type-Options: nosniff` on the
+   attachment/stream/PWA/payment-screenshot responses. CSP, `X-Frame-Options` and HSTS are
+   delegated to Cloudflare (SECURITY.md "Response security headers"; configured in
+   docs/DEPLOY.md §1.6) because the view layer has 17 inline event handlers, 3 inline
+   `<script>` blocks and 201 inline `style="…"` attributes, which makes a real app-level
+   CSP a template refactor rather than a security patch. Moving it into the app instead of
+   the edge is an open decision — see docs/SECURITY_PASS.md §5.
 9. **Single locale.** Localisation scaffolding exists (`lang/en/*`, `LocalizationTest`) but
    only English ships; the UI is English-only for an Indian-market product.
 10. **Documented-but-live risks:** `password_reset_tokens` is not tenant-scoped (blocks

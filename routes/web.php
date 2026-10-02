@@ -222,12 +222,13 @@ Route::middleware('require.tenant')->group(function () {
                     Route::post('lessons/{lesson}/attachments', [ManageLessonAttachmentController::class, 'store']);
                     Route::delete('attachments/{attachment}', [ManageLessonAttachmentController::class, 'destroy']);
 
-                    Route::post('lessons/{lesson}/video/start-upload', [ManageLessonVideoController::class, 'startUpload']);
+                    Route::post('lessons/{lesson}/video/start-upload', [ManageLessonVideoController::class, 'startUpload'])
+                        ->middleware('throttle:10,60');
                     Route::post('lessons/{lesson}/video/refresh-status', [ManageLessonVideoController::class, 'refreshStatus']);
                     Route::delete('lessons/{lesson}/video', [ManageLessonVideoController::class, 'destroy']);
                     Route::post('lesson-videos/{lessonVideo}/upload', [LessonVideoUploadController::class, 'store'])
                         ->name('lesson-videos.fake-upload')
-                        ->middleware('signed');
+                        ->middleware(['signed', 'throttle:10,60']);
 
                     Route::get('courses/{course}/enrolments', [ManageEnrolmentController::class, 'index']);
                     Route::post('courses/{course}/enrolments', [ManageEnrolmentController::class, 'store']);

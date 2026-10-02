@@ -18,6 +18,9 @@ function passingPreflightConfig(): array
         'tenancy.tenant_base_domain' => 'coaching.app',
         'tenancy.central_domains' => ['coaching.app', 'platform.coaching.app'],
         'session.secure' => true,
+        // Host-only session cookies: null (.env.example) and '' (docs/DEPLOY.md's
+        // `SESSION_DOMAIN=`) are both fine; anything else must fail preflight.
+        'session.domain' => null,
         'preflight.writable_paths' => [storage_path()],
         'coaching.video_driver' => 'bunny',
         'services.bunny.account_api_key' => 'test-account-key',
@@ -148,6 +151,52 @@ test('fails when the demo.localhost PWA-testing domain exists', function () {
 
     $tenant = Tenant::factory()->create(['name' => 'Demo Institute local']);
     $tenant->domains()->create(['domain' => 'demo.localhost', 'type' => 'subdomain']);
+
+    $this->artisan('app:preflight')->assertFailed();
+});
+
+// === SESSION_DOMAIN (docs/DEPLOY.md §3 always claimed this check existed) ===
+
+test('passes when SESSION_DOMAIN is the empty string docs/DEPLOY.md tells you to use', function () {
+    app()->instance('env', 'production');
+    config(passingPreflightConfig());
+    config(['session.domain' => '']);
+
+    $this->artisan('app:preflight')->assertSuccessful();
+});
+
+test('fails when SESSION_DOMAIN widens the session cookie to a shared parent domain', function () {
+    app()->instance('env', 'production');
+    config(passingPreflightConfig());
+    config(['session.domain' => '.coaching.app']);
+
+    $this->artisan('app:preflight')->assertFailed();
+});
+
+// === VIDEO_DRIVER — code existed, but no test ever exercised either failing branch ===
+
+test('fails when VIDEO_DRIVER is fake', function () {
+    app()->instance('env', 'production');
+    config(passingPreflightConfig());
+    config(['coaching.video_driver' => 'fake']);
+
+    $this->artisan('app:preflight')->assertFailed();
+});
+
+test('fails when VIDEO_DRIVER is bunny but the account API key is empty', function () {
+    app()->instance('env', 'production');
+    config(passingPreflightConfig());
+    config(['services.bunny.account_api_key' => null]);
+
+    $this->artisan('app:preflight')->assertFailed();
+});
+
+// === FreeType — the second branch of checkGdFreetype() had no failing test either ===
+
+test('fails when GD is loaded but has no FreeType support', function () {
+    app()->instance('env', 'production');
+    config(passingPreflightConfig());
+    config(['preflight.gd_freetype_supported' => false]);
 
     $this->artisan('app:preflight')->assertFailed();
 });

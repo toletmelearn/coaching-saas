@@ -30,6 +30,7 @@ class AppPreflightCommand extends Command
             $this->checkAppUrlIsHttps(),
             $this->checkDomainsConfigured(),
             $this->checkSessionSecureCookie(),
+            $this->checkSessionDomain(),
             ...$this->checkWritablePaths(),
             $this->checkDatabaseReachable(),
             $this->checkMysqlVersion(),
@@ -97,6 +98,26 @@ class AppPreflightCommand extends Command
         return config('session.secure') === true
             ? null
             : 'SESSION_SECURE_COOKIE is not true — session cookies would be sent over plain HTTP.';
+    }
+
+    /**
+     * `null` (what .env.example ships) and `''` (what docs/DEPLOY.md's `SESSION_DOMAIN=`
+     * yields) both produce a host-only session cookie; anything else would make the
+     * browser send one tenant's session cookie to every other tenant subdomain, which
+     * defeats tenant isolation before any application code runs (SECURITY.md). This
+     * check was always described in docs/DEPLOY.md §3 but was never actually implemented
+     * — added by the Phase 11 mini security pass.
+     */
+    private function checkSessionDomain(): ?string
+    {
+        $domain = config('session.domain');
+
+        if ($domain === null || $domain === '') {
+            return null;
+        }
+
+        return "SESSION_DOMAIN is set (config: {$domain}) — it must be empty/null so session cookies stay host-only. "
+            ."A shared cookie domain would send one tenant's session cookie to every other tenant subdomain (SECURITY.md).";
     }
 
     /**

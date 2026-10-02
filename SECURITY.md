@@ -26,6 +26,33 @@
   would let a forged `X-Forwarded-Host` header resolve a different tenant than the one the
   request actually reached.
 
+## Response security headers
+
+Decided in the Phase 11 mini security pass ([docs/SECURITY_PASS.md](docs/SECURITY_PASS.md)):
+**the edge (Cloudflare) supplies the cross-origin defence headers; the application does
+not.** What the app itself sets:
+
+| Header | Scope | Where |
+|---|---|---|
+| `Referrer-Policy: strict-origin-when-cross-origin` | every response | `App\Http\Middleware\SetReferrerPolicy`, appended to the `web` group in `bootstrap/app.php` |
+| `X-Content-Type-Options: nosniff` | byte-emitting responses only: lesson attachments, the fake video stream, payment screenshots, PWA icons | the four controllers that emit those bytes |
+| `Cache-Control: no-store` / `no-store, private` | private byte responses | same |
+
+Not set by the application, and **required from Cloudflare** in production (config steps in
+docs/DEPLOY.md §1 — the exact dashboard path is [UNVERIFIED], confirm at deploy time):
+
+- `X-Frame-Options: SAMEORIGIN` (and/or CSP `frame-ancestors`) — clickjacking.
+- `X-Content-Type-Options: nosniff` on HTML responses too, as belt-and-braces.
+- `Strict-Transport-Security` — HSTS is a TLS property and Cloudflare terminates TLS, so
+  the edge is the right place; a header emitted by the origin over plain HTTP would be
+  ignored by browsers anyway.
+- `Content-Security-Policy` — deliberately **not** set at the application level. The view
+  layer has 17 inline event handlers (13 `onsubmit`, 3 `onclick`, 1 `oncontextmenu`), 3
+  inline `<script>` blocks and 201 inline `style="…"` attributes across 29 templates, so a
+  CSP worth having would need nonces threaded through every template — a refactor, not a
+  security patch, and a strict one would break the Phase 4 YouTube free preview. Handing
+  CSP to Cloudflare is the cheap approximation; making it real is a Stage C decision.
+
 ## Contact-required CHECK constraint: minimum database version
 
 - `users.email IS NOT NULL OR users.phone IS NOT NULL` is enforced by a native `CHECK`
@@ -58,6 +85,15 @@
   `tenant_id` column and a composite key (or a separate token store keyed by
   `(tenant_id, email)`), following the same pattern as every other tenant-owned table in
   [TENANCY.md](TENANCY.md).
+- **Phase 11 decision — deferred to Stage C.** Verified in the mini security pass
+  ([docs/SECURITY_PASS.md](docs/SECURITY_PASS.md)): no route is wired to it and no code
+  writes to it. `password_reset_tokens` appears only in the stock framework migration and
+  in `config/auth.php`'s broker config; there is no `Password::` call, no `password.email`
+  route, and no view anywhere in `app/`, `routes/`, `resources/views/` or `config/` besides
+  that broker entry. The risk is therefore *latent*, not live. Re-keying the table is a
+  schema change (`AGENT_RULES` #7) and is exactly the work self-service reset needs anyway,
+  so doing it now and again when the feature lands is worse than doing it once then. Revisit
+  before any "forgot password" flow is built.
 
 ## Never trust client-supplied ownership or pricing
 
@@ -89,11 +125,24 @@
 
 - Videos, PDFs, and payment screenshots are stored on a **private** disk — never on a
   publicly readable path or bucket.
-- Access to any of them goes through **signed, expiring URLs**. This applies to PDFs
-  (course material, invoices, receipts) exactly as it does to video playback — a PDF is not
-  treated as "less sensitive" just because it isn't streamed.
-- Signed URLs are generated per-request, scoped to the requesting user's tenant and
-  enrollment/ownership, and expire quickly enough to limit the value of a leaked link.
+- Access to video and payment screenshots goes through **signed, expiring URLs**
+  (`lesson-videos.stream`, `payments/{payment}/screenshot` and the `fake` driver's upload
+  endpoint all sit behind the `signed` middleware). A PDF is never treated as "less
+  sensitive" just because it isn't streamed — but there is one documented exception:
+- **Lesson-attachment PDFs are not signed** (found by the Phase 11 mini security pass —
+  see [docs/SECURITY_PASS.md](docs/SECURITY_PASS.md)). Their URL is a plain
+  `/courses/{slug}/lessons/{lesson}/attachments/{attachment}` link with no signature and no
+  expiry; instead the access decision is re-run from scratch on **every** request by
+  `LessonAccess::lessonAccess()` — guest → login redirect, not enrolled → 403, enrolment
+  revoked since page render → 403. That is an equivalent authorisation check, but a weaker
+  *link*: nothing expires it, and it holds for as long as the holder keeps an eligible
+  session. Adding `signed` there is a view-layer change in two templates plus edits to
+  `tests/Feature/Courses/AttachmentsTest.php`, so it is recorded as an open item rather
+  than made a Phase 11 change.
+- Signed URLs that do exist are generated per-request and cover the absolute URL, so a
+  signature minted for one tenant's host does not validate on another's; ownership is
+  re-checked in the controller regardless (a valid signature over someone else's asset is
+  still refused), and expiry is short enough to limit the value of a leaked link.
 - **Payment screenshots specifically** (Phase 10, docs/specs/phase-10-payments.md): the
   signature is necessary but not sufficient. `GET /payments/{payment}/screenshot` sits
   behind `signed` *and* re-checks `PaymentPolicy` on every request — the student who
@@ -144,6 +193,15 @@ recordings are traceable to an individual viewer rather than only proving *a* le
   owner-only behind `PaymentPolicy` with an idempotent, no-op second approval — the human
   decision itself is not throttled, because a slow reviewer should never be locked out of
   their own queue.
+- **Video upload (Phase 11, closed gap).** Both ends of the video-upload flow are limited
+  to **10 requests per 60 seconds per IP**: `POST /manage/lessons/{lesson}/video/start-upload`
+  (which registers the lesson video and, for the `bunny` driver, creates a real provider
+  video — an unthrottled loop there burns Bunny quota on somebody else's bill) and `POST
+  /lesson-videos/{lessonVideo}/upload` (the `fake` driver's byte-upload endpoint, which
+  already had `signed` + `auth:tenant` + `manageContent` + a production 404). Proven both
+  ways in `tests/Feature/Video/VideoUploadRateLimitTest.php`: the 10th request inside the
+  budget still succeeds, the 11th is 429. The complete inventory of every public form and
+  its limit is in [docs/SECURITY_PASS.md](docs/SECURITY_PASS.md) §7.
 - **Closed gap (Phase 3.2): distributed login brute-forcing.** Tenant login was rate limited
   only by `tenant + identifier + IP` (5/minute). An attacker spreading failed attempts across
   many IPs (a botnet, rotating proxies, or a simple retry-with-a-new-IP loop) never tripped

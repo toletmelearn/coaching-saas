@@ -113,3 +113,31 @@ test("another student's screenshot URL is forbidden", function () {
         ->get("http://{$f['domain']}{$someoneElses}")
         ->assertForbidden();
 });
+
+test('the private storage path of a screenshot never appears in rendered HTML', function () {
+    Storage::fake('local');
+    $f = PaymentFixtures::setup();
+
+    $payment = PaymentFixtures::payment($f['tenant'], $f['enrolment']);
+    storeScreenshotFor($payment);
+
+    // Positive control: the owner's review page really does surface a screenshot URL.
+    $review = $this->actingAs($f['owner'], 'tenant')
+        ->get("http://{$f['domain']}/manage/payments/{$payment->id}");
+
+    $review->assertOk();
+    $review->assertSee("/payments/{$payment->id}/screenshot", false);
+
+    // ...but never the private-disk path it is served from. This is the Phase 5 rule
+    // ("the raw secret never reaches HTML") applied to the Phase 10 asset: the path is
+    // an implementation detail of local private storage, and leaking it would tell an
+    // attacker exactly where to look if a disk ever became reachable.
+    $review->assertDontSee($payment->screenshot_path, false);
+
+    // The student's own payment page shows status and rejection reasons, never a path.
+    $studentPage = $this->actingAs($f['student'], 'tenant')
+        ->get("http://{$f['domain']}/enrolments/{$f['enrolment']->id}/payment");
+
+    $studentPage->assertOk();
+    $studentPage->assertDontSee($payment->screenshot_path, false);
+});

@@ -77,6 +77,22 @@ between major versions), but the approach itself is standard Nginx and will work
    **HTTPS is mandatory** for the PWA to be installable at all (service workers only
    register in a secure context — see README.md "PWA testing locally"); §1.2's Full
    (strict) SSL/TLS mode already covers this end to end.
+6. **Security headers** (Phase 11 — the application deliberately does not set these itself,
+   see SECURITY.md "Response security headers"; Cloudflare is where they belong, because it
+   already terminates TLS and answers before the origin does):
+   - **`X-Frame-Options: SAMEORIGIN`** and **`X-Content-Type-Options: nosniff`** — via
+     Cloudflare's managed transform that adds security headers, or a Transform Rule that
+     modifies response headers for `PLATFORM_DOMAIN` and `*.PLATFORM_DOMAIN`.
+   - **`Strict-Transport-Security: max-age=31536000; includeSubDomains`** — SSL/TLS → Edge
+     Certificates → HTTP Strict Transport Security. Use a short `max-age` on the first
+     deploy and raise it once you're certain the origin is HTTPS-only for good (HSTS is
+     painful to walk back).
+   - **`Content-Security-Policy`** — optional, and blunt at the edge (one policy applied to
+     every response type). The app cannot ship its own yet: SECURITY.md records the exact
+     inline handler/script/style counts that would have to be nonced first.
+   - **[UNVERIFIED]** the exact dashboard labels above are not confirmed against a live
+     Cloudflare account (docs/SECURITY_PASS.md flags this) — check them in your dashboard
+     at deploy time and correct this list if they've moved.
 
 ## 2. Server prerequisites
 
@@ -208,7 +224,8 @@ restore it.
 
 Fails (non-zero exit) in production if any of: `APP_DEBUG=true`, `APP_KEY` empty, `APP_URL`
 not `https://`, `PLATFORM_DOMAIN`/`TENANT_BASE_DOMAIN`/`CENTRAL_DOMAINS` still at the local
-dev default, `SESSION_SECURE_COOKIE` not `true`, `storage/` or `bootstrap/cache/` not
+dev default, `SESSION_SECURE_COOKIE` not `true`, `SESSION_DOMAIN` set to anything but
+empty/null (host-only session cookies — SECURITY.md), `storage/` or `bootstrap/cache/` not
 writable, the database unreachable, MySQL/MariaDB below the CHECK-constraint-enforcing
 minimum (8.0.16 / 10.2.1), a demo tenant/account exists, the local-only `demo.localhost`
 PWA-testing domain exists (Phase 6 — see README.md "PWA testing locally"), the GD PHP
