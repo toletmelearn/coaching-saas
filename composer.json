@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "toletmelearn/coaching-saas",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "Multi-tenant SaaS for small Indian coaching institutes — Laravel 13 / PHP 8.3.",
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
