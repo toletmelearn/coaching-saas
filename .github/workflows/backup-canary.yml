@@ -1,0 +1,41 @@
+name: Backup canary
+
+# Nightly proof that `php artisan backup:run` actually produces a dump. The execution
+# canary (tests/Feature/Production/BackupConfigurationTest.php -> group 'backup') is
+# excluded from the per-push suite because it shells out to a real dump binary; this
+# workflow runs it on a schedule instead.
+#
+# No MySQL service here: phpunit.xml pins DB_CONNECTION=sqlite, so the canary dumps
+# SQLite via the sqlite3 binary that ubuntu-latest ships preinstalled (3.45.1). The
+# MySQL variant of the same pipeline is exercised by CI gate 5 (composer test:mysql).
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  canary:
+    name: backup:run canary (SQLite)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, pdo_mysql, gd, bcmath, zip, dom, fileinfo, curl, openssl, tokenizer, ctype, filter, hash, session
+          coverage: none
+          tools: composer:v2
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Create .env and generate the app key
+        run: cp .env.example .env && php artisan key:generate
+
+      - name: Run the backup canary
+        run: composer test -- --group=backup
