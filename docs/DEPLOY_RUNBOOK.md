@@ -8,6 +8,14 @@ ambiguous, §1.7 says so and gives a concrete answer.
 
 Written against `main` = `e605cc5` = tag `phase-11`.
 
+**Corrections applied 2026-10-02 against `main` = `9173eb9`.** Three items that were open
+when this was written are now closed: the backup compressor defect and the configurable
+backup alert address (§1.7 item 5, §1.8 — both fixed in `c859e74`), the
+`EmbedTokenPlaybackTest` wall-clock flake (fixed in `b9063a3`), and the missing
+`VIDEO_DRIVER` / `BUNNY_STREAM_ACCOUNT_API_KEY` keys in `.env.example` (§1.7 item 7 — fixed
+in `9173eb9`). Original text is preserved below wherever the history has value; resolved
+items are marked, not deleted.
+
 ---
 
 ## How to use this runbook
@@ -83,12 +91,12 @@ Two caveats:
 
 - **The 1 skipped test is expected.** It is the MySQL-only unreachable-database preflight
   test, skipped on the SQLite run by design.
-- **Known flake.** If `composer test` fails *only* in
-  `tests/Feature/Video/EmbedTokenPlaybackTest.php`, run `composer test` once more. That file
-  has a documented wall-clock-boundary flake at `e605cc5` (see §14, open question 5): the test
-  signs a token with its own `now()+10min` and compares it to the token the server rendered
-  with *its* `now()`, so a second-boundary crossing between the two makes the strings differ.
-  A second passing run means the gate is green. **Any other failure is a hard stop.**
+- **Former flake — resolved in `b9063a3`.** `tests/Feature/Video/EmbedTokenPlaybackTest.php`
+  used to compare a token it signed with its own `now()+10min` against the token the server
+  rendered with *its* `now()`, so a second-boundary crossing between the two made the strings
+  differ (roughly once per full-suite run; 3/3 in isolation). The test now asserts shape and
+  provenance against the `expires` the server actually used, which cannot race. **A failure
+  in that file is a real failure now — any failure is a hard stop.**
 
 **Why this runs locally, not on the server:** step 5.1 installs Composer with `--no-dev`,
 which removes Pest, Pint and PHPStan from `vendor/`. Running the gates on the production box
@@ -192,12 +200,35 @@ Nothing here is a stop — but read them so you don't act on the stale version.
 | 2 | `README.md:123` | `Mini security pass before deploy \| Not run as a discrete pass` | Stale — Phase 11 ran it (`docs/SECURITY_PASS.md`, tag `phase-11`) | Not edited here (README is outside this runbook's scope). Proposed fix: `Complete (Phase 11 — docs/SECURITY_PASS.md)` |
 | 3 | `README.md` gate table | 762 / 730 tests | Stale — current is 822 / 790 | Use §1.1's table, not README's |
 | 4 | `docs/DEPLOY.md` §2 | Node.js: "any current LTS" | Too loose — Vite 8.3.1's `engines` field is `^20.19.0 \|\| >=22.12.0`; an older LTS fails `npm ci` with `EBADENGINE` | Pin per §2.6; `docs/DEPLOY.md` §2 is updated by this runbook |
-| 5 | `docs/DEPLOY.md` §8 | "set `backup.notifications.mail.to` to a real address" | `config/backup.php:240` hardcodes `'your@example.com'`. **There is no `BACKUP_NOTIFY_EMAIL` env key** | Leave the default (this runbook does not edit `config/backup.php` on the server — it would drift from git), or fix it in the repo per §14 open question 3 |
+| 5 | `docs/DEPLOY.md` §8 | "set `backup.notifications.mail.to` to a real address" | **Resolved in `c859e74`.** `config/backup.php` now reads `env('BACKUP_NOTIFY_EMAIL') ?: env('MAIL_FROM_ADDRESS', 'hello@example.com')`, and `.env.example` ships `BACKUP_NOTIFY_EMAIL=` (blank → falls back to `MAIL_FROM_ADDRESS`) | Set `BACKUP_NOTIFY_EMAIL=<an-address-you-read>` in the production `.env`, and give `MAIL_MAILER` a real transport — otherwise alerts still only reach `storage/logs/laravel.log`. Don't edit `config/backup.php` on the server (it would drift from git) |
 | 6 | `CENTRAL_DOMAINS` | implied to be flexible | Central routing is `Route::domain()` over exactly the listed hostnames. A `www.<DOMAIN>` DNS record would reach the app, fail tenant resolution and 404 (fail-closed, TENANCY.md) | Do **not** create a `www` record. Add `www.<DOMAIN>` to `CENTRAL_DOMAINS` only if you actually want it served |
-| 7 | `.env.example` | (absent) | Contains **no** `VIDEO_DRIVER` and **no** `BUNNY_STREAM_ACCOUNT_API_KEY`, though `docs/DEPLOY.md` §3 lists both. `config/coaching.php` defaults `VIDEO_DRIVER` to `fake`, which preflight refuses in production | Add both lines by hand — step 4.4 |
+| 7 | `.env.example` | (was absent) | **Resolved in `9173eb9`** — both keys are present now: `VIDEO_DRIVER=fake` and `BUNNY_STREAM_ACCOUNT_API_KEY=`. `fake` is the deliberate local default (copying `bunny` would fail 11 playback tests on a fresh clone); production must override it, which is exactly what `app:preflight` enforces | Set `VIDEO_DRIVER=bunny` and paste the key — step 4.4 |
 | 8 | `.env.example:48` | `SESSION_SECURE_COOKIE=false` | Ships **false**, not true | Flip it to `true` by hand — step 4.4 |
 
-### 1.8 Blocking defect found while writing this — `php artisan backup:run` crashes
+### 1.8 Backup compressor defect — **resolved in `c859e74`**
+
+**Resolved.** `php artisan backup:run` works; §8 (the nightly backup), §10.11 and the §11
+restore path are all unblocked. The entire fix was one line:
+
+```diff
+- use Spatie\Backup\Compressors\GzipCompressor;
++ use Spatie\DbDumper\Compressors\GzipCompressor;
+```
+
+Two guards landed with it, so this cannot silently regress again:
+
+1. a config canary — `expect(class_exists(config('backup.backup.database_dump_compressor')))->toBeTrue()`;
+2. an execution canary — `backup:run --only-db` is actually run, which is what proves the
+   pipeline rather than just the class name. It is in Pest's `backup` group
+   (`vendor/bin/pest --group=backup`) because it needs a real dump binary, so it runs on
+   demand rather than in the per-push suite.
+
+The same commit made the alert address configurable (§1.7 item 5) and added
+`SQLITE_DUMP_BINARY_PATH` / `MYSQL_DUMP_BINARY_PATH` to `.env.example` for hosts where those
+binaries exist but are not on `PATH`.
+
+*Original description below, preserved verbatim for history. Everything after the "Cause"
+list describes the pre-`c859e74` state.*
 
 **Do not skip this.** It will silently break §8 (the nightly backup), §10.11 and the §11
 restore path.
@@ -227,6 +258,12 @@ fix and the test that would have caught it are in §14, open question 4.
 **Until it is fixed:** every step in this runbook still runs, but treat §10.11 as
 *expected to fail* and do not consider the deploy "backup-complete". `backup:list`,
 `backup:clean` and `backup:monitor` are unaffected (they never touch the compressor).
+
+> **Obsolete as of `c859e74`.** The two paragraphs immediately above ("Per this task's rules
+> I did not change it…" and "Until it is fixed…") are the record of the stop-and-report item
+> as it stood at `e605cc5`. The fix was applied, §14 open question 4 no longer exists, and
+> §10.11 is expected to *succeed*. Kept verbatim because the reasoning — "an untested backup
+> is not a working backup" — is what the canaries above now enforce.
 
 ---
 
@@ -564,11 +601,12 @@ Edit `.env`. Nothing here can be left to defaults.
 | `SESSION_DRIVER` / `CACHE_STORE` / `QUEUE_CONNECTION` | `database` | **leave as-is** — `migrate --force` creates those tables | — |
 | `MAIL_FROM_ADDRESS` | `hello@example.com` | an address you own | — |
 | `MAIL_MAILER` | `log` | keep `log` unless you have real SMTP — see the note below | — |
-| `VIDEO_DRIVER` | **absent from the file** | **add** `VIDEO_DRIVER=bunny` | yes (`fake` is refused in production) |
-| `BUNNY_STREAM_ACCOUNT_API_KEY` | **absent from the file** | **add** `BUNNY_STREAM_ACCOUNT_API_KEY=<BUNNY_ACCOUNT_KEY>` | yes |
+| `VIDEO_DRIVER` | `fake` (since `9173eb9`) | **change to** `VIDEO_DRIVER=bunny` | yes (`fake` is refused in production) |
+| `BUNNY_STREAM_ACCOUNT_API_KEY` | empty (since `9173eb9`) | **set** `BUNNY_STREAM_ACCOUNT_API_KEY=<BUNNY_ACCOUNT_KEY>` | yes |
 | `DB_TEST_*` | set | leave, unless you created `coaching_saas_test` (§3) | — |
 
-**Two lines you must add** (they do not exist in `.env.example` — §1.7 item 7):
+**Two lines you must set** (both keys now exist in `.env.example` as of `9173eb9`, but with
+local defaults preflight will reject — §1.7 item 7):
 
 ```
 VIDEO_DRIVER=bunny
@@ -578,9 +616,9 @@ BUNNY_STREAM_ACCOUNT_API_KEY=<BUNNY_ACCOUNT_KEY>
 **Mail note.** `MAIL_MAILER=log` writes outgoing mail to `storage/logs/laravel.log` instead of
 sending it. That is a *safe* production default — nothing in this app emails a user today —
 but it means backup-health notifications (docs/DEPLOY.md §8) go to the log, not your inbox.
-And if you *do* configure SMTP, remember `backup.notifications.mail.to` is hardcoded to
-`your@example.com` with no env key (§1.7 item 5), so notifications still won't reach you until
-that's fixed in the repo.
+And if you *do* configure SMTP, set `BACKUP_NOTIFY_EMAIL=<an-address-you-read>` alongside it —
+`backup.notifications.mail.to` reads that key and falls back to `MAIL_FROM_ADDRESS` when it is
+blank (resolved in `c859e74`; §1.7 item 5).
 
 **Confirm the whole edit in one shot:**
 
@@ -772,7 +810,7 @@ The first column quotes the command's real output verbatim.
 | `A demo tenant/account exists — never seed demo data in production …` | a `Demo Institute` tenant, a `demo.<base>` domain row, or an `admin@coaching.test` platform admin exists — i.e. someone ran `php artisan db:seed` (docs/DEPLOY.md §4 forbids it) or the DB was copied from dev | Do **not** seed. If it already happened, delete those demo-only rows or restore a clean database |
 | `The demo.localhost domain exists — this is a local PWA-testing-only domain and must never exist in production.` | same cause | delete that `tenant_domains` row |
 | `The GD PHP extension is not loaded…` / `…was built without FreeType support…` | site's PHP has no `gd`, or a build without FreeType | CloudPanel → site → PHP Settings → enable `gd`; re-check with §2.3's `php -r` line |
-| `VIDEO_DRIVER=fake is never allowed in production.` | `.env.example` has no `VIDEO_DRIVER` and `config/coaching.php` defaults it to `fake` | add `VIDEO_DRIVER=bunny` (§4.4) |
+| `VIDEO_DRIVER=fake is never allowed in production.` | `.env.example` ships `VIDEO_DRIVER=fake` (the local default) and the production `.env` never overrode it | set `VIDEO_DRIVER=bunny` (§4.4) |
 | `VIDEO_DRIVER=bunny but BUNNY_STREAM_ACCOUNT_API_KEY is not set.` | the key line wasn't added | add `BUNNY_STREAM_ACCOUNT_API_KEY=<BUNNY_ACCOUNT_KEY>` (§4.4) |
 
 ---
@@ -959,8 +997,8 @@ crontab -l -u <SITE_USER>
 
 > **Recommendation:** `docs/DEPLOY.md` §6 redirects output to `/dev/null`, which means a
 > failing scheduled command is invisible. Consider `>> <APP_DIR>/storage/logs/scheduler.log
-> 2>&1` instead — that's how you'd have noticed the defect in §1.8. Your call; both are
-> correct, only one is debuggable.
+> 2>&1` instead — that is how the §1.8 compressor defect would have surfaced hours sooner.
+> Your call; both are correct, only one is debuggable.
 
 ### 8.2 Verify all four tasks are registered
 
@@ -1104,7 +1142,7 @@ corrupted database is the only case where you reach for a restore.
 | 10.8 | Second login evicts the first (Phase 8 device limit) | Log in as the same student on a **second** device while the first is still logged in | The **first** device is signed out on its next request with a clear "device revoked" message — not a silent session break | Check `user_devices` rows exist and `EnforceDeviceLimit` is in the middleware stack (`bootstrap/app.php`). `tail` the log |
 | 10.9 | Owner password reset signs out the student's devices | As owner → People → a student → **Reset password**. Then look at the student's phone | A temporary password is shown **once**; the student's other devices are signed out on their next request; the student logs back in with the temporary password and is forced to change it | This revocation happens only when the reset target's role is `Student` (`UserController::resetPassword`). Resetting a *staff* account does **not** revoke devices — that's intended, not a bug |
 | 10.10 | Teacher's progress page reflects the student's activity | As owner/teacher, open the course's progress page | The video progress and the note-lesson completion from §10.6 appear | Stale data usually means the page is being cached at the edge — check §7.4's cache rules only cover `sw.js`/`manifest.webmanifest`; if progress HTML is cached, that's an unintended Cloudflare cache setting to remove |
-| 10.11 | `backup:run` produces a file | `cd <APP_DIR> && php artisan backup:run` | A new `*.zip` in `<APP_DIR>/storage/app/backups/`, and (after §8.3) in `<OFFSITE_PATH>/` | **§1.8 says this currently fails** with `Class "Spatie\Backup\Compressors\GzipCompressor" not found`. Do not work around it on the server — fix it in the repo (§14 open question 4) and re-run. If it fails for any *other* reason, `php artisan backup:list` shows disk reachability, and `mysqldump` being absent from `PATH` is the next most likely cause |
+| 10.11 | `backup:run` produces a file | `cd <APP_DIR> && php artisan backup:run` | A new `*.zip` in `<APP_DIR>/storage/app/backups/`, and (after §8.3) in `<OFFSITE_PATH>/` | **Expected to succeed** since `c859e74` (§1.8). If it fails for any *other* reason, `php artisan backup:list` shows disk reachability, and `mysqldump` being absent from `PATH` is the next most likely cause — on a host where the binary exists but is not on `PATH`, set `MYSQL_DUMP_BINARY_PATH` (documented in `.env.example`) |
 | 10.12 | `app:preflight` passes on the real environment | `cd <APP_DIR> && php artisan app:preflight; echo "exit=$?"` | `INFO  All preflight checks passed.` and `exit=0` | Use §6.2's table. Remember a no-op "informational only" message means `APP_ENV` isn't `production` |
 
 **Acceptance:** all twelve rows pass. Anything else means the deploy isn't finished —
@@ -1187,8 +1225,8 @@ unzip -o <APP_DIR>/storage/app/backups/<ARCHIVE>.zip -d /tmp/restore
 
 Look at the listing first — exact layout varies by spatie version. You are looking for:
 
-- the **MySQL dump**: a member ending `*.sql.gz` (gzip is what §1.8's broken compressor was
-  supposed to produce), and
+- the **MySQL dump**: a member ending `*.sql.gz` — produced by the gzip compressor that
+  §1.8 covers (working since `c859e74`), and
 - the **private storage**: members whose path ends `storage/app/private/...` — the lesson
   attachment PDFs.
 
@@ -1390,32 +1428,22 @@ Nothing below has a usable default. Have all of it before step 1 starts.
    8.5 also satisfy it), but the gates have only ever run on 8.3.29. If CloudPanel only offers
    8.4/8.5, decide knowingly — don't discover it at step 2.3.
 
-3. **Backup alert email.** `config/backup.php:240` hardcodes `'your@example.com'` and there is
-   no env key, so docs/DEPLOY.md §8's "set it to a real address" cannot be done from `.env`.
-   Proposed fix: change line 240 to `env('BACKUP_NOTIFY_EMAIL', 'your@example.com')` and add
-   `BACKUP_NOTIFY_EMAIL` to `.env.example`. Needs your approval (it's a repo change +
-   a test). Until then, alerts go nowhere.
+3. **Backup alert email — RESOLVED in `c859e74`, no repo change needed.** `config/backup.php`
+   now reads `env('BACKUP_NOTIFY_EMAIL') ?: env('MAIL_FROM_ADDRESS', 'hello@example.com')`, and
+   `.env.example` ships `BACKUP_NOTIFY_EMAIL=` (blank → falls back to `MAIL_FROM_ADDRESS`).
+   What remains *your* job at deploy time: set `BACKUP_NOTIFY_EMAIL=<an-address-you-read>` and
+   give `MAIL_MAILER` a real transport — otherwise alerts still only reach
+   `storage/logs/laravel.log` (§1.7 item 5, §4.4).
 
-4. **Backup compressor defect — the blocking one.** `config/backup.php:3` imports
-   `Spatie\Backup\Compressors\GzipCompressor`, which does not exist in
-   `spatie/laravel-backup` 10.3.3, so `php artisan backup:run` fatals (§1.8). Proposed fix:
-   change line 3 to `use Spatie\DbDumper\Compressors\GzipCompressor;` (the class
-   `config/backup.php`'s own line-102 comment names), or set line 109 to `null` (the vendor
-   default, meaning uncompressed dumps). Plus a test that executes the class — e.g.
-   `expect(class_exists(config('backup.backup.database_dump_compressor')))->toBeTrue()` —
-   which would have caught this while 822 tests were green. **Needs your go-ahead before I
-   touch it.**
+4. **Documentation drift in `README.md` — RESOLVED in `c21ca36`.** `README.md:123` now reads
+   "Run (Phase 11) — docs/SECURITY_PASS.md", and the gate table has been corrected twice
+   (762/730 → 822/790 → 824/792, the last from the two `backup` canaries added in `c859e74`).
+   Recorded here rather than deleted so the drift history stays visible.
 
-5. **`tests/Feature/Video/EmbedTokenPlaybackTest.php` is modified but uncommitted** (+42/−5)
-   — a deliberate fix for a wall-clock-boundary flake: the test compared a token it signed with
-   its own `now()` against the token the server signed with *its* `now()`. It has been left
-   uncommitted across Phases 10 and 11 by instruction. Decide whether to commit it (it makes
-   `composer test` deterministic) or keep it local.
-
-6. **Documentation drift to fix separately** (not done here — outside this runbook's declared
-   scope): `README.md:123` ("Mini security pass … Not run as a discrete pass") and README's
-   gate table (762/730 instead of 822/790). Both are stale after Phase 11.
-
-7. **Two `[UNVERIFIED]` items carried from `docs/SECURITY_PASS.md`:** the exact Cloudflare
+5. **Two `[UNVERIFIED]` items carried from `docs/SECURITY_PASS.md`:** the exact Cloudflare
    dashboard labels for §7.5's security headers, and the rate-limiting rule quota in §7.7.
    Neither is confirmed against a live account — check both in your dashboard at deploy time.
+
+*Removed from this list on 2026-10-02 (both now closed): the backup compressor defect — fixed
+in `c859e74`, full write-up preserved in §1.8 — and the uncommitted
+`tests/Feature/Video/EmbedTokenPlaybackTest.php` flake fix — committed as `b9063a3`.*

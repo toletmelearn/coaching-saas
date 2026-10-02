@@ -1,6 +1,9 @@
 # PROJECT_BRIEF.md
 
 > Audit date **2026-10-02** · branch `main` @ `2bc3f01` · 62 commits · 459 tracked files.
+> Corrections recorded inline as of `9173eb9` (2026-10-02) — the audit date and the
+> `@ 2bc3f01` snapshot above stay as they were (they were accurate for their commit);
+> resolved items below are marked, not deleted.
 > Truth order used throughout: **code + tests → spec files → README → ROADMAP (least authoritative)**.
 > Every claim cites a path. Anything I could not confirm is marked `[UNVERIFIED]`.
 > No `.env` value is reproduced anywhere in this document — only key names and set/unset status.
@@ -35,7 +38,8 @@ nothing is deployed, no second tenant exists, payments are not built, and there 
 | **Phase 8** — one device per student | Done | `app/Http/Middleware/EnforceDeviceLimit.php`, `routes/console.php:21`; `tests/Feature/Devices/*` (9 files, 53 tests) | `docs/specs/phase-8-devices.md:3` "Complete" |
 | **Phase 9** — pilot readiness (import, credentials, help) | Done | `app/Http/Controllers/UserImportController.php`, `app/Support/Csv/CsvFormulaGuard.php`; `tests/Feature/Import/*` (4 files, 51 tests) | `docs/specs/phase-9-pilot.md:3` "Complete" |
 | **Manual UPI payments** (screenshot → owner approves) | **Not started** | no payment table in `database/migrations/`; no `app/Contracts/PaymentProvider.php`; only `payment_note` free text (`database/migrations/2026_09_29_000005_create_enrolments_table.php:19`) | `PAYMENTS.md` "Manual UPI flow (pilot, **ships first**)"; `ROADMAP.md:26` lists it in Stage B — **not built** |
-| **Security pass** (discrete pre-deploy pass) | Not started | no such commit or test group | `README.md:123` "Not run as a discrete pass" |
+| **Security pass** (discrete pre-deploy pass) | **Done** (Phase 11) | `docs/SECURITY_PASS.md`; git `e605cc5 Phase 11: mini security pass` (tag `phase-11`); `tests/Feature/Console/AppPreflightCommandTest.php` gained a `checkSessionDomain` failing test + the `checkVideoDriver`/`checkGdFreetype` failing branches | `README.md:123` now reads "Run (Phase 11) — docs/SECURITY_PASS.md" (corrected in `c21ca36`) |
+| **Deploy runbook** | **Done** | `docs/DEPLOY_RUNBOOK.md` — ordered first-deploy procedure: gates → server prep → `.env` diff → Node/PHP → backups → domains → Cloudflare → Bunny → cron → tenant #1 → verification → rollback, plus a §13 requirements sheet and §14 open questions | (new; `README.md:124` "Not deployed" is still correct — the runbook is the *procedure*, not a deployment) |
 | **First real deployment** | Not started | no deploy commit; `docs/DEPLOY.md` is a plan | `README.md:124` "Not deployed" |
 | **Custom domains** | Partial | `app/Enums/DomainType.php:8` enum case only; **no code path creates one** (`app/Actions/CreateInstituteAction.php` only mints subdomains); `tests/Feature/Tenancy/TenantDomainTest.php:25` round-trips the enum | `ROADMAP.md:40` Stage C; `TENANCY.md:5` describes them as if usable |
 | **DPDP consent flow** (guardian, `consents`, export/delete) | **Not started** | no `consents`/`guardian` migration; `grep -i consent database/migrations` → empty | `PRIVACY.md` marks "Planned schema support (not yet implemented)"; `AGENT_RULES.md` invariant 17 anticipates it |
@@ -167,7 +171,7 @@ Format: **Rule** — *Why* — **Enforced where** — **Test that catches it**.
 
 | # | README's claim | Verified? | Current state |
 |---|---|---|---|
-| 1 | `tests/Feature/Video/EmbedTokenPlaybackTest.php:98` is flaky on a clock boundary | **Yes** | line 90 computes `$expires = now()->addMinutes(10)->timestamp`; line 98 `assertSee()`s the token the server signed independently. Lines 62-67 deliberately avoid this pattern. Still present. |
+| 1 | `tests/Feature/Video/EmbedTokenPlaybackTest.php:98` is flaky on a clock boundary | **Yes at audit — RESOLVED in `b9063a3`** | line 90 computed `$expires = now()->addMinutes(10)->timestamp` while line 98 `assertSee()`d the token the server signed independently, so a second-boundary crossing between the two made the strings differ. `b9063a3` rewrote the assertions to check shape + provenance against the `expires` the *server* actually used — there is no second clock left to race. `composer test` green 3× consecutively (824/823/1). |
 | 2 | No CI | **Yes** | `.github/` does not exist (`ls -d .github/workflows` → `N`). |
 | 3 | No coverage measurement | **Yes** | `phpunit.xml` has `<source>` only — no `coverage` element, no coverage driver. |
 | 4 | "Documentation drift (three known instances)" | **Yes, but understated** | Heading says *three*, lists *four* bullets. §7 of this brief records **16 rows** (15 drifts + 1 verified-correct). |
@@ -182,8 +186,8 @@ Format: **Rule** — *Why* — **Enforced where** — **Test that catches it**.
 ### New weaknesses the README missed
 
 1. **`AGENTS.md` is a pure Laravel Boost stub, not project guidance.** 47 lines, wrapped in `<laravel-boost-guidelines>`, containing PHP install scripts and `composer require laravel/boost --dev`. `grep -ci` for `tenant`/`isolation`/`phase`/`invariant`/`AGENT_RULES`/`coaching` → **all 0**. Boost is in neither `composer.json` nor `composer.lock`. It is the file an agent reads first, and it actively conflicts with `CLAUDE.md`.
-2. **`docs/DEPLOY.md` §3 overstates `app:preflight`.** It says "`SESSION_DOMAIN` staying unset … and the `VIDEO_DRIVER`/account-key pair are all checked by `php artisan app:preflight`." `AppPreflightCommand::check*` runs exactly 12 checks (`app/Console/Commands/AppPreflightCommand.php:28-39`) and **there is no `SESSION_DOMAIN` check**. The `VIDEO_DRIVER`/key pair *is* checked (`:203`).
-3. **`checkVideoDriver`'s failure branches have no test.** `tests/Feature/Console/AppPreflightCommandTest.php:22` only sets a *passing* `bunny` driver. There is no test for `fake`-in-production or `bunny`-without-account-key — the exact guard `README.md:161` relies on.
+2. **`docs/DEPLOY.md` §3 overstates `app:preflight`.** — **RESOLVED in `e605cc5`.** It says "`SESSION_DOMAIN` staying unset … and the `VIDEO_DRIVER`/account-key pair are all checked by `php artisan app:preflight`." At audit `AppPreflightCommand::check*` ran 12 checks with **no `SESSION_DOMAIN` check**; Phase 11 added `checkSessionDomain()` (`app/Console/Commands/AppPreflightCommand.php:111`) plus a failing test, and the `VIDEO_DRIVER`/key pair was already checked (`:203`). The sentence in `docs/DEPLOY.md` is now true.
+3. **`checkVideoDriver`'s failure branches have no test.** — **RESOLVED in `e605cc5`.** `tests/Feature/Console/AppPreflightCommandTest.php` now has `fails when VIDEO_DRIVER is fake` and `fails when VIDEO_DRIVER is bunny but the account API key is empty`, plus `fails when GD is loaded but has no FreeType support` for the second `checkGdFreetype` branch.
 4. **`SessionLifetimeTest` passes for the wrong reason.** It asserts `file_get_contents(config_path('session.php'))` and `.env.example` — never `.env`, which is precisely the file that has drifted. The green test is fully compatible with weakness #5 above.
 5. **AGENT_RULES invariant 6 ("jobs carry an explicit tenant_id") is unenforceable — there are no jobs.** `find app -type d -name Jobs` → empty; zero `dispatch()` / `ShouldQueue` references in `app/` or `routes/`.
 6. **AGENT_RULES invariants 11, 12, 15, 16 have no code path at all.** No webhook endpoint, no idempotent handler, no payment account, no Caddy ask-endpoint. Invariants 9's "price" half and 17's consent flow are likewise unimplemented.
@@ -209,7 +213,7 @@ Format: **Rule** — *Why* — **Enforced where** — **Test that catches it**.
 | `ROADMAP.md` | whole file | no Phase 11, no Phase P1 | P1 has a spec + 2 commits | Add P1; state 11 unused |
 | `ARCHITECTURE.md` | Provider interfaces | `app/Contracts/VideoProvider.php` **(planned)** | exists, with `BunnyVideoProvider` + `FakeVideoProvider` | Drop "(planned)" |
 | `docs/specs/phase-2-belongs-to-tenant.md` | line 3 | `**Status:** In Progress  ` (verbatim, trailing spaces) | Phase 2 shipped in `076cd78` + 5 fix commits; README and all invariants live | Change to Complete |
-| `docs/DEPLOY.md` | §3 `.env` for production | `SESSION_DOMAIN` unset "**is checked by** `app:preflight`" | no `SESSION_DOMAIN` check exists | Add the check **or** correct the sentence |
+| `docs/DEPLOY.md` | §3 `.env` for production | `SESSION_DOMAIN` unset "**is checked by** `app:preflight`" | **RESOLVED in `e605cc5`** — `checkSessionDomain()` was added (`app/Console/Commands/AppPreflightCommand.php:111`) with a failing test, so the sentence is now accurate | — (closed) |
 | `AGENTS.md` | whole file | generic Boost bootstrap; `composer require laravel/boost --dev`; PHP 8.5 | Boost not installed; project requires `php: ^8.3` (`composer.json`), README says PHP 8.3 | Replace with a pointer to `CLAUDE.md`/`AGENT_RULES.md` |
 | `TENANCY.md` | `:34` | "tenant_id is not mass-assignable" stated universally | `app/Models/TenantDomain.php:18` has `tenant_id` in `$fillable` (central table) | State the central-table exception |
 | `README.md` | `:187` | "Documentation drift (**three** known instances)" | lists **four** bullets; this ledger has **16 rows** (15 drifts + 1 verified-correct) | Correct the count |
@@ -360,14 +364,13 @@ Confident (from directory listings + test names + targeted greps):
 
 1. **The entire visual/design-system layer.** No test asserts computed CSS, contrast, overflow or Lighthouse scores. The README's "Lighthouse 100/100/100, no horizontal overflow" claim is browser-run only. Affects §5 items 22-25.
 2. **`PlatformAdminDashboardController` content.** Only `assertOk()`/`assertRedirect()` (`tests/Feature/Auth/PlatformAdminGuardTest.php:135-176`); `PlatformStatsTest` exercises the helper class, never the page.
-3. **`app:preflight` failure branches for `checkVideoDriver`** — only the passing config is tested (`tests/Feature/Console/AppPreflightCommandTest.php:22`).
-4. **`.env` itself** — no test reads it; `SessionLifetimeTest` reads `config/session.php` and `.env.example`.
-5. **Security-header coverage exists but is scattered** — `Referrer-Policy` asserted in exactly one test (`tests/Feature/Courses/YoutubeTest.php:123`), `nosniff` in four. Nothing asserts their absence/presence globally on ordinary pages.
+3. **`.env` itself** — no test reads it; `SessionLifetimeTest` reads `config/session.php` and `.env.example`.
+4. **Security-header coverage exists but is scattered** — `Referrer-Policy` asserted in exactly one test (`tests/Feature/Courses/YoutubeTest.php:123`), `nosniff` in four. Nothing asserts their absence/presence globally on ordinary pages.
 
 Uncertain — `[UNVERIFIED]`:
 
-6. **`app/Support/Branding/DefaultIconGenerator` output** — `tests/Feature/Pwa/IconsTest.php:6,23` assert headers, status codes and tenancy but never the generated image bytes; the GD/FreeType rendering path is checked solely by `AppPreflightCommand::checkGdFreetype` (a config-level boolean). `[UNVERIFIED]` whether pixel output is covered anywhere.
-7. **`app/Support/Import/ImportSessionStore` and `app/Actions/CreateInstituteAction`** — referenced by no test *by name*, but both are exercised indirectly through `UserImportController`/`InstituteController` callers that *are* tested (`tests/Feature/Import/*`, `tests/Feature/Platform/Admin/InstituteTest.php`). Whether their edge cases (15-minute expiry, duplicate-subdomain race) are fully covered cannot be confirmed from names alone. `[UNVERIFIED]`
-8. **Areas with no test file at all by name:** `app/Support/DatabaseVersionCheck` *is* covered (`tests/Unit/Support/DatabaseVersionCheckTest.php`) — listed here only to record that I checked. I found **no controller or console command without an apparent test**; every one of the 31 controllers and 6 commands maps to at least one test file.
+5. **`app/Support/Branding/DefaultIconGenerator` output** — `tests/Feature/Pwa/IconsTest.php:6,23` assert headers, status codes and tenancy but never the generated image bytes; the GD/FreeType rendering path is checked solely by `AppPreflightCommand::checkGdFreetype` (a config-level boolean). `[UNVERIFIED]` whether pixel output is covered anywhere.
+6. **`app/Support/Import/ImportSessionStore` and `app/Actions/CreateInstituteAction`** — referenced by no test *by name*, but both are exercised indirectly through `UserImportController`/`InstituteController` callers that *are* tested (`tests/Feature/Import/*`, `tests/Feature/Platform/Admin/InstituteTest.php`). Whether their edge cases (15-minute expiry, duplicate-subdomain race) are fully covered cannot be confirmed from names alone. `[UNVERIFIED]`
+7. **Areas with no test file at all by name:** `app/Support/DatabaseVersionCheck` *is* covered (`tests/Unit/Support/DatabaseVersionCheckTest.php`) — listed here only to record that I checked. I found **no controller or console command without an apparent test**; every one of the 31 controllers and 6 commands maps to at least one test file.
 
 Nothing found for: dead code (grepped `app/Support`, `app/Actions`, `app/Services` — all have callers), `TODO`/`FIXME`/`HACK` markers (**0 matches** across `app/`, `config/`, `database/`, `resources/`, `routes/`, `tests/`), or stale migrations (all 22 migrations are referenced by current models/tests).
