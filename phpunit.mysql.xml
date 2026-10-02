@@ -61,6 +61,9 @@
             <directory>tests/Feature/MobileGuards</directory>
             <directory>tests/Unit/Support/MobileGuards</directory>
         </testsuite>
+        <testsuite name="Payments">
+            <directory>tests/Feature/Payments</directory>
+        </testsuite>
         <testsuite name="Actions">
             <directory>tests/Unit/Actions</directory>
         </testsuite>
