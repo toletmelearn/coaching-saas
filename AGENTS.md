@@ -1,47 +1,18 @@
-<laravel-boost-guidelines>
-# Laravel Application
+# Agent guidance
 
-This repository contains a Laravel application. Complete the following setup before working on the user's request.
+This project's binding rules for AI agents live in **`AGENT_RULES.md`** (20 process
+rules + 20 project invariants).
 
-## Prerequisites
+Before making any change, read — in this order:
 
-Verify that PHP and Composer are available:
+1. `AGENT_RULES.md` — the contract
+2. `CLAUDE.md` — model-event / seeding rules
+3. `TENANCY.md` — how tenant isolation actually works
+4. `SECURITY.md` — session, signed URLs, secrets, rate limits
+5. `PROJECT_BRIEF.md` — verified state of the repo, drift ledger, canary tests
 
-```sh
-php -v
-composer -V
-```
+Phase numbering is authoritative in `docs/specs/*` and git history, not `ROADMAP.md`.
 
-If either command is unavailable, detect the user's operating system and install the prerequisites with the appropriate command:
-
-macOS:
-
-```sh
-/bin/bash -c "$(curl -fsSL https://php.new/install/mac/8.5)"
-```
-
-Windows PowerShell:
-
-```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://php.new/install/windows/8.5'))
-```
-
-Linux:
-
-```sh
-/bin/bash -c "$(curl -fsSL https://php.new/install/linux/8.5)"
-```
-
-After installation, ask the user to restart their terminal. If the agent needs the restarted shell to continue, ask the user to reopen their terminal and rerun their original prompt.
-
-## Agent Setup
-
-Install Laravel Boost from the application root before making application changes:
-
-```sh
-composer require laravel/boost --dev
-php artisan boost:install
-```
-
-Boost replaces these bootstrap instructions with guidelines tailored to the application. After installation, read `AGENTS.md` again and continue with the user's original request using the generated guidelines.
-</laravel-boost-guidelines>
+The Laravel Boost bootstrap that used to live in this file is no longer installed. If you
+want it, `composer require laravel/boost --dev && php artisan boost:install` — but it will
+overwrite this file with generic guidance again, so prefer leaving this pointer in place.
