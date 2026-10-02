@@ -1,0 +1,80 @@
+name: CI
+
+# The five quality gates, run on every push and on every pull request targeting main.
+# Gates run one at a time — composer's default process-timeout kills Pest if a second
+# heavy Composer script runs alongside it (see docs/DEPLOY_RUNBOOK.md §1.1).
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+jobs:
+  gates:
+    name: Five quality gates
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: coaching_saas_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, pdo_mysql, gd, bcmath, zip, dom, fileinfo, curl, openssl, tokenizer, ctype, filter, hash, session
+          coverage: none
+          tools: composer:v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Create .env and generate the app key
+        run: cp .env.example .env && php artisan key:generate
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
+      - name: "Gate 1 — lint (pint --test, must not write)"
+        run: composer lint -- --test
+
+      - name: "Gate 2 — static analysis"
+        run: composer analyse
+
+      - name: "Gate 3 — test suite on SQLite (backup group excluded)"
+        run: composer test -- --exclude-group=backup
+
+      - name: "Gate 4 — JS tests"
+        run: composer test:js
+
+      - name: "Gate 5 — test suite on MySQL"
+        env:
+          DB_TEST_HOST: 127.0.0.1
+          DB_TEST_PORT: 3306
+          DB_TEST_DATABASE: coaching_saas_test
+          DB_TEST_USERNAME: root
+          DB_TEST_PASSWORD: root
+        run: composer test:mysql
