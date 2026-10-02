@@ -89,16 +89,53 @@ test('a token signed with tenant A\'s library key is never accepted for tenant B
 
     $expires = now()->addMinutes(10)->timestamp;
     $tokenSignedWithTenantAKey = (new BunnyEmbedTokenSigner)->sign('tenant-a-library-key', $videoIdB, $expires);
-    $tokenSignedWithTenantBKey = (new BunnyEmbedTokenSigner)->sign('tenant-b-library-key', $videoIdB, $expires);
 
-    // Positive control: tenant B's own key produces the token actually served to its student
     $response = $this->actingAs($studentB, 'tenant')
         ->get("http://{$domainB}/courses/{$courseB->slug}/lessons/{$lessonB->id}");
     $response->assertOk();
-    $response->assertSee($tokenSignedWithTenantBKey, false);
 
-    // Negative: a token computed with tenant A's key must never appear anywhere on
-    // tenant B's lesson page (i.e. the server never signs a B video with A's key).
+    // Assert SHAPE + PROVENANCE, never an exact token computed from this test's own clock.
+    // The signer is SHA256_HEX(key . videoId . expires) and both this test and the server
+    // derive `expires` from their own now(); if the wall clock crosses a second boundary
+    // between the two, the strings differ and this test flakes. It passed 3/3 in isolation
+    // but failed about once per full-suite run. The exact signing rule itself is covered
+    // unit-wise in tests/Unit/Support/Video/BunnyEmbedTokenSignerTest.php, and the coarse
+    // embed-URL shape is asserted in the test above.
+    //
+    // The URL is rendered through Blade `{{ }}` at
+    // resources/views/lessons/show.blade.php:51, which escapes `&` as `&amp;` — so the
+    // response carries `&amp;expires=`, not a bare `&expires=`. Both forms are accepted.
+    $served = $response->getContent();
+    expect($served)->toContain('?token=')
+        ->and($served)->toMatch('/&(amp;)?expires=\d+/');
+
+    preg_match(
+        '#player\.mediadelivery\.net/embed/([^?/]+)/([^?]+)\?token=([0-9a-f]{64})&(amp;)?expires=(\d+)#',
+        $served,
+        $servedUrl
+    );
+    expect($servedUrl)->toHaveCount(6);
+
+    // Shape: a lowercase-hex sha256 digest, served against tenant B's own library (222)
+    // and tenant B's own video id.
+    expect($servedUrl[3])->toMatch('/^[0-9a-f]{64}$/')
+        ->and($servedUrl[1])->toBe('222')
+        ->and($servedUrl[2])->toBe((string) $videoIdB);
+
+    // Provenance: re-signing with tenant B's key and the SAME `expires` the server used
+    // reproduces the served token exactly, so B's key really did sign it. Deriving
+    // `expires` ourselves is what flaked — the server's own value cannot.
+    expect($servedUrl[3])
+        ->toBe((new BunnyEmbedTokenSigner)->sign('tenant-b-library-key', $servedUrl[2], (int) $servedUrl[5]));
+
+    // Expiry: a real Unix timestamp within ±5s of now()+10 minutes.
+    expect(abs((int) $servedUrl[5] - now()->addMinutes(10)->timestamp))->toBeLessThanOrEqual(5);
+
+    // Cross-tenant isolation (kept as-is rather than duplicated): a token computed with
+    // tenant A's key must never appear anywhere on tenant B's lesson page — i.e. the
+    // server never signs a B video with A's key. Unlike the assertion this replaced, it
+    // cannot flake: A's key and B's key hash differently for ANY `expires`, so the clock
+    // boundary is irrelevant. The same rule is asserted in the positive direction above.
     $response->assertDontSee($tokenSignedWithTenantAKey, false);
 });
 
