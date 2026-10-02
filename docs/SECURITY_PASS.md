@@ -144,10 +144,17 @@ tests now, and a nonced CSP as the larger second step.
   (`AUTH_PASSWORD_RESET_TOKEN_TABLE`). `grep` over `app/`, `routes/`, `config/`,
   `resources/views/` finds no `Password::` call, no `password.email` route, no broker usage,
   and no view. No code writes a token to it.
+- **Explicitly stated:** `password_reset_tokens` is **not tenant-scoped** — primary key
+  `email`, no `tenant_id` column — and **no self-service reset route is wired** to it.
 - **Why defer:** the exposure is *latent*, not live — nothing can be triggered today. Re-keying
   the table to `(tenant_id, email)` is a schema change, and `AGENT_RULES` #7 says not to change
   schema casually; it is also precisely the work self-service reset will need, so doing it now
-  and again when the feature lands is worse than doing it once then.
+  and again when the feature lands is worse than doing it once then. A new tenant-aware token
+  table is a Stage C feature, out of scope for the pilot.
+- **The current flow works and is tested.** Owner/staff-initiated reset
+  (`UserController::resetPassword` → `must_change_password`) and the user's own
+  change-password flow are both wired, tenant-scoped and covered by tests, so nothing is
+  blocked on deferring this.
 - **Recorded in the doc only** (no `TODO` marker in code, per `AGENT_RULES`): the note lives in
   `SECURITY.md` under "password_reset_tokens is not yet tenant-scoped" → "Phase 11 decision —
   deferred to Stage C".
