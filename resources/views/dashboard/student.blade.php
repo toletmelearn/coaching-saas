@@ -30,6 +30,12 @@
                     </div>
 
                     <div style="flex: none; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
+                        @if ($enrolment->course->fee_paise && ! $enrolment->approved_payment_id)
+                            <x-link href="{{ url('/enrolments/'.$enrolment->id.'/payment') }}" size="sm">
+                                {{ __('payments.page.heading') }}
+                            </x-link>
+                        @endif
+
                         @if ($progress && $progress['nextLesson'])
                             <x-link href="{{ url('/courses/'.$enrolment->course->slug.'/lessons/'.$progress['nextLesson']->id) }}" variant="primary" size="sm">
                                 {{ __('lessons.continue') }}

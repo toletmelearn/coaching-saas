@@ -99,7 +99,7 @@ gate:
 | 3 | [phase-3-tenant-auth.md](docs/specs/phase-3-tenant-auth.md) | Tenant users and roles (owner/staff/student), tenant-aware user provider, temp-password + forced change, rate limits, cross-tenant login rejection |
 | P1 | [phase-p1-platform.md](docs/specs/phase-p1-platform.md) | Platform home page, `/admin` (institutes, demo requests), `local:hosts` helper |
 
-### Stage B — Pilot features ✅ (except payments)
+### Stage B — Pilot features ✅
 
 | Phase | Spec | What it delivered |
 |-------|------|-------------------|
@@ -109,6 +109,7 @@ gate:
 | 7 | [phase-7-progress.md](docs/specs/phase-7-progress.md) | Lesson progress: heartbeat + resume, auto-complete at 85% watched, student progress UI, teacher progress pages with filters/sort, per-student detail, CSV export |
 | 8 | [phase-8-devices.md](docs/specs/phase-8-devices.md) | One device per student (1–3 limit), device list/sign-out UI, revocation reasons, `devices:prune`, 30-day sessions |
 | 9 | [phase-9-pilot.md](docs/specs/phase-9-pilot.md) | Bulk CSV student import (preview → confirm), 15-minute one-time credentials sheet with WhatsApp links, CSV formula-injection guard, login help line, getting-started checklist, Help page, mobile People cards |
+| 10 | [phase-10-payments.md](docs/specs/phase-10-payments.md) | Manual UPI payments: `payments` table with composite tenant FKs, course-fee pricing, screenshot upload (re-encoded, private disk), owner approve/reject queue, idempotent approval, per-viewer signed screenshot URLs |
 
 Also shipped alongside: **production readiness** (Phase 4.6A — no trust of forwarded host,
 Cloudflare trusted-proxy ranges, session cookie domain tests), **`php artisan app:preflight`**,
@@ -119,7 +120,6 @@ Cloudflare).
 
 | Area | Status | Source |
 |------|--------|--------|
-| **Manual UPI payment flow** (screenshot upload → owner approves, idempotent) | **Not built** — no payment table, no `PaymentProvider` contract, only a free-text `payment_note` on `enrolments` | [PAYMENTS.md](PAYMENTS.md), Stage B |
 | Mini security pass before deploy | Not run as a discrete pass | ROADMAP Stage B |
 | First real deployment / tenant #1 | Not deployed | ROADMAP Stage B |
 | Automated payment gateway (per-tenant accounts, idempotent webhooks) | Not started | ROADMAP Stage C |
@@ -204,9 +204,11 @@ Cloudflare).
    - An untracked `archive-42JxzH/gk_3.1.76_windows_amd64.zip` (~9.8 MB) sits in the project
      root.
    - Both are inert, but they bloat clones and invite accidental commits of local state.
-7. **Payments — the one Stage B feature not built.** The roadmap says the manual UPI flow
-   "ships first", yet enrolment records only a free-text `payment_note`. Enrolment is
-   currently a purely manual, owner-initiated action.
+7. **Payments are manual and silent.** The Stage B UPI flow is built (Phase 10), but
+   approving or rejecting a payment does not tell the student — there is no notification
+   channel anywhere in the codebase yet — and there is no QR: students copy the institute's
+   UPI id and upload a screenshot. Enrolment itself is still a manual, owner-initiated
+   action; paying never enrols anybody.
 8. **App-level security headers are thin.** Only `Referrer-Policy` is set globally, plus
    `X-Content-Type-Options: nosniff` on attachment/stream/PWA responses. There is no CSP,
    `X-Frame-Options`, or HSTS in the application — [docs/DEPLOY.md](docs/DEPLOY.md) assumes

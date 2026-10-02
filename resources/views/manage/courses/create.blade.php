@@ -10,6 +10,7 @@
         <x-field name="class_level" :label="__('courses.manage.class_level')" />
         <x-field name="subject" :label="__('courses.manage.subject')" />
         <x-field name="description" type="textarea" :label="__('courses.manage.description')" />
+        <x-field name="fee_paise" type="number" :label="__('courses.manage.fee_paise')" :hint="__('courses.manage.fee_paise_hint')" />
 
         <x-button>{{ __('courses.manage.create') }}</x-button>
     </form>

@@ -94,6 +94,19 @@
   treated as "less sensitive" just because it isn't streamed.
 - Signed URLs are generated per-request, scoped to the requesting user's tenant and
   enrollment/ownership, and expire quickly enough to limit the value of a leaked link.
+- **Payment screenshots specifically** (Phase 10, docs/specs/phase-10-payments.md): the
+  signature is necessary but not sufficient. `GET /payments/{payment}/screenshot` sits
+  behind `signed` *and* re-checks `PaymentPolicy` on every request — the student who
+  submitted that payment, or an owner/staff reviewer — so a perfectly valid signature over
+  another student's payment is a 403 rather than a leak (tested unsigned, tampered, expired,
+  and valid-but-someone-else's). The response is `image/png` with
+  `X-Content-Type-Options: nosniff` and `Cache-Control: no-store, private`: a proof of
+  payment is neither HTML nor something a shared cache should hold on to.
+- Screenshot bytes are never the client's bytes. The upload is re-encoded to PNG by
+  `PaymentScreenshotService` before it is written (so any payload or metadata riding along
+  in the original is discarded) under a server-generated random filename on the private
+  disk — the client's filename and declared MIME type are never used, and there is no
+  public route that could serve the path by guesswork.
 - **Protected video specifically** (Phase 5, docs/specs/phase-5-video.md): the `fake` driver
   (local/testing only) streams from the private `local` disk through a 10-minute
   `URL::temporarySignedRoute()` that re-runs `LessonAccess::lessonAccess()` on **every**
@@ -123,9 +136,14 @@ recordings are traceable to an individual viewer rather than only proving *a* le
 
 ## Rate limiting
 
-- Auth endpoints (login, password reset), payment-sensitive endpoints (manual UPI approval,
-  webhook receivers), and any public-facing form are rate limited per IP and, where a tenant
-  is already resolved, per tenant.
+- Auth endpoints (login, password reset), payment-sensitive endpoints, and any
+  public-facing form are rate limited per IP and, where a tenant is already resolved, per
+  tenant. Concretely today: the manual UPI **screenshot upload** allows 10 per hour per
+  student (checked *first*, before any validation or file decoding, so an over-limit attempt
+  is a 429 rather than an ordinary validation error), and the approve/reject endpoints are
+  owner-only behind `PaymentPolicy` with an idempotent, no-op second approval — the human
+  decision itself is not throttled, because a slow reviewer should never be locked out of
+  their own queue.
 - **Closed gap (Phase 3.2): distributed login brute-forcing.** Tenant login was rate limited
   only by `tenant + identifier + IP` (5/minute). An attacker spreading failed attempts across
   many IPs (a botnet, rotating proxies, or a simple retry-with-a-new-IP loop) never tripped

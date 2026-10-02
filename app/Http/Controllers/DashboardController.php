@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
 use App\Models\Enrolment;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
+use App\Models\Payment;
 use App\Support\GettingStartedChecklist;
 use App\Support\LessonAccess;
 use App\Support\TenantContext;
@@ -35,6 +37,9 @@ class DashboardController extends Controller
                 'user' => $user,
                 'checklist' => $checklist,
                 'showGettingStarted' => $showGettingStarted,
+                // How many payments are waiting on a decision (Phase 10). Zero hides
+                // the badge entirely rather than showing "0".
+                'pendingPayments' => Payment::where('status', PaymentStatus::Pending->value)->count(),
             ]);
         }
 

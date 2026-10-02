@@ -22,6 +22,7 @@
         <x-field name="name" :label="__('settings.fields.name')" :value="$tenant->name" required />
         <x-field name="contact_phone" :label="__('settings.fields.contact_phone')" :value="$tenant->contact_phone" />
         <x-field name="contact_email" type="email" :label="__('settings.fields.contact_email')" :value="$tenant->contact_email" />
+        <x-field name="upi_id" :label="__('settings.fields.upi_id')" :value="$tenant->upi_id" :hint="__('settings.fields.upi_id_hint')" />
 
         <div class="mb-5">
             <span class="ui-label">{{ __('settings.fields.theme_color') }}</span>

@@ -103,13 +103,17 @@ class PaymentFixtures
      */
     public static function payment(Tenant $tenant, Enrolment $enrolment, array $overrides = []): Payment
     {
-        $attributes = [
+        // $overrides goes on the LEFT of the union on purpose: array union (a + b)
+        // keeps the left operand's value wherever a key appears on both sides, so
+        // the defaults have to be the right-hand side or a caller's status,
+        // rejection_reason or submitted_at would be silently discarded.
+        $attributes = $overrides + [
             'enrolment_id' => $enrolment->id,
             'amount_paise' => self::FEE_PAISE,
             'screenshot_path' => 'tenants/'.$tenant->id.'/payments/'.Str::random(32).'.png',
             'status' => PaymentStatus::Pending,
             'submitted_at' => now(),
-        ] + $overrides;
+        ];
 
         return app(TenantContext::class)->runAs($tenant, function () use ($attributes) {
             $payment = new Payment;

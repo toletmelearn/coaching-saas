@@ -41,6 +41,7 @@ class SettingsController extends Controller
             'theme_color' => ['sometimes', 'string', 'regex:/^#[0-9a-f]{6}$/i', 'in:'.implode(',', $presets)],
             'academic_year_end' => ['nullable', 'date', 'before_or_equal:'.now()->addYears(3)->toDateString()],
             'max_devices_per_student' => ['sometimes', 'integer', 'between:1,3'],
+            'upi_id' => ['nullable', 'string', 'max:100'],
         ], [
             'name.required' => __('settings.validation.name_required'),
             'name.max' => __('settings.validation.name_max'),
@@ -68,6 +69,10 @@ class SettingsController extends Controller
             'theme_color' => $data['theme_color'] ?? $tenant->theme_color,
             'academic_year_end' => $blankToNull($data['academic_year_end'] ?? null),
             'max_devices_per_student' => $data['max_devices_per_student'] ?? $tenant->max_devices_per_student,
+            // Not in $fillable (nothing a student can reach should be able to rewrite
+            // the institute's payment address), so it goes in the same way every other
+            // guarded tenant column does.
+            'upi_id' => $blankToNull($data['upi_id'] ?? null),
         ])->save();
 
         return redirect('/manage/settings')->with('status', __('settings.saved'));

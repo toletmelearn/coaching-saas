@@ -9,6 +9,8 @@ return [
         'name' => 'Institute name',
         'contact_phone' => 'Contact phone',
         'contact_email' => 'Contact email',
+        'upi_id' => 'UPI id for payments',
+        'upi_id_hint' => 'Students pay to this id when a course has a fee. Leave it empty to hide it from the payment page.',
         'theme_color' => 'Accent colour',
         'academic_year_end' => 'Academic year ends',
         'max_devices_per_student' => 'Devices per student',

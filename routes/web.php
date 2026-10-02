@@ -23,8 +23,11 @@ use App\Http\Controllers\Manage\HelpController as ManageHelpController;
 use App\Http\Controllers\Manage\LessonAttachmentController as ManageLessonAttachmentController;
 use App\Http\Controllers\Manage\LessonController as ManageLessonController;
 use App\Http\Controllers\Manage\LessonVideoController as ManageLessonVideoController;
+use App\Http\Controllers\Manage\PaymentController as ManagePaymentController;
 use App\Http\Controllers\Manage\SettingsController as ManageSettingsController;
 use App\Http\Controllers\Manage\UserDeviceController as ManageUserDeviceController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PaymentScreenshotController;
 use App\Http\Controllers\PlatformAdminDashboardController;
 use App\Http\Controllers\PlatformHomeController;
 use App\Http\Controllers\PwaController;
@@ -126,8 +129,23 @@ Route::middleware('require.tenant')->group(function () {
             Route::get('auth/change-password', [ChangePasswordController::class, 'show']);
             Route::post('auth/change-password', [ChangePasswordController::class, 'update']);
 
+            // Proof-of-payment screenshots. Signed (short-lived, tamper-evident) and
+            // additionally authorised per viewer inside the controller — a valid
+            // signature over somebody else's payment still 403s. Kept out of the
+            // must.change.password group below so an <img> in the review screen can
+            // never be redirected to a password form instead.
+            Route::get('payments/{payment}/screenshot', [PaymentScreenshotController::class, 'show'])
+                ->middleware('signed')
+                ->name('payments.screenshot');
+
             Route::middleware('must.change.password')->group(function () {
                 Route::get('dashboard', [DashboardController::class, 'show']);
+
+                // Manual UPI payment (Phase 10) — student-facing, on the same
+                // middleware stack as /dashboard, and always scoped to the caller's
+                // own enrolment (somebody else's is a 404, never a 403).
+                Route::get('enrolments/{enrolment}/payment', [PaymentController::class, 'show']);
+                Route::post('enrolments/{enrolment}/payment', [PaymentController::class, 'store']);
 
                 // Lesson progress — heartbeat/completion. Deliberately NOT nested under
                 // /manage: these are student-facing endpoints, gated by the same
@@ -170,6 +188,13 @@ Route::middleware('require.tenant')->group(function () {
                     Route::patch('settings', [ManageSettingsController::class, 'update']);
                     Route::post('settings/logo', [ManageSettingsController::class, 'storeLogo']);
                     Route::delete('settings/logo', [ManageSettingsController::class, 'destroyLogo']);
+
+                    // Manual UPI payment review (Phase 10) — queued oldest-first at 25
+                    // a page; approve/reject are owner-only via PaymentPolicy.
+                    Route::get('payments', [ManagePaymentController::class, 'index']);
+                    Route::get('payments/{payment}', [ManagePaymentController::class, 'show']);
+                    Route::post('payments/{payment}/approve', [ManagePaymentController::class, 'approve']);
+                    Route::post('payments/{payment}/reject', [ManagePaymentController::class, 'reject']);
 
                     Route::get('courses', [ManageCourseController::class, 'index']);
                     Route::get('courses/create', [ManageCourseController::class, 'create']);

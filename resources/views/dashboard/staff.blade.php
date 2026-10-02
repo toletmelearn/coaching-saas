@@ -39,6 +39,12 @@
             <x-icon name="users" :size="17" />
             {{ __('users.dashboard.manage_people') }}
         </x-link>
+        @if ($pendingPayments > 0)
+            <x-link href="{{ url('/manage/payments') }}" variant="secondary">
+                <x-icon name="document" :size="17" />
+                {{ __('payments.badge', ['count' => $pendingPayments]) }}
+            </x-link>
+        @endif
         <x-link href="{{ url('/manage/help') }}" variant="ghost">
             <x-icon name="help" :size="17" />
             {{ __('help.nav_label') }}

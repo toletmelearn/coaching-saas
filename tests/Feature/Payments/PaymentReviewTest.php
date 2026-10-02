@@ -31,7 +31,11 @@ test('a student is forbidden from the payment queue and a guest is redirected to
         ->get("http://{$f['domain']}/manage/payments")
         ->assertForbidden();
 
-    // Negative: a guest is bounced to login rather than shown the queue
+    // Negative: a guest is bounced to login rather than shown the queue. The guard
+    // from the two calls above still holds a cached user, so clear it first — a real
+    // guest arrives with no guard state at all (see freshRequestCycle()).
+    freshRequestCycle();
+
     $this->get("http://{$f['domain']}/manage/payments")
         ->assertRedirect('/login');
 });

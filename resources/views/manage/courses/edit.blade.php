@@ -5,6 +5,29 @@
 
     <p class="mb-4 text-sm text-gray-600">{{ __('courses.manage.status') }}: {{ __('courses.manage.course_statuses.'.$course->status->value) }}</p>
 
+    {{-- What a place on this course costs. The figure is only ever read server-side --}}
+    {{-- when a payment is created, so nothing posted alongside it can change the price. --}}
+    <div class="ui-card ui-rise" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+        <div class="ui-section-title">
+            <h2 class="ui-h2">{{ __('courses.manage.fee_heading') }}</h2>
+        </div>
+
+        <form method="POST" action="{{ url('/manage/courses/'.$course->id) }}">
+            @csrf
+            @method('PATCH')
+
+            <x-field
+                name="fee_paise"
+                type="number"
+                :label="__('courses.manage.fee_paise')"
+                :hint="__('courses.manage.fee_paise_hint')"
+                :value="$course->fee_paise"
+            />
+
+            <x-button variant="secondary">{{ __('courses.manage.save_fee') }}</x-button>
+        </form>
+    </div>
+
     <div class="flex flex-wrap gap-2 mb-6">
         @can('publish', $course)
             @if ($course->status->value === 'published')

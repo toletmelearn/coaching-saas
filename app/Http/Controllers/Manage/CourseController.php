@@ -38,6 +38,7 @@ class CourseController extends Controller
             'description' => ['nullable', 'string'],
             'class_level' => ['nullable', 'string', 'max:20'],
             'subject' => ['nullable', 'string', 'max:60'],
+            'fee_paise' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $course = new Course($data);
@@ -66,6 +67,9 @@ class CourseController extends Controller
             'description' => ['nullable', 'string'],
             'class_level' => ['nullable', 'string', 'max:20'],
             'subject' => ['nullable', 'string', 'max:60'],
+            // The fee drives every payment amount server-side, so it is a plain
+            // non-negative integer of paise — never a float, never a currency string.
+            'fee_paise' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $course->update($data);

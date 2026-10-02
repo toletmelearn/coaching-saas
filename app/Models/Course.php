@@ -18,7 +18,7 @@ class Course extends Model
 {
     use BelongsToTenant, HasFactory;
 
-    protected $fillable = ['title', 'slug', 'description', 'class_level', 'subject'];
+    protected $fillable = ['title', 'slug', 'description', 'class_level', 'subject', 'fee_paise'];
 
     protected $attributes = [
         'status' => 'draft',
