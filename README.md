@@ -6,6 +6,251 @@ single database, tenant isolation enforced at the schema and application layer. 
 [VIDEO.md](VIDEO.md), [PAYMENTS.md](PAYMENTS.md), [PRIVACY.md](PRIVACY.md) and
 [ROADMAP.md](ROADMAP.md) for the rest of the design.
 
+---
+
+## Target
+
+### What this is for
+
+A small coaching institute — one instructor, a couple of coordinators, a few hundred students
+taking subject classes (the seeded demo is "Physics – Class 11") — currently runs its
+teaching business across WhatsApp groups, a Drive folder of recorded lectures, and a
+spreadsheet of who paid and who watched what. This product replaces that stack with one
+install the institute owner can operate themselves, with no developer in the loop.
+
+Concretely, the owner must be able to, in one sitting on a phone or laptop: create their
+institute's branding, build a course as chapters → lessons, attach PDFs and protected video
+to lessons, bulk-add students from a spreadsheet, hand each student their login over
+WhatsApp, enrol them, and see who is falling behind. See
+[docs/PILOT_CHECKLIST.md](docs/PILOT_CHECKLIST.md) for the literal 360px walkthrough that
+defines "usable".
+
+### Who it is for
+
+| Actor | Where they live | What they do |
+|-------|-----------------|--------------|
+| **Institute owner** | Tenant domain, `/manage/*` | Full control: courses, people, enrolments, settings, branding, device limits, progress |
+| **Staff** | Tenant domain, `/manage/*` | Scoped permissions (courses and students; no billing) |
+| **Student** | Tenant domain, `/dashboard`, `/courses/*` | Watch lessons, track progress, limited to their own enrolments — max 1–3 devices |
+| **Platform operator** | Central domain, `/admin/*` | Create/suspend institutes, reset an owner password, work demo requests. Never touches tenant content |
+
+### Product and business target
+
+- **Stage B (the current milestone): one real tenant live.** The roadmap is explicit —
+  *"the friend running the pilot institute is tenant #1"*. Everything built so far is scoped
+  to what that one institute needs to run day to day, not to a feature-complete LMS.
+- **The platform never holds money.** Student payments go to the tenant's own account/UPI id;
+  the platform is not a payment intermediary (see [PAYMENTS.md](PAYMENTS.md)).
+- **The platform never custodies content.** Each tenant gets its own Bunny Stream library, so
+  isolation and per-tenant usage metering come for free.
+
+### Explicit non-goals
+
+- Not a public course marketplace — there is no discovery, no checkout, no platform listing.
+- Not multi-framework or API-first — this is a server-rendered Blade app; the only JSON is
+  the progress heartbeat and error rendering for `expectsJson()`.
+- No per-tenant deployments, no database-per-tenant, no schema-per-tenant
+  ([ARCHITECTURE.md](ARCHITECTURE.md)).
+- Nothing ahead of [ROADMAP.md](ROADMAP.md): no gateway integration, custom domains, or
+  subscriptions before Stage B is live (invariant 19 in
+  [AGENT_RULES.md](AGENT_RULES.md)).
+
+---
+
+## Tech stack
+
+| Layer | Choice |
+|-------|--------|
+| Framework | Laravel 13 (13.33), PHP 8.3 |
+| Database | MySQL / MariaDB (XAMPP's MariaDB 10.4 locally), SQLite in-memory for the fast test suite |
+| Auth | Hand-rolled — custom `tenant_eloquent` provider, `auth:tenant` + `auth:platform_admin` guards (no Breeze/Fortify) |
+| Frontend | Blade + Tailwind CSS v4 + Vite 8, vanilla ESM modules (no React/Vue) |
+| Video | Bunny Stream (`bunny`) in production, `fake` driver locally; TUS resumable upload via `tus-js-client`; `player.js` for playback |
+| PWA | First-party service worker (`resources/js/sw.js`), manifest, generated icons, offline page |
+| Queues / cache / session | All `database` by default (no Redis requirement for the pilot) |
+| Backups | `spatie/laravel-backup`, scheduled daily |
+| QA | Pest 4, Larastan (PHPStan level 5), Laravel Pint, Node's built-in test runner for JS |
+| Runtime deps | Deliberately tiny: `laravel/framework`, `laravel/tinker`, `spatie/laravel-backup` |
+
+---
+
+## Project status — what is done
+
+Everything below Stage B is implemented and committed (60 commits on `main`); each spec in
+[docs/specs/](docs/specs/) is marked **Complete** (the one exception — Phase 2's stale
+"In Progress" status line — is listed under Weaknesses). Verified by running every quality
+gate:
+
+| Gate | Command | Result (as verified) |
+|------|---------|----------------------|
+| Unit + feature tests (SQLite) | `composer test` | **762 tests, 761 passed, 1 skipped** (the skip is the documented MySQL-only preflight test) |
+| Tenancy/auth/etc. on real MySQL | `composer test:mysql` | **730 / 730 passed** |
+| JS unit tests (Node, no browser) | `composer test:js` | **29 / 29 passed** |
+| Formatting | `composer lint` | **clean** (Pint reports no changes needed) |
+| Static analysis | `composer analyse` | **0 errors** at Larastan level 5 |
+
+### Stage A — Foundation and isolation ✅
+
+| Phase | Spec | What it delivered |
+|-------|------|-------------------|
+| 0 | — | Repository foundation, tooling, documentation |
+| 1 | [phase-1-tenant-resolution.md](docs/specs/phase-1-tenant-resolution.md) | Central tables (`tenants`, `tenant_domains`, `platform_admins`, `system_settings`) + hostname-based, **fail-closed** tenant resolution |
+| 2 | [phase-2-belongs-to-tenant.md](docs/specs/phase-2-belongs-to-tenant.md) | `TenantContext`, `BelongsToTenant` trait + `TenantScope`, tenant-aware route model binding, composite-FK macros (`tenantKeys`/`tenantForeign`) |
+| 3 | [phase-3-tenant-auth.md](docs/specs/phase-3-tenant-auth.md) | Tenant users and roles (owner/staff/student), tenant-aware user provider, temp-password + forced change, rate limits, cross-tenant login rejection |
+| P1 | [phase-p1-platform.md](docs/specs/phase-p1-platform.md) | Platform home page, `/admin` (institutes, demo requests), `local:hosts` helper |
+
+### Stage B — Pilot features ✅ (except payments)
+
+| Phase | Spec | What it delivered |
+|-------|------|-------------------|
+| 4 | [phase-4-courses.md](docs/specs/phase-4-courses.md) | Courses → chapters → lessons, publish/draft/archive, ordering, PDF attachments, enrolment, free YouTube previews, student-facing polish |
+| 5 | [phase-5-video.md](docs/specs/phase-5-video.md) | Protected video: Bunny Stream (one library per tenant), TUS upload with signed server-side signature, signed/expiring embed tokens, dynamic per-viewer watermark, `fake` local driver, `videos:sync` polling |
+| 6 | [phase-6-branding-pwa.md](docs/specs/phase-6-branding-pwa.md) | Institute settings, accent-colour presets, logo upload, generated default icon, installable PWA (manifest, service worker, offline page, versioned assets) |
+| 7 | [phase-7-progress.md](docs/specs/phase-7-progress.md) | Lesson progress: heartbeat + resume, auto-complete at 85% watched, student progress UI, teacher progress pages with filters/sort, per-student detail, CSV export |
+| 8 | [phase-8-devices.md](docs/specs/phase-8-devices.md) | One device per student (1–3 limit), device list/sign-out UI, revocation reasons, `devices:prune`, 30-day sessions |
+| 9 | [phase-9-pilot.md](docs/specs/phase-9-pilot.md) | Bulk CSV student import (preview → confirm), 15-minute one-time credentials sheet with WhatsApp links, CSV formula-injection guard, login help line, getting-started checklist, Help page, mobile People cards |
+
+Also shipped alongside: **production readiness** (Phase 4.6A — no trust of forwarded host,
+Cloudflare trusted-proxy ranges, session cookie domain tests), **`php artisan app:preflight`**,
+**scheduled backups**, and **[docs/DEPLOY.md](docs/DEPLOY.md)** (Hostinger VPS + CloudPanel +
+Cloudflare).
+
+### Not yet started
+
+| Area | Status | Source |
+|------|--------|--------|
+| **Manual UPI payment flow** (screenshot upload → owner approves, idempotent) | **Not built** — no payment table, no `PaymentProvider` contract, only a free-text `payment_note` on `enrolments` | [PAYMENTS.md](PAYMENTS.md), Stage B |
+| Mini security pass before deploy | Not run as a discrete pass | ROADMAP Stage B |
+| First real deployment / tenant #1 | Not deployed | ROADMAP Stage B |
+| Automated payment gateway (per-tenant accounts, idempotent webhooks) | Not started | ROADMAP Stage C |
+| Custom domains + TLS via Caddy on-demand | Not started (schema supports `DomainType::Custom`) | ROADMAP Stage C, SECURITY.md |
+| Queues at scale, audit logging | Not started (queue driver is `database`) | ROADMAP Stage C |
+| DPDP consent flow (guardian fields, `consents` table, export/delete tooling) | Not started; under-18 handling still flagged | [PRIVACY.md](PRIVACY.md) |
+| Subscriptions, usage metering, WhatsApp notifications | Not started | ROADMAP Stage D |
+| Self-service "forgot password" | Not implemented **by design** — `password_reset_tokens` is not tenant-scoped yet and must be fixed first | SECURITY.md |
+
+> **Note on phase numbering:** [ROADMAP.md](ROADMAP.md)'s original numbering (Phase 5 =
+> dashboards, Phase 6 = video, Phase 7 = PDFs) does **not** match the numbering actually used
+> by the specs and the git history (Phase 5 = video, 6 = branding/PWA, 7 = progress, 8 =
+> devices, 9 = pilot). The spec column above is authoritative; the roadmap needs renumbering.
+
+---
+
+## Strengths
+
+1. **Tenant isolation is enforced in three independent layers**, each with tests that try to
+   break it: schema (composite `UNIQUE(tenant_id, id)` + composite FKs), application
+   (`TenantScope` global scope, `BelongsToTenant` model events, `tenant_id` never
+   mass-assignable), and routing/middleware (`Route::domain()` for central routes,
+   `RequireTenant` pinned ahead of `SubstituteBindings`). Failing closed is the default:
+   no context → an exception, unknown host → 404, never "tenant #1".
+2. **Documentation is a first-class artefact.** Eight root design docs
+   ([ARCHITECTURE](ARCHITECTURE.md), [TENANCY](TENANCY.md), [SECURITY](SECURITY.md),
+   [VIDEO](VIDEO.md), [PAYMENTS](PAYMENTS.md), [PRIVACY](PRIVACY.md),
+   [ROADMAP](ROADMAP.md), [AGENT_RULES](AGENT_RULES.md)) plus 13 spec/brief files under
+   `docs/specs/`. Non-obvious decisions carry their reasoning *next to the code* (see the
+   middleware-priority comment in `bootstrap/app.php`). There are **zero
+   `TODO`/`FIXME`/`HACK` markers** in the codebase.
+3. **Test-to-code ratio is ~2:1** (15,291 test lines vs 7,569 app lines), with security
+   behaviour tested explicitly — cross-tenant login rejection, session replay, token-key
+   cross-tenant misuse, secrets never in HTML or logs, CSV formula injection, rate limits.
+4. **All five quality gates are green** — tests on both SQLite *and* real MySQL, JS tests,
+   formatting, and static analysis at level 5.
+5. **Local development needs no external service.** `VIDEO_DRIVER=fake` gives real protected
+   video (private disk + signed stream route) with no Bunny account and no API keys, and
+   preflight refuses that driver in production so it cannot leak.
+6. **Minimal dependency surface** — three runtime packages, no frontend framework. Less to
+   upgrade, less supply-chain surface, faster installs.
+7. **Secrets hygiene is deliberate and tested**: Bunny library keys are encrypted per tenant,
+   embed/upload signatures are derived server-side, and tests assert keys appear in neither
+   rendered HTML nor captured logs.
+8. **Mobile/PWA is treated as a first-class target**, not an afterthought — a 360px
+   walkthrough checklist exists for human testers, the People page renders cards below a
+   breakpoint, and `demo.localhost` is seeded purely so service workers can be tested
+   locally.
+
+---
+
+## Weaknesses and known gaps
+
+1. **One flaky test.** `tests/Feature/Video/EmbedTokenPlaybackTest.php:98` asserts an *exact*
+   embed token computed from `now()->addMinutes(10)` while the server computes its own
+   `expires` independently — if the wall clock crosses a second boundary between the two,
+   the tokens differ and the assertion fails. It fails roughly once per full-suite run and
+   passes 3/3 in isolation. The sibling test at line 62 explicitly avoids this pattern for
+   the same reason.
+2. **No CI.** There is no `.github/workflows` (or any other pipeline). All five gates are
+   local `composer` scripts, so nothing runs them on push — a regression can be committed
+   unnoticed.
+3. **No coverage measurement.** `phpunit.xml` declares `<source>` but no coverage run is
+   configured, so "what is untested" is unknown.
+4. **Documentation drift** (three known instances):
+   - [ROADMAP.md](ROADMAP.md) phase numbering disagrees with the specs and git history
+     (detailed above).
+   - [ARCHITECTURE.md](ARCHITECTURE.md) still calls `app/Contracts/VideoProvider.php`
+     "(planned)" — it exists, with `BunnyVideoProvider` and `FakeVideoProvider`.
+   - `docs/specs/phase-2-belongs-to-tenant.md` still opens with **Status: In Progress**
+     although Phase 2 is complete and its invariants are live in `TENANCY.md`.
+   - This README previously described `composer test:mysql` as running only
+     `tests/Feature/Tenancy`; it actually runs 19 suites (730 tests) — corrected below.
+5. **`.env` has drifted from `.env.example`.** The local `.env` carries
+   `SESSION_LIFETIME=120` while `.env.example` specifies `43200` (the Phase 8 30-day decision
+   documented in SECURITY.md), and lacks `SESSION_SECURE_COOKIE`, `PLATFORM_DOMAIN` and
+   `TENANT_BASE_DOMAIN`. A production deploy copied from `.env` instead of `.env.example`
+   would silently get two-hour sessions.
+6. **Repository hygiene.**
+   - `coaching_saas` — a 151 KB SQLite database — is **committed to the repo root** and is
+     not in `.gitignore`.
+   - An untracked `archive-42JxzH/gk_3.1.76_windows_amd64.zip` (~9.8 MB) sits in the project
+     root.
+   - Both are inert, but they bloat clones and invite accidental commits of local state.
+7. **Payments — the one Stage B feature not built.** The roadmap says the manual UPI flow
+   "ships first", yet enrolment records only a free-text `payment_note`. Enrolment is
+   currently a purely manual, owner-initiated action.
+8. **App-level security headers are thin.** Only `Referrer-Policy` is set globally, plus
+   `X-Content-Type-Options: nosniff` on attachment/stream/PWA responses. There is no CSP,
+   `X-Frame-Options`, or HSTS in the application — [docs/DEPLOY.md](docs/DEPLOY.md) assumes
+   Cloudflare supplies them, which is fine in production but unenforced by the app itself.
+9. **Single locale.** Localisation scaffolding exists (`lang/en/*`, `LocalizationTest`) but
+   only English ships; the UI is English-only for an Indian-market product.
+10. **Documented-but-live risks:** `password_reset_tokens` is not tenant-scoped (blocks
+    self-service reset); the `users` contact `CHECK` constraint is a silent no-op on MySQL
+    older than 8.0.16 (guarded by `DatabaseVersionCheck`).
+11. **Process risk:** essentially all work has been produced by a single
+    developer-plus-agent loop with no code review step — the strong docs and tests are the
+    substitute for it, which is good but not the same thing.
+
+---
+
+## Repository layout
+
+```
+app/
+  Actions/          Domain actions shared by controllers (EnrolStudentAction, CreateInstituteAction)
+  Auth/             Tenant-aware user provider
+  Console/Commands/ app:preflight, devices:prune, local:hosts, platform-admin:create, tenant:create, videos:sync
+  Database/         TenantBuilder (tenant-safe query builder)
+  Enums/            11 backed enums (roles, statuses, reasons)
+  Http/             31 controllers (+ base) across Admin/, Auth/, Manage/ and top level, 8 middleware
+  Models/           14 models; tenant-owned ones use BelongsToTenant
+  Policies/         Course, Enrolment, Tenant, User
+  Scopes/           TenantScope (throws when no context)
+  Services/Video/   BunnyVideoProvider, FakeVideoProvider
+  Support/          Branding, Csv, Devices, Import, Pwa, Video, TenantContext, ProgressRecorder…
+  Traits/           BelongsToTenant
+bootstrap/app.php   Middleware wiring, trusted proxies, exception handling
+config/             coaching, tenancy, cloudflare, preflight, backup, services…
+database/           22 migrations, 12 factories, 2 seeders (TenantSeeder does the demo data)
+docs/               DEPLOY, PILOT_CHECKLIST, specs/ (13 phase specs and briefs), superpowers/
+lang/en/            14 translation files
+public/             Front controller, PWA icons
+resources/          css, fonts, js (sw, pwa, lesson-progress, progress-tracker, video-upload), Blade views
+routes/             web.php (136 routes), console.php (scheduler)
+tests/              Pest: Unit/ (12 files), Feature/ (105 files), js/ (Node), Fixtures/
+```
+
+---
+
 ## Local setup (Windows / XAMPP)
 
 Prerequisites: XAMPP with PHP 8.3, MySQL/MariaDB, and Apache; Composer; Node.js 18+.
@@ -185,11 +430,18 @@ into `C:\Windows\System32\drivers\etc\hosts` instead of typing them by hand.
 
 | Command                 | Purpose                                                          |
 |--------------------------|-------------------------------------------------------------------|
-| `composer test`          | Run the full Pest suite against an in-memory SQLite database.     |
-| `composer test:mysql`    | Run `tests/Feature/Tenancy` against the `coaching_saas_test` MySQL database (set `DB_TEST_*` in `.env`). |
+| `composer setup`         | One-shot install: `composer install`, copy `.env`, `key:generate`, `migrate`, `npm install`, `npm run build`. |
+| `composer dev`           | Run the Laravel dev stack (`php artisan dev`).                    |
+| `composer test`          | Run the full Pest suite (762 tests) against an in-memory SQLite database. |
+| `composer test:mysql`    | Run the MySQL variant of the suite — 19 suites / 730 tests: every `tests/Feature/` directory plus the schema- and security-relevant `tests/Unit/` directories — against the real `coaching_saas_test` database (set `DB_TEST_*` in `.env`). Excludes only `tests/Feature/ExampleTest.php`, `tests/Feature/ErrorPagesTest.php` and four `tests/Unit/` files that need no database. |
 | `composer test:js`       | Run the Node test-runner suite for `resources/js/{sw,progress-tracker}.js` (no browser needed). |
-| `composer lint`          | Format code with Laravel Pint.                                    |
+| `composer lint`          | Format code with Laravel Pint (`vendor/bin/pint --test` to check without writing). |
 | `composer analyse`       | Static analysis with Larastan (PHPStan) at level 5.                |
+
+Other useful Artisan commands: `php artisan app:preflight` (production readiness — run it
+before every deploy), `php artisan migrate:fresh --seed` (reset local data), `php artisan
+local:hosts` (print hosts-file lines), `php artisan platform-admin:create` (create a
+platform admin outside local/testing).
 
 ## Testing philosophy
 
