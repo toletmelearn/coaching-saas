@@ -76,15 +76,15 @@ defines "usable".
 
 ## Project status — what is done
 
-Everything below Stage B is implemented and committed (67 commits on `main`); each spec in
+Everything below Stage B is implemented and committed on `main`; each spec in
 [docs/specs/](docs/specs/) is marked **Complete** (the one exception — Phase 2's stale
 "In Progress" status line — is listed under Weaknesses). Verified by running every quality
 gate:
 
 | Gate | Command | Result (as verified) |
 |------|---------|----------------------|
-| Unit + feature tests (SQLite) | `composer test` | **822 tests, 821 passed, 1 skipped** (the skip is the documented MySQL-only preflight test) |
-| Tenancy/auth/etc. on real MySQL | `composer test:mysql` | **790 / 790 passed** |
+| Unit + feature tests (SQLite) | `composer test` | **824 tests, 823 passed, 1 skipped** (the skip is the documented MySQL-only preflight test) |
+| Tenancy/auth/etc. on real MySQL | `composer test:mysql` | **792 / 792 passed** |
 | JS unit tests (Node, no browser) | `composer test:js` | **29 / 29 passed** |
 | Formatting | `composer lint` | **clean** (Pint reports no changes needed) |
 | Static analysis | `composer analyse` | **0 errors** at Larastan level 5 |
@@ -497,8 +497,8 @@ into `C:\Windows\System32\drivers\etc\hosts` instead of typing them by hand.
 |--------------------------|-------------------------------------------------------------------|
 | `composer setup`         | One-shot install: `composer install`, copy `.env`, `key:generate`, `migrate`, `npm install`, `npm run build`. |
 | `composer dev`           | Run the Laravel dev stack (`php artisan dev`).                    |
-| `composer test`          | Run the full Pest suite (822 tests) against an in-memory SQLite database. |
-| `composer test:mysql`    | Run the MySQL variant of the suite — 20 suites / 790 tests: every `tests/Feature/` directory plus the schema- and security-relevant `tests/Unit/` directories — against the real `coaching_saas_test` database (set `DB_TEST_*` in `.env`). Excludes only `tests/Feature/ExampleTest.php`, `tests/Feature/ErrorPagesTest.php` and four `tests/Unit/` files that need no database. |
+| `composer test`          | Run the full Pest suite (824 tests) against an in-memory SQLite database. |
+| `composer test:mysql`    | Run the MySQL variant of the suite — 20 suites / 792 tests: every `tests/Feature/` directory plus the schema- and security-relevant `tests/Unit/` directories — against the real `coaching_saas_test` database (set `DB_TEST_*` in `.env`). Excludes only `tests/Feature/ExampleTest.php`, `tests/Feature/ErrorPagesTest.php` and four `tests/Unit/` files that need no database. |
 | `composer test:js`       | Run the Node test-runner suite for `resources/js/{sw,progress-tracker}.js` (no browser needed). |
 | `composer lint`          | Format code with Laravel Pint (`vendor/bin/pint --test` to check without writing). |
 | `composer analyse`       | Static analysis with Larastan (PHPStan) at level 5.                |
@@ -515,6 +515,11 @@ behavior — composite foreign keys, collation, or the tenancy isolation guarant
 [TENANCY.md](TENANCY.md) — belongs in `tests/Feature/Tenancy` and must also pass under
 `composer test:mysql`, since SQLite does not enforce composite foreign keys the same way
 MySQL does.
+
+`composer test --exclude-group=backup` runs the fast suite; `composer test` runs everything,
+including the `backup` group — the `backup:run` canary that shells out to `sqlite3` /
+`mysqldump`. If those binaries are installed but not on `PATH` (XAMPP on Windows), set
+`SQLITE_DUMP_BINARY_PATH` / `MYSQL_DUMP_BINARY_PATH` in `.env` first.
 
 Many feature tests assert *exact markup* (attribute order, class strings, substring
 adjacency), which is deliberate — it is what catches accidental UI regressions. During the

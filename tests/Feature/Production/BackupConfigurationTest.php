@@ -26,3 +26,14 @@ test('backup:run and backup:clean are scheduled daily', function () {
         ->and($backupClean)->not->toBeNull()
         ->and($backupClean->expression)->toBe('30 1 * * *');
 });
+
+test('the configured database dump compressor class exists', function () {
+    $compressor = config('backup.backup.database_dump_compressor');
+
+    expect($compressor)->toBeString()
+        ->and(class_exists($compressor))->toBeTrue();
+});
+
+test('backup:run succeeds with the configured compressor', function () {
+    $this->artisan('backup:run', ['--only-db' => true])->assertSuccessful();
+})->group('backup');

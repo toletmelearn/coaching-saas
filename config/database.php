@@ -42,6 +42,13 @@ return [
             'journal_mode' => null,
             'synchronous' => null,
             'transaction_mode' => 'DEFERRED',
+            // Where the `sqlite3` CLI lives, for spatie/laravel-backup's db dump.
+            // Null/empty is fine: DbDumperFactory falls back to `setDumpBinaryPath()`
+            // with the default, i.e. "whatever is on PATH". Set it only on hosts where
+            // the binary exists but is NOT on PATH (e.g. XAMPP on Windows).
+            'dump' => [
+                'dump_binary_path' => env('SQLITE_DUMP_BINARY_PATH'),
+            ],
         ],
 
         'mysql' => [
@@ -59,6 +66,10 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            // See the sqlite connection: `mysqldump` for spatie/laravel-backup.
+            'dump' => [
+                'dump_binary_path' => env('MYSQL_DUMP_BINARY_PATH'),
+            ],
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
@@ -79,6 +90,10 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            // See the sqlite connection: `mysqldump` for spatie/laravel-backup.
+            'dump' => [
+                'dump_binary_path' => env('MYSQL_DUMP_BINARY_PATH'),
+            ],
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],

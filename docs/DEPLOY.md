@@ -293,12 +293,10 @@ channel) if the newest backup is more than a day old or the backup disk exceeds 
 (it's not separately scheduled here — add it if you want a distinct alert path from
 `backup:run` itself failing).
 
-**The alert address is not configurable from `.env`.** `backup.notifications.mail.to` is
-hardcoded to `'your@example.com'` at `config/backup.php:240` — there is no
-`BACKUP_NOTIFY_EMAIL` key — and `.env.example` ships `MAIL_MAILER=log`, which writes mail to
-`storage/logs/laravel.log` instead of sending it. As shipped, therefore, backup alerts reach
-neither an inbox nor anyone's attention. To actually receive them: set a real SMTP transport
-in `.env`, change `config/backup.php:240` to a real address (ideally
-`env('BACKUP_NOTIFY_EMAIL', 'your@example.com')`, plus a matching line in `.env.example`, and
-commit it), and only then rely on these notifications. Until that lands, treat the absence of
-a backup file as the alert — see docs/DEPLOY_RUNBOOK.md §1.7 item 5.
+**The alert address is configurable from `.env`: `BACKUP_NOTIFY_EMAIL`.**
+`backup.notifications.mail.to` reads that key and falls back to `MAIL_FROM_ADDRESS` when it is
+blank (`.env.example` ships `BACKUP_NOTIFY_EMAIL=` empty, plus `MAIL_FROM_ADDRESS` — and ships
+`MAIL_MAILER=log`, which writes mail to `storage/logs/laravel.log` instead of sending it). So
+to actually receive these alerts you need **both**: a real SMTP transport in `.env`, and
+`BACKUP_NOTIFY_EMAIL` set to an address you read. Until then, treat the absence of a backup
+file as the alert — see docs/DEPLOY_RUNBOOK.md §1.7 item 5.

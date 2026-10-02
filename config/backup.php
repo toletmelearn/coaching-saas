@@ -1,6 +1,5 @@
 <?php
 
-use Spatie\Backup\Compressors\GzipCompressor;
 use Spatie\Backup\Notifications\Notifiable;
 use Spatie\Backup\Notifications\Notifications\BackupHasFailedNotification;
 use Spatie\Backup\Notifications\Notifications\BackupWasSuccessfulNotification;
@@ -11,6 +10,7 @@ use Spatie\Backup\Notifications\Notifications\UnhealthyBackupWasFoundNotificatio
 use Spatie\Backup\Tasks\Cleanup\Strategies\DefaultStrategy;
 use Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumAgeInDays;
 use Spatie\Backup\Tasks\Monitor\HealthChecks\MaximumStorageInMegabytes;
+use Spatie\DbDumper\Compressors\GzipCompressor;
 
 return [
 
@@ -237,7 +237,13 @@ return [
         'notifiable' => Notifiable::class,
 
         'mail' => [
-            'to' => 'your@example.com',
+            // NOT config('mail.from.address'): config files load alphabetically
+            // (backup.php before mail.php), so that call resolves to null here and
+            // bakes null into a config:cache. env() is already resolved by Dotenv at
+            // this point, and the fallback below is exactly the expression
+            // config/mail.php uses. `?:` (not `??`) so that a blank
+            // BACKUP_NOTIFY_EMAIL= in .env falls back too instead of yielding ''.
+            'to' => env('BACKUP_NOTIFY_EMAIL') ?: env('MAIL_FROM_ADDRESS', 'hello@example.com'),
 
             'from' => [
                 'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
