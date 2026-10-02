@@ -76,15 +76,15 @@ defines "usable".
 
 ## Project status — what is done
 
-Everything below Stage B is implemented and committed (60 commits on `main`); each spec in
+Everything below Stage B is implemented and committed (67 commits on `main`); each spec in
 [docs/specs/](docs/specs/) is marked **Complete** (the one exception — Phase 2's stale
 "In Progress" status line — is listed under Weaknesses). Verified by running every quality
 gate:
 
 | Gate | Command | Result (as verified) |
 |------|---------|----------------------|
-| Unit + feature tests (SQLite) | `composer test` | **762 tests, 761 passed, 1 skipped** (the skip is the documented MySQL-only preflight test) |
-| Tenancy/auth/etc. on real MySQL | `composer test:mysql` | **730 / 730 passed** |
+| Unit + feature tests (SQLite) | `composer test` | **822 tests, 821 passed, 1 skipped** (the skip is the documented MySQL-only preflight test) |
+| Tenancy/auth/etc. on real MySQL | `composer test:mysql` | **790 / 790 passed** |
 | JS unit tests (Node, no browser) | `composer test:js` | **29 / 29 passed** |
 | Formatting | `composer lint` | **clean** (Pint reports no changes needed) |
 | Static analysis | `composer analyse` | **0 errors** at Larastan level 5 |
@@ -120,7 +120,7 @@ Cloudflare).
 
 | Area | Status | Source |
 |------|--------|--------|
-| Mini security pass before deploy | Not run as a discrete pass | ROADMAP Stage B |
+| Mini security pass before deploy | Run (Phase 11) — [docs/SECURITY_PASS.md](docs/SECURITY_PASS.md) | ROADMAP Stage B |
 | First real deployment / tenant #1 | Not deployed | ROADMAP Stage B |
 | Automated payment gateway (per-tenant accounts, idempotent webhooks) | Not started | ROADMAP Stage C |
 | Custom domains + TLS via Caddy on-demand | Not started (schema supports `DomainType::Custom`) | ROADMAP Stage C, SECURITY.md |
@@ -192,7 +192,7 @@ Cloudflare).
    - `docs/specs/phase-2-belongs-to-tenant.md` still opens with **Status: In Progress**
      although Phase 2 is complete and its invariants are live in `TENANCY.md`.
    - This README previously described `composer test:mysql` as running only
-     `tests/Feature/Tenancy`; it actually runs 19 suites (730 tests) — corrected below.
+     `tests/Feature/Tenancy`; it actually runs 20 suites (790 tests) — corrected below.
 5. **`.env` has drifted from `.env.example`.** The local `.env` carries
    `SESSION_LIFETIME=120` while `.env.example` specifies `43200` (the Phase 8 30-day decision
    documented in SECURITY.md), and lacks `SESSION_SECURE_COOKIE`, `PLATFORM_DOMAIN` and
@@ -246,13 +246,13 @@ app/
   Traits/           BelongsToTenant
 bootstrap/app.php   Middleware wiring, trusted proxies, exception handling
 config/             coaching, tenancy, cloudflare, preflight, backup, services…
-database/           22 migrations, 12 factories, 2 seeders (TenantSeeder does the demo data)
-docs/               DEPLOY, PILOT_CHECKLIST, specs/ (13 phase specs and briefs), superpowers/
-lang/en/            14 translation files
+database/           24 migrations, 12 factories, 2 seeders (TenantSeeder does the demo data)
+docs/               DEPLOY, DEPLOY_RUNBOOK, PILOT_CHECKLIST, SECURITY_PASS, specs/ (14 phase specs and briefs), superpowers/
+lang/en/            16 translation files
 public/             Front controller, PWA icons
 resources/          css, fonts, js (sw, pwa, lesson-progress, progress-tracker, video-upload), Blade views
-routes/             web.php (136 routes), console.php (scheduler)
-tests/              Pest: Unit/ (12 files), Feature/ (105 files), js/ (Node), Fixtures/
+routes/             web.php (145 routes), console.php (scheduler)
+tests/              Pest: Unit/ (12 files), Feature/ (113 files), js/ (Node), Fixtures/
 ```
 
 ---
@@ -497,8 +497,8 @@ into `C:\Windows\System32\drivers\etc\hosts` instead of typing them by hand.
 |--------------------------|-------------------------------------------------------------------|
 | `composer setup`         | One-shot install: `composer install`, copy `.env`, `key:generate`, `migrate`, `npm install`, `npm run build`. |
 | `composer dev`           | Run the Laravel dev stack (`php artisan dev`).                    |
-| `composer test`          | Run the full Pest suite (762 tests) against an in-memory SQLite database. |
-| `composer test:mysql`    | Run the MySQL variant of the suite — 19 suites / 730 tests: every `tests/Feature/` directory plus the schema- and security-relevant `tests/Unit/` directories — against the real `coaching_saas_test` database (set `DB_TEST_*` in `.env`). Excludes only `tests/Feature/ExampleTest.php`, `tests/Feature/ErrorPagesTest.php` and four `tests/Unit/` files that need no database. |
+| `composer test`          | Run the full Pest suite (822 tests) against an in-memory SQLite database. |
+| `composer test:mysql`    | Run the MySQL variant of the suite — 20 suites / 790 tests: every `tests/Feature/` directory plus the schema- and security-relevant `tests/Unit/` directories — against the real `coaching_saas_test` database (set `DB_TEST_*` in `.env`). Excludes only `tests/Feature/ExampleTest.php`, `tests/Feature/ErrorPagesTest.php` and four `tests/Unit/` files that need no database. |
 | `composer test:js`       | Run the Node test-runner suite for `resources/js/{sw,progress-tracker}.js` (no browser needed). |
 | `composer lint`          | Format code with Laravel Pint (`vendor/bin/pint --test` to check without writing). |
 | `composer analyse`       | Static analysis with Larastan (PHPStan) at level 5.                |

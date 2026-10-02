@@ -112,7 +112,12 @@ between major versions), but the approach itself is standard Nginx and will work
   Confirm the server is MySQL 8.0.16+ (`SELECT VERSION();`) — `php artisan app:preflight`
   (see §5) refuses to pass on an older version, since the `users.email`/`phone` CHECK
   constraint is silently unenforced below that (SECURITY.md).
-- **Node.js** (for `npm run build` at deploy time — see §4) — any current LTS.
+- **Node.js** (for `npm run build` at deploy time — see §4) — **LTS ≥ 22.12**. Vite 8.3.1's
+  `engines` field is `^20.19.0 || >=22.12.0`, so an older LTS fails `npm ci` with
+  `EBADENGINE`; and Node 20 reached end-of-life on 2026-04-30, so don't pin it. Install it
+  **as the site user** (nvm, per-user) following CloudPanel's own "Node.js for PHP Sites"
+  guide, then `node -v` in a fresh shell — see docs/DEPLOY_RUNBOOK.md §2.6. Nothing at
+  runtime needs Node; it is only used for `npm run build`.
 
 ## 3. `.env` for production
 
@@ -283,8 +288,17 @@ restores periodically; an untested backup is not a working backup.
 ## 8. Monitoring the backup itself
 
 `config/backup.php` → `monitor_backups` is configured to alert (via the `mail` notification
-channel — set `backup.notifications.mail.to` to a real address you actually read) if the
-newest backup is more than a day old or the backup disk exceeds 5000MB. Run
+channel) if the newest backup is more than a day old or the backup disk exceeds 5000MB. Run
 `php artisan backup:monitor` from the same cron as `schedule:run` handles automatically
 (it's not separately scheduled here — add it if you want a distinct alert path from
 `backup:run` itself failing).
+
+**The alert address is not configurable from `.env`.** `backup.notifications.mail.to` is
+hardcoded to `'your@example.com'` at `config/backup.php:240` — there is no
+`BACKUP_NOTIFY_EMAIL` key — and `.env.example` ships `MAIL_MAILER=log`, which writes mail to
+`storage/logs/laravel.log` instead of sending it. As shipped, therefore, backup alerts reach
+neither an inbox nor anyone's attention. To actually receive them: set a real SMTP transport
+in `.env`, change `config/backup.php:240` to a real address (ideally
+`env('BACKUP_NOTIFY_EMAIL', 'your@example.com')`, plus a matching line in `.env.example`, and
+commit it), and only then rely on these notifications. Until that lands, treat the absence of
+a backup file as the alert — see docs/DEPLOY_RUNBOOK.md §1.7 item 5.

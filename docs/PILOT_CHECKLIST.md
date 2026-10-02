@@ -4,6 +4,11 @@ For a human tester, on a phone (or a browser resized to a 360px-wide viewport). 
 every row in order. Note anything that scrolls sideways, overlaps, is hard to tap, or is
 hard to read, in the "Problem?" column.
 
+Rows 1–17 are the original 360px UI walkthrough. Rows 18–25 were added for the first
+production deploy (docs/DEPLOY_RUNBOOK.md §10) and need a **real phone on real HTTPS** —
+they will not pass locally over `http://`. Same "Problem?" column, same rule: work through
+them in order and write down anything that doesn't behave.
+
 | # | Screen | Steps | What to check | Problem? |
 |---|--------|-------|----------------|----------|
 | 1 | Login | Open the tenant login page | Form fits without side-scrolling; help line visible below the form; tap/call links work if a phone is configured | |
@@ -23,6 +28,14 @@ hard to read, in the "Problem?" column.
 | 15 | Help page | Open Help from the header | Sections readable, no tiny text, no horizontal scroll | |
 | 16 | Lesson page | Open a lesson as a student | Video/player fits screen; no layout overflow | |
 | 17 | Settings | Open Settings, set contact phone and logo | Form usable one-handed | |
+| 18 | HTTPS | Type the `http://` tenant URL into the phone browser | Redirects to `https://` before the login form renders; no "Not secure" warning in the address bar | |
+| 19 | PWA install | On a real Android phone, open the tenant site over `https://`, then Chrome's menu → "Add to Home screen" / install prompt | App installs with the institute's own icon (or the default generated one); opening it shows the app in its own window with no browser URL bar | |
+| 20 | PWA offline | Turn on airplane mode, then reopen the installed app | Friendly offline page renders; no raw browser error, no blank white screen | |
+| 21 | Branding propagation | As owner, change the institute name/colour/logo in Settings; reopen the installed PWA within a few minutes | New name and colour appear — the Cloudflare cache rule bypassing `/sw.js` and `/manifest.webmanifest` (docs/DEPLOY.md §1.5) is what makes this fast | |
+| 22 | Video (real Bunny) | As owner, upload a small lesson video; log in as a student on a second phone and play it | Upload reaches 100% and the lesson shows a finished state; the student can start playback; no public/unsigned video URL is visible | |
+| 23 | Payments (UPI) | As owner, set the institute UPI id in Settings; as a student, open the Pay page for a course | UPI id shown, the `upi://` link/QR is tappable; after uploading a payment screenshot the owner can see it and approve or reject it | |
+| 24 | Device limit | As the same student, log in on a second phone while the first is still logged in | The first device is evicted with a clear message (Phase 8), not a silent session break | |
+| 25 | Student password reset | As owner, open People → a student → "Reset password" | A temporary password is shown **once** and can be copied; that student's other devices are signed out on their next request (SECURITY.md "Device limits"), and the student logs back in with the temporary password and is forced to change it | |
 
 **General checks on every screen above:** no horizontal scrollbar appears; every button is
 at least comfortably tappable with a thumb; text is legible without pinch-zoom.
