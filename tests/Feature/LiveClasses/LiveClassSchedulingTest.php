@@ -174,6 +174,32 @@ test('room names are unpredictable and not derivable from class, course or tenan
     }
 });
 
+test('room names stay unpredictable even for classes with identical business fields', function () {
+    $f = LiveClassFixtures::setup();
+
+    // Twelve classes, byte-identical title/window/course: if the room name were
+    // derived from any of those fields, some of these twelve would collide.
+    for ($i = 0; $i < 12; $i++) {
+        LiveClassFixtures::liveClass($f['course'], $f['owner'], [
+            'title' => 'Identical session',
+            'starts_at' => now()->addHour(),
+            'ends_at' => now()->addHours(2),
+        ]);
+    }
+
+    $rooms = inTenant($f['tenant'], fn () => LiveClass::pluck('jitsi_room_name'));
+
+    expect($rooms)->toHaveCount(12)
+        ->and($rooms->unique())->toHaveCount(12);
+
+    foreach ($rooms as $room) {
+        expect($room)
+            ->toMatch('/^[A-Za-z0-9]{32}-[0-9a-f]{8}$/')
+            ->not->toContain((string) $f['course']->id)
+            ->not->toContain('Identical session');
+    }
+});
+
 // === Edit / cancel / delete ===
 
 test('a cancelled class cannot be edited', function () {

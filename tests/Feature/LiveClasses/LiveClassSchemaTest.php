@@ -321,6 +321,33 @@ test('the same user cannot have two attendance rows with the same joined_at in o
     ))->toThrow(QueryException::class);
 });
 
+// === created_by nullability (clarification 1) ===
+
+test('live_classes.created_by is nullable — a class row is never hostage to its creator record', function () {
+    $f = LiveClassFixtures::setup();
+
+    // Positive control: the approved path records the real creator…
+    $withCreator = LiveClassFixtures::liveClass($f['course'], $f['owner'], ['title' => 'Has creator']);
+    expect((int) $withCreator->created_by)->toBe($f['owner']->id);
+
+    // …and the column itself accepts null, so a purged/unresolvable creator can never
+    // make a live class row uninsertable (mirrors courses.created_by, which is nullable).
+    $withoutCreator = inTenant($f['tenant'], function () use ($f) {
+        $class = new LiveClass;
+        $class->fill([
+            'course_id' => $f['course']->id,
+            'title' => 'Creator-less class',
+            'starts_at' => now()->addHour(),
+        ]);
+        $class->forceFill(['status' => 'scheduled', 'created_by' => null]);
+        $class->save();
+
+        return $class->fresh();
+    });
+
+    expect($withoutCreator->created_by)->toBeNull();
+});
+
 // === Mass assignment guards ===
 
 test('tenant_id, status, jitsi_room_name and created_by are not mass-assignable on live_classes', function () {
