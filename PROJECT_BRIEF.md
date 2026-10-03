@@ -208,6 +208,23 @@ Format: **Rule** — *Why* — **Enforced where** — **Test that catches it**.
 
 **Items 12 and 13 are recorded decisions, not weaknesses.**
 
+### Phase 11 security-pass findings still open (`docs/SECURITY_PASS.md` §3/§5)
+
+Untracked until this row was added — the pass recorded ten findings; 3 were fixed in code
+with tests, 2 as documentation, and **these 5 remain open**. Severity and location copied
+verbatim from the pass; **not fixed here** (surfacing only).
+
+| # | Description | Severity | Location | Decision |
+|---|---|---|---|---|
+| SP-6 | The only two `report($e)` calls in `app/` can put a client-supplied `filename` into `storage/logs/laravel.log`: `QueryException::formatMessage()` interpolates bindings into the SQL text. | low | `app/Http/Controllers/Manage/LessonVideoController.php:89` and `:114` (open item **D**) | **Defer** — open item D says to bundle it with future structured-logging work (there is no structured logging anywhere, so one call site is not worth a policy; no phase named). |
+| SP-7 | `app:preflight` returns `SUCCESS` immediately unless `APP_ENV=production`, so a deploy that forgets `APP_ENV=production` gets a green preflight while `APP_DEBUG=true`. Not silent — prints "Not running in production…" and `docs/DEPLOY.md §5` documents it — but nothing forces the operator to read that line. | low | `app/Console/Commands/AppPreflightCommand.php:21` | **NEEDS HUMAN** — no open-item row and no recommendation anywhere in the pass. (The pass's own claim that finding **A** is "the one decision that needs a human" sits awkwardly with this one having no decision at all.) |
+| SP-8 | `.env.example` has no `BUNNY_STREAM_ACCOUNT_API_KEY=` placeholder line, although `docs/DEPLOY.md §3` says to base production `.env` on `.env.example` and set that very key. | low | `.env.example` (open item **E**) | **Fix now** — one-line change: add a commented placeholder line next to the session block. Deferred in the pass only because `.env.example` wasn't in that pass's sanctioned fix list; no deferral rationale given (unlike B/C/D, which each state one). |
+| SP-9 | `checkMysqlVersion()` is the only preflight check with no failing-branch test — no seam in `config/preflight.php` to mock, so the wiring (not just the pure function) is untested. | low | `app/Console/Commands/AppPreflightCommand.php:124` (open item **F**) | **Fix now** — add `preflight.forced_database_version` to `config/preflight.php` (mirroring the GD seam) plus a failing-branch test. Same reading as SP-8: recommendation stated, no deferral rationale. |
+| SP-10 | Local `.env` carries `SESSION_LIFETIME=120` while `config/session.php` defaults to `43200` and `.env.example` ships `43200`. Local only, gitignored. | low | local `.env` | **Accept as known risk** — already recorded as README weakness #5; the pass treats it as a note, not a defect. |
+
+SP-8 and SP-9's "fix now" is a decision recorded, **not** a fix applied — the pass findings
+were left untouched per instruction. SP-7 is the only **NEEDS HUMAN** here.
+
 ---
 
 ## §7 Documentation drift ledger
