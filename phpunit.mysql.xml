@@ -73,6 +73,13 @@
         <testsuite name="Payments">
             <directory>tests/Feature/Payments</directory>
         </testsuite>
+        <!-- Phase 12 (both directories are phase-paired suites, mirroring Video/Pwa/
+             Progress/Devices/MobileGuards above; the four standalone Unit files named
+             in the header comment remain deliberately excluded). -->
+        <testsuite name="LiveClasses">
+            <directory>tests/Feature/LiveClasses</directory>
+            <directory>tests/Unit/Support/LiveClasses</directory>
+        </testsuite>
         <testsuite name="Actions">
             <directory>tests/Unit/Actions</directory>
         </testsuite>
