@@ -35,4 +35,21 @@ return [
 
     'gd_extension_loaded' => extension_loaded('gd'),
     'gd_freetype_supported' => extension_loaded('gd') && (gd_info()['FreeType Support'] ?? false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Forced server version (checkMysqlVersion seam)
+    |--------------------------------------------------------------------------
+    |
+    | Nullable string. When set, app:preflight reports this as the connected
+    | server's version instead of running SELECT VERSION() — the seam that lets
+    | a test exercise the below-minimum branch (an actually-old MySQL/MariaDB
+    | would otherwise be the only way to see it, and the driver gate would make
+    | it unreachable on SQLite at all). Mirrors the GD/FreeType seam above;
+    | null in every real environment, so production always queries the real
+    | server. See DatabaseVersionCheck for the 8.0.16 / 10.2.1 floors.
+    |
+    */
+
+    'forced_database_version' => null,
 ];

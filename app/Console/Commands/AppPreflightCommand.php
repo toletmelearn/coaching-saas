@@ -160,6 +160,15 @@ class AppPreflightCommand extends Command
 
     private function checkMysqlVersion(): ?string
     {
+        // Seam (config/preflight.php, mirrors the GD one): when forced, this value is
+        // evaluated as the server's version *including* on SQLite — the driver gate below
+        // would otherwise make the below-minimum branch unreachable by any test (SP-9).
+        $forced = config('preflight.forced_database_version');
+
+        if ($forced !== null) {
+            return DatabaseVersionCheck::minimumViolationMessage($forced);
+        }
+
         if (DB::connection()->getDriverName() !== 'mysql') {
             // Not a MySQL/MariaDB connection (e.g. SQLite in local/testing) — this check
             // only makes sense against the production database engine.

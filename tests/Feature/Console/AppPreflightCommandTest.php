@@ -215,3 +215,20 @@ test('fails when GD is loaded but has no FreeType support', function () {
 
     $this->artisan('app:preflight')->assertFailed();
 });
+
+// === MySQL/MariaDB version floor — the only preflight check with no failing-branch test (SP-9) ===
+
+test('fails when the database server version is below the CHECK-constraint floor', function () {
+    app()->instance('env', 'production');
+    config(passingPreflightConfig());
+    // config/preflight.php seam (mirrors the GD one): pretends the server reports a version
+    // below the 8.0.16 floor, so the branch is reachable without an actually-old server —
+    // and without it, the SQLite driver gate would skip the check entirely.
+    config(['preflight.forced_database_version' => '8.0.15']);
+
+    $this->artisan('app:preflight', ['--require-production' => true])
+        ->expectsOutputToContain('MySQL 8.0.15 is below the minimum 8.0.16')
+        // exit 1 (FAILURE): a real preflight check failed — distinct from exit 2, which
+        // means APP_ENV isn't production at all.
+        ->assertExitCode(1);
+});

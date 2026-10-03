@@ -212,20 +212,23 @@ Format: **Rule** — *Why* — **Enforced where** — **Test that catches it**.
 
 Untracked until this row was added — the pass recorded ten findings; 3 were fixed in code
 with tests, 2 as documentation, and **these 5 were still open when this table was written**
-(SP-7 is now RESOLVED below; 4 remain open). Severity and location copied verbatim from the
-pass; the rest are still **not fixed** (surfacing only).
+(SP-7, SP-8 and SP-9 are now RESOLVED; **2 remain open** — SP-6 and SP-10, both deliberate
+dispositions). Severity and location copied verbatim from the pass; those two are still
+**not fixed** (surfacing only).
 
 | # | Description | Severity | Location | Decision |
 |---|---|---|---|---|
 | SP-6 | The only two `report($e)` calls in `app/` can put a client-supplied `filename` into `storage/logs/laravel.log`: `QueryException::formatMessage()` interpolates bindings into the SQL text. | low | `app/Http/Controllers/Manage/LessonVideoController.php:89` and `:114` (open item **D**) | **Defer** — open item D says to bundle it with future structured-logging work (there is no structured logging anywhere, so one call site is not worth a policy; no phase named). |
 | SP-7 | `app:preflight` returns `SUCCESS` immediately unless `APP_ENV=production`, so a deploy that forgets `APP_ENV=production` gets a green preflight while `APP_DEBUG=true`. Not silent — prints "Not running in production…" and `docs/DEPLOY.md §5` documents it — but nothing forces the operator to read that line. | low | `app/Console/Commands/AppPreflightCommand.php:21` | **RESOLVED in `ab58045`** — the missing decision was the `--require-production` flag: without it the no-op is unchanged (exit 0), with it a non-production run errors (`APP_ENV is "…", not "production" — this command was run with --require-production.`) and exits **2** (`self::INVALID`, distinct from 1 = a real check failed). Runbook §6.1/§6.2/§10.12 now pass the flag; covered by `AppPreflightCommandTest` (no-op test + new exit-code-2 test). |
 | SP-8 | `.env.example` has no `BUNNY_STREAM_ACCOUNT_API_KEY=` placeholder line, although `docs/DEPLOY.md §3` says to base production `.env` on `.env.example` and set that very key. | low | `.env.example` (open item **E**) | **RESOLVED in `9173eb9`** — the pass's "absent" claim was true at its own HEAD (`f8d5b6a`), but `9173eb9` (same evening, after Phase 11) added both keys: `.env.example:89-90` now carries the comment ("Bunny Stream ACCOUNT-level API key (per-tenant library keys live encrypted on tenants); required by `app:preflight` when VIDEO_DRIVER=bunny") plus `BUNNY_STREAM_ACCOUNT_API_KEY=`, next to `VIDEO_DRIVER=fake` rather than the session block. `docs/DEPLOY_RUNBOOK.md` §1.8 row 7 already records this. **No change made this session** — the placeholder was already there, and adding a second `BUNNY_STREAM_ACCOUNT_API_KEY=` line would have duplicated a key in the file `composer setup` copies to `.env`. |
-| SP-9 | `checkMysqlVersion()` is the only preflight check with no failing-branch test — no seam in `config/preflight.php` to mock, so the wiring (not just the pure function) is untested. | low | `app/Console/Commands/AppPreflightCommand.php:124` (open item **F**) | **Fix now** — add `preflight.forced_database_version` to `config/preflight.php` (mirroring the GD seam) plus a failing-branch test. Same reading as SP-8: recommendation stated, no deferral rationale. |
+| SP-9 | `checkMysqlVersion()` is the only preflight check with no failing-branch test — no seam in `config/preflight.php` to mock, so the wiring (not just the pure function) is untested. | low | `app/Console/Commands/AppPreflightCommand.php:124` (open item **F**) | **RESOLVED** — `config/preflight.php` gained `forced_database_version` (nullable string, mirroring the GD seam; `null` in every real environment, so production still queries the real server) and `checkMysqlVersion()` consults it first — before the SQLite driver gate, which is what previously made the branch unreachable by any test. New test *"fails when the database server version is below the CHECK-constraint floor"* forces `8.0.15`, asserts `expectsOutputToContain('MySQL 8.0.15 is below the minimum 8.0.16')` and **exit 1**; proven to have teeth (with the seam reverted the test fails with "Expected status code 1 but received 0"). Commit `test(preflight): failing-branch coverage for checkMysqlVersion` — SHA pinned in the next docs commit, since a file cannot contain its own commit's hash. |
 | SP-10 | Local `.env` carries `SESSION_LIFETIME=120` while `config/session.php` defaults to `43200` and `.env.example` ships `43200`. Local only, gitignored. | low | local `.env` | **Accept as known risk** — already recorded as README weakness #5; the pass treats it as a note, not a defect. |
 
-SP-8 and SP-9's "fix now" is a decision recorded, **not** a fix applied — the pass findings
-were otherwise left untouched per instruction. SP-7 — previously the only **NEEDS HUMAN**
-here — is now RESOLVED (its row above): **no NEEDS HUMAN items remain in this table.**
+All three "fix now"/NEEDS HUMAN rows are now **applied, not just recorded**: SP-7 (the
+`--require-production` flag), SP-8 (already done by `9173eb9` before this table existed —
+see its row) and SP-9 (config seam + failing-branch test). **No NEEDS HUMAN items remain in
+this table**; the 2 rows still open are deliberate dispositions — SP-6 (defer) and SP-10
+(accept as known risk).
 
 ---
 
