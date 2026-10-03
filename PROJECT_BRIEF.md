@@ -67,9 +67,10 @@ protected lesson video`, `8faa256 Phase 6: institute settings, branding and PWA`
 `ccef063 Phase 7: lesson progress tracking`, `ad5881e Phase 8: one device per student`,
 `83c973e Phase 9: pilot readiness`, `f89a615 Phase P1: platform home and admin`,
 `f8d5b6a Phase 10: manual UPI payment flow`.
-`ROADMAP.md` has never been renumbered since `13b4847 Phase 1 cleanup: roadmap order`.
+`ROADMAP.md` had never been renumbered since `13b4847 Phase 1 cleanup: roadmap order` — until
+this session's `docs: renumber ROADMAP to match specs and git history` (see C10 and §7).
 
-| Canonical # | Name | Stage | Status | Spec file | Roadmap calls it |
+| Canonical # | Name | Stage | Status | Spec file | Old ROADMAP called it (before the renumbering) |
 |---|---|---|---|---|---|
 | 0 | Foundation, tooling, docs | A | Done | *(none)* | Phase 0 — **same** |
 | 1 | Central tables + hostname resolution | A | Done | `docs/specs/phase-1-tenant-resolution.md` | Phase 1 — **same** |
@@ -102,7 +103,7 @@ protected lesson video`, `8faa256 Phase 6: institute settings, branding and PWA`
 | C7 | ROADMAP "Phase 7: PDFs / course materials" shipped inside spec Phase 4 | `ROADMAP.md:25` vs `docs/specs/phase-4-courses.md` §Attachments |
 | C8 | ROADMAP Phase 12 claims "and PWA support"; PWA shipped in Phase 6 | `ROADMAP.md:40` |
 | C9 | Stage B membership: ROADMAP `{4,5,6,7,9-UP,10}` vs actual `{4,5,6,7,8,9,P1,10}` | `ROADMAP.md:19` vs `README.md:104-111` |
-| C10 | `README.md:132-135` already flags C1 and says "the roadmap needs renumbering" — **the fix was never applied** | `README.md` vs `ROADMAP.md` |
+| C10 | `README.md:132-135` already flagged C1 and said "the roadmap needs renumbering" — **the fix was never applied → now RESOLVED**: `ROADMAP.md` was rewritten from scratch to the canonical numbering (Stages A–D preserved, one bullet per phase, spec titles + spec links, header block explaining the change). Commit `docs: renumber ROADMAP to match specs and git history` — SHA pinned in the next commit, since a file cannot contain its own commit's hash | `README.md` vs `ROADMAP.md` |
 
 **Reconciled stages:** A = {0,1,2,3,P1} · B = {4,5,6,7,8,9,10} + production readiness +
 deploy (Phase 11's security pass is a discrete doc pass, not a roadmap stage) ·
@@ -236,13 +237,13 @@ this table**; the 2 rows still open are deliberate dispositions — SP-6 (defer)
 
 | Doc | Location | Says | Reality | Fix needed |
 |---|---|---|---|---|
-| `ROADMAP.md` | `:22-25` | Phase 5 = progress, 6 = video, 7 = PDFs | spec/git: 5 = video, 6 = branding/PWA, 7 = progress | Renumber Stage B to {4,5,6,7,8,9} |
-| `ROADMAP.md` | `:38` | Stage C "Phase 8" = payment gateway | Phase 8 = devices, shipped in Stage B | Move gateway to a free number |
-| `ROADMAP.md` | `:26` | Stage B "Phase 9 (manual UPI only)" | Phase 9 = pilot readiness; the UPI flow shipped separately as **Phase 10** (`docs/specs/phase-10-payments.md`, `f8d5b6a`) | Split the two concepts |
-| `ROADMAP.md` | `:28` | "Phase 10: owner/staff admin tooling" | no spec/commit for *that* feature; number 10 was taken by manual UPI payments | Delete or map to Phase 6 |
-| `ROADMAP.md` | `:40` | Phase 12 = custom domains "**and PWA support**" | PWA shipped in Phase 6 | Drop the PWA clause |
-| `ROADMAP.md` | `:19` | Stage B = `{4,5,6,7,9-UP,10}` | actual = `{4,5,6,7,8,9,P1}` | Rewrite membership |
-| `ROADMAP.md` | whole file | no Phase 11, no Phase P1 | P1 has a spec + 2 commits; 11 exists as git `e605cc5` + tag `phase-11` + `docs/SECURITY_PASS.md`, but has no spec file | Add P1; document 11 |
+| `ROADMAP.md` | `:22-25` | Phase 5 = progress, 6 = video, 7 = PDFs | spec/git: 5 = video, 6 = branding/PWA, 7 = progress. **RESOLVED** — rewritten: Stage B now lists 5 = Protected Video for Lessons, 6 = Institute Settings/Branding/PWA, 7 = Lesson Progress Tracking (commit `docs: renumber ROADMAP to match specs and git history`; SHA pinned in the next commit) | — (closed) |
+| `ROADMAP.md` | `:38` | Stage C "Phase 8" = payment gateway | Phase 8 = devices, shipped in Stage B. **RESOLVED** — the gateway is now an unnumbered Stage C bullet, with a note that its old label collides with Phase 8 (commit `docs: renumber ROADMAP to match specs and git history`; SHA pinned in the next commit) | — (closed) |
+| `ROADMAP.md` | `:26` | Stage B "Phase 9 (manual UPI only)" | Phase 9 = pilot readiness; the UPI flow shipped separately as **Phase 10** (`docs/specs/phase-10-payments.md`, `f8d5b6a`). **RESOLVED** — Stage B now has Phase 9 = Pilot Readiness and Phase 10 = Manual UPI Payments, gateway deferred unnumbered to Stage C (commit `docs: renumber ROADMAP to match specs and git history`; SHA pinned in the next commit) | — (closed) |
+| `ROADMAP.md` | `:28` | "Phase 10: owner/staff admin tooling" | no spec/commit for *that* feature; number 10 was taken by manual UPI payments. **RESOLVED** — the invented phase was deleted; its content maps to Phase 6 (Institute Settings, Branding and Installable PWA) (commit `docs: renumber ROADMAP to match specs and git history`; SHA pinned in the next commit) | — (closed) |
+| `ROADMAP.md` | `:40` | Phase 12 = custom domains "**and PWA support**" | PWA shipped in Phase 6. **RESOLVED** — the PWA clause is gone; Phase 12 is custom domains + TLS via Caddy only (commit `docs: renumber ROADMAP to match specs and git history`; SHA pinned in the next commit) | — (closed) |
+| `ROADMAP.md` | `:19` | Stage B = `{4,5,6,7,9-UP,10}` | actual = `{4,5,6,7,8,9,P1}`. **RESOLVED** — Stage B now = `{4,5,6,7,8,9,10}` + production readiness + deploy runbook + Phase 11 + the tenant-#1 deploy (commit `docs: renumber ROADMAP to match specs and git history`; SHA pinned in the next commit) | — (closed) |
+| `ROADMAP.md` | whole file | no Phase 11, no Phase P1 | P1 has a spec + 2 commits; 11 exists as git `e605cc5` + tag `phase-11` + `docs/SECURITY_PASS.md`, but has no spec file. **RESOLVED** — P1 added to Stage A (spec cited), Phase 11 added to Stage B citing `docs/SECURITY_PASS.md` + tag `phase-11` (commit `docs: renumber ROADMAP to match specs and git history`; SHA pinned in the next commit) | — (closed) |
 | `ARCHITECTURE.md` | Provider interfaces | `app/Contracts/VideoProvider.php` **(planned)** | exists, with `BunnyVideoProvider` + `FakeVideoProvider`. **RESOLVED in `693d47f`** — "(planned)" dropped; the section now names both shipped implementations, and `PaymentProvider`'s "(planned)" carries a deliberate-Phase-10-omission note | — (closed) |
 | `docs/specs/phase-2-belongs-to-tenant.md` | line 3 | `**Status:** In Progress  ` (verbatim, trailing spaces) | Phase 2 shipped in `076cd78` + 5 fix commits; README and all invariants live. **RESOLVED in `693d47f`** — line 3 now reads `**Status:** Complete` (trailing whitespace preserved) | — (closed) |
 | `docs/DEPLOY.md` | §3 `.env` for production | `SESSION_DOMAIN` unset "**is checked by** `app:preflight`" | **RESOLVED in `e605cc5`** — `checkSessionDomain()` was added (`app/Console/Commands/AppPreflightCommand.php:111`) with a failing test, so the sentence is now accurate | — (closed) |
@@ -253,11 +254,12 @@ this table**; the 2 rows still open are deliberate dispositions — SP-6 (defer)
 | `README.md` | `:194-195` | `composer test:mysql` "runs 19 suites (730 tests)" | **Partly wrong** — `README.md:195` already reads "20 suites (790 tests) — corrected below", and `phpunit.mysql.xml` does have exactly **20** `<testsuite>` entries (this brief previously claimed 19). The test count has since moved on twice: 790 → 792 (`c859e74`) → **793** (`c61a8bc`). **RESOLVED in `cc6bed7`** — README now reads 20 suites / 793 tests | — (closed) |
 | `.env` vs `.env.example` | — | `.env` sets `SESSION_LIFETIME` to a different value; omits `SESSION_SECURE_COOKIE`, `PLATFORM_DOMAIN`, `TENANT_BASE_DOMAIN` | `.env.example:42` = 43200 (Phase 8 decision); README:196-200 already documents the drift | No automated guard reads `.env` |
 
-**Contradictions between docs and code: 1** — only `ROADMAP.md` numbering remains (7 rows,
-counted as one conflict cluster in §3). **Closed since the audit:** `docs/DEPLOY.md`'s
-preflight claim (`e605cc5`), the `AGENTS.md` Boost stub (`ee58c2e`), and — all three in
-`693d47f` this session — the phase-2 status line, `ARCHITECTURE.md` "(planned)" and
-`TENANCY.md:34` universality; the README count rows were closed in `cc6bed7`/`660f329`.
+**Contradictions between docs and code: 0** — none remain. The ROADMAP numbering was the last
+conflict cluster (§3 C1–C10); `ROADMAP.md` was rewritten to the canonical numbering (C10 and
+the seven `ROADMAP.md` rows above are marked RESOLVED). **Closed since the audit:**
+`docs/DEPLOY.md`'s preflight claim (`e605cc5`), the `AGENTS.md` Boost stub (`ee58c2e`), the
+phase-2 status line / `ARCHITECTURE.md` "(planned)" / `TENANCY.md:34` universality (all three
+in `693d47f`), the README count rows (`cc6bed7`/`660f329`), and now the ROADMAP cluster.
 
 ---
 
