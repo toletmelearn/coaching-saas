@@ -19,7 +19,10 @@ class UserDeviceController extends Controller
     {
         Gate::authorize('viewDevices', $user);
 
-        $devices = $user->devices()->orderByDesc('last_seen_at')->get();
+        // Same tie-break as DeviceRegistrar::enforceLimit(): last_seen_at is
+        // second-precision, so equally-seen devices otherwise list in whatever order
+        // the engine happens to return them. id DESC puts the newer row first.
+        $devices = $user->devices()->orderByDesc('last_seen_at')->orderByDesc('id')->get();
 
         $recentReplacements = $user->devices()
             ->where('revoked_reason', DeviceRevocationReason::Replaced)

@@ -75,10 +75,16 @@ class DeviceRegistrar
     {
         $limit = max(1, (int) $this->tenantContext->get()->max_devices_per_student);
 
+        // last_seen_at is a second-precision timestamp with no index, so four logins
+        // can land in the same wall-clock second (CI runs the whole suite in ~30 s)
+        // and MySQL then returns the tied rows in unspecified order — "revoke the
+        // oldest" silently becomes "revoke an arbitrary one". id is auto-increment and
+        // rows are created in order, so it is a stable, correct "oldest" tie-break.
         $active = UserDevice::where('user_id', $user->id)
             ->whereNull('revoked_at')
             ->lockForUpdate()
             ->orderBy('last_seen_at')
+            ->orderBy('id')
             ->get();
 
         $toRevoke = $active->count() - $limit;
