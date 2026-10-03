@@ -4,6 +4,15 @@
          bootstrap="vendor/autoload.php"
          colors="true"
 >
+    <!--
+        Four Unit files under tests/Unit/ are deliberately in no testsuite below:
+        tests/Unit/ExampleTest.php, tests/Unit/Support/DatabaseVersionCheckTest.php,
+        tests/Unit/Support/LoginRateLimiterTest.php, tests/Unit/Support/YoutubeUrlParserTest.php.
+        None of them touches the database (plain assertions, pure string parsing, or the
+        array cache), so running them against MySQL would only slow the suite — they already
+        run in the SQLite suite (phpunit.xml). Decision recorded, not revisited:
+        PROJECT_BRIEF.md §10 question 11. Do not re-include them.
+    -->
     <testsuites>
         <testsuite name="Tenancy">
             <directory>tests/Feature/Tenancy</directory>
