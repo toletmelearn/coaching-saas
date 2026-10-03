@@ -3,6 +3,7 @@
 **Status:** Complete (including the 5.1 follow-up fixes). `composer test` (420/421, 1
 pre-existing MySQL-only test skipped on SQLite), `composer test:mysql` (389/389),
 `composer lint`, and `composer analyse` all pass with zero regressions to Phases 1–4.
+> Test count at time of writing; see README for the current totals.
 
 ---
 

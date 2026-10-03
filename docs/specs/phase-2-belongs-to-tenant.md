@@ -1,6 +1,7 @@
 # Phase 2: BelongsToTenant Isolation Framework
 
 **Status:** Complete  
+> Test count at time of writing; see README for the current totals.
 **Phase Goal:** Establish automatic tenant scoping on all tenant-owned models via global scope + trait
 
 ---

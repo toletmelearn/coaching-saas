@@ -3,6 +3,7 @@
 **Status:** Complete (including the P1.1 cleanup pass). `composer test`, `composer
 test:mysql`, `composer lint`, and `composer analyse` all pass with zero regressions to
 Phases 1–5.
+> Test count at time of writing; see README for the current totals.
 
 ---
 

@@ -1,6 +1,7 @@
 # Phase 4: Courses, Lessons, Notes and Manual Enrolment
 
 **Status:** Complete
+> Test count at time of writing; see README for the current totals.
 **Phase Goal:** Tenant-owned courses with chapters/lessons, free-preview YouTube video,
 private PDF notes, and manual (cash/UPI) enrolment — all access-controlled through a single
 `LessonAccess` service and enforced by composite foreign keys, exactly as TENANCY.md requires.

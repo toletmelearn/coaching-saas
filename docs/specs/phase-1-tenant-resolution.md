@@ -1,6 +1,7 @@
 # Phase 1: Central Tables and Hostname-Based Tenant Resolution
 
 **Status:** ✅ Complete  
+> Test count at time of writing; see README for the current totals.
 **Implemented:** 2026-09-28  
 **Test Coverage:** 27 tests (SQLite + MySQL)
 

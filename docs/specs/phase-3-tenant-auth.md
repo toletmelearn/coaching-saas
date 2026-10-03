@@ -1,6 +1,7 @@
 # Phase 3: Tenant Users & Authentication
 
 **Status:** Complete (includes the Phase 3.1 correction pass — see "Phase 3.1 changes" below)
+> Test count at time of writing; see README for the current totals.
 **Phase Goal:** The first tenant-owned product model (`User`), tenant-scoped authentication,
 role-based user management, and platform-admin auth — all under `BelongsToTenant`.
 
