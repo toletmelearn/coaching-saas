@@ -43,10 +43,11 @@ can be swapped in without touching call sites:
   development). See [VIDEO.md](VIDEO.md). A `youtube`
   provider value is reserved for free-preview lessons, which bypass the interface entirely
   since they play directly from a public YouTube URL.
-- **Payment provider interface** — `app/Contracts/PaymentProvider.php` (planned — the file
-  does not exist yet). Phase 10 shipped the manual UPI screenshot-approval flow deliberately
-  *without* a provider contract: it needs no external API, so there is nothing to abstract.
-  A contract becomes real with the Stage C automated gateway. See [PAYMENTS.md](PAYMENTS.md).
+- **Payment provider interface** — `app/Contracts/PaymentProvider.php` (**planned for Stage C's
+  automated gateway, not the manual flow** — the file does not exist yet). Phase 10's manual
+  UPI flow needs no provider abstraction: the student's money goes to the tenant's own UPI id,
+  the owner approves a screenshot, and nothing external is called. The contract becomes real
+  when a gateway (Razorpay, Cashfree, etc.) is integrated per tenant. See [PAYMENTS.md](PAYMENTS.md).
 
 Both interfaces are designed so each tenant can eventually plug in their own account/library
 under the same provider, or a different provider entirely, without a schema change beyond
