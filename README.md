@@ -133,6 +133,11 @@ Cloudflare).
 > dashboards, Phase 6 = video, Phase 7 = PDFs) does **not** match the numbering actually used
 > by the specs and the git history (Phase 5 = video, 6 = branding/PWA, 7 = progress, 8 =
 > devices, 9 = pilot). The spec column above is authoritative; the roadmap needs renumbering.
+> Since this note was written the sequence has also grown past Phase 9: **Phase 10 (manual
+> UPI payments)** shipped as Stage B (`f8d5b6a`, `docs/specs/phase-10-payments.md`) and
+> **Phase 11 (mini security pass)** exists as git `e605cc5` + tag `phase-11`
+> (`docs/SECURITY_PASS.md`) — both take numbers the roadmap also assigns to other features,
+> which is part of why the renumbering is still owed.
 
 ---
 
@@ -173,37 +178,43 @@ Cloudflare).
 
 ## Weaknesses and known gaps
 
-1. **One flaky test.** `tests/Feature/Video/EmbedTokenPlaybackTest.php:98` asserts an *exact*
-   embed token computed from `now()->addMinutes(10)` while the server computes its own
-   `expires` independently — if the wall clock crosses a second boundary between the two,
-   the tokens differ and the assertion fails. It fails roughly once per full-suite run and
-   passes 3/3 in isolation. The sibling test at line 62 explicitly avoids this pattern for
-   the same reason.
-2. **No CI.** There is no `.github/workflows` (or any other pipeline). All five gates are
-   local `composer` scripts, so nothing runs them on push — a regression can be committed
-   unnoticed.
+1. **Flaky test — resolved.** `tests/Feature/Video/EmbedTokenPlaybackTest.php:98` used to
+   assert an exact embed token derived from the test's own `now()` against one the server
+   derives independently, crossing a second boundary roughly once per full-suite run.
+   `b9063a3` rewrote the assertion to check shape and provenance against the server's
+   actual `expires`. There is no second clock left to race. A failure in that file is a
+   real failure now.
+2. **CI — resolved.** `.github/workflows/ci.yml` runs all five gates on every push and
+   every PR (against a `mysql:8.4` service container);
+   `.github/workflows/backup-canary.yml` adds a nightly `backup:run` canary. The first red
+   run (`37036620403`) caught the device tie-order bug fixed in `c61a8bc`, which local runs
+   on MariaDB 10.4 could not surface — the reason CI exists.
 3. **No coverage measurement.** `phpunit.xml` declares `<source>` but no coverage run is
    configured, so "what is untested" is unknown.
-4. **Documentation drift** (three known instances):
-   - [ROADMAP.md](ROADMAP.md) phase numbering disagrees with the specs and git history
-     (detailed above).
-   - [ARCHITECTURE.md](ARCHITECTURE.md) still calls `app/Contracts/VideoProvider.php`
-     "(planned)" — it exists, with `BunnyVideoProvider` and `FakeVideoProvider`.
-   - `docs/specs/phase-2-belongs-to-tenant.md` still opens with **Status: In Progress**
-     although Phase 2 is complete and its invariants are live in `TENANCY.md`.
-   - This README previously described `composer test:mysql` as running only
-     `tests/Feature/Tenancy`; it actually runs 20 suites (793 tests) — corrected below.
+4. **Documentation drift — one instance remains.** The heading used to say *three* known
+   instances while listing four; of those four, the "Phase 2 status / VideoProvider
+   (planned) / README counts" trio is now **zero — all three resolved this session**:
+   - **Still open — the sole unresolved entry:** [ROADMAP.md](ROADMAP.md) phase numbering
+     disagrees with the specs and git history (detailed above).
+   - **RESOLVED in `693d47f`:** [ARCHITECTURE.md](ARCHITECTURE.md) no longer calls
+     `app/Contracts/VideoProvider.php` "(planned)" — it now records both shipped
+     implementations, `BunnyVideoProvider` and `FakeVideoProvider`.
+   - **RESOLVED in `693d47f`:** `docs/specs/phase-2-belongs-to-tenant.md` now opens with
+     **Status: Complete** (it shipped in `076cd78` and its invariants are live in
+     `TENANCY.md`).
+   - **RESOLVED in `cc6bed7`:** this README's own counts were re-synced to HEAD — the gate
+     table, test lines, routes, `lang/en` and `tests/Feature` file counts, including the
+     `composer test:mysql` line that once described only `tests/Feature/Tenancy` (now
+     20 suites / 793 tests).
 5. **`.env` has drifted from `.env.example`.** The local `.env` carries
    `SESSION_LIFETIME=120` while `.env.example` specifies `43200` (the Phase 8 30-day decision
    documented in SECURITY.md), and lacks `SESSION_SECURE_COOKIE`, `PLATFORM_DOMAIN` and
    `TENANT_BASE_DOMAIN`. A production deploy copied from `.env` instead of `.env.example`
    would silently get two-hour sessions.
-6. **Repository hygiene.**
-   - `coaching_saas` — a 151 KB SQLite database — is **committed to the repo root** and is
-     not in `.gitignore`.
-   - An untracked `archive-42JxzH/gk_3.1.76_windows_amd64.zip` (~9.8 MB) sits in the project
-     root.
-   - Both are inert, but they bloat clones and invite accidental commits of local state.
+6. **Repository hygiene — resolved.** `coaching_saas` was untracked in `db2e9dc`
+   (`git rm --cached`), and `.gitignore` now covers both `coaching_saas` and
+   `/archive-42JxzH/`. The SQLite file remains on disk locally for dev use; it is simply no
+   longer in the repo.
 7. **Payments are manual and silent.** The Stage B UPI flow is built (Phase 10), but
    approving or rejecting a payment does not tell the student — there is no notification
    channel anywhere in the codebase yet — and there is no QR: students copy the institute's
