@@ -16,6 +16,14 @@ backup alert address (§1.7 item 5, §1.8 — both fixed in `c859e74`), the
 in `9173eb9`). Original text is preserved below wherever the history has value; resolved
 items are marked, not deleted.
 
+**Corrections applied 2026-10-03 against `main` = `c61a8bc`.** CI did not exist when this
+runbook was written and now does (`.github/workflows/ci.yml`, `9ff5f11`), which has already
+paid for itself: its first red run (`37036620403`) caught the device tie-order bug fixed in
+`c61a8bc`. This pass refreshed §1.1's expected HEAD, gate-output table and run-time
+estimate, added the engine caveat there, fixed §1.2's now-stale "same sha" dependency,
+refreshed §1.7 item 3 and §4.1's expected HEAD, and added §14 item 6 describing both
+workflows. Same rule as before: originals are preserved, resolved items are marked.
+
 ---
 
 ## How to use this runbook
@@ -59,10 +67,12 @@ git pull --ff-only
 git log --oneline -1
 ```
 
-**Confirm:** `e605cc5 Phase 11: mini security pass`
+**Confirm:** the line equals `origin/main`'s current HEAD. Last verified **2026-10-03**:
+`c61a8bc fix(devices): deterministic tie-break in enforceLimit victim selection`. Do **not**
+expect this to equal the `phase-11` tag — that pins an older commit (see §1.2).
 
 Then run the gates **one at a time, never concurrently** — Composer's default
-`process-timeout` is 300 s, and running `composer test` (≈125 s) alongside `composer analyse`
+`process-timeout` is 300 s, and running `composer test` (≈152 s) alongside `composer analyse`
 has previously made Composer kill Pest with a process-timeout abort. That looks like a test
 failure and isn't one.
 
@@ -74,12 +84,13 @@ composer lint
 composer analyse
 ```
 
-**Expected raw output** (each command's last meaningful line, captured on `e605cc5`):
+**Expected raw output** (each command's last meaningful line, captured on `c61a8bc`,
+2026-10-03 — `duration_ms` varies by machine, the test/assertion counts should not):
 
 | Command | Expected final line |
 |---|---|
-| `composer test` | `{"tool":"pest","result":"passed","tests":822,"passed":821,"assertions":2422,"duration_ms":124546,"skipped":1}` |
-| `composer test:mysql` | `{"tool":"pest","result":"passed","tests":790,"passed":790,"assertions":2382,"duration_ms":101147}` |
+| `composer test` | `{"tool":"pest","result":"passed","tests":825,"passed":824,"assertions":2436,"duration_ms":151980,"skipped":1}` |
+| `composer test:mysql` | `{"tool":"pest","result":"passed","tests":793,"passed":793,"assertions":2396,"duration_ms":113000}` |
 | `composer test:js` | `ℹ tests 29` … `ℹ pass 29` … `ℹ fail 0` |
 | `composer lint` | `{"tool":"pint","result":"passed"}` |
 | `composer analyse` | `{"tool":"phpstan","result":"passed","errors":0}` |
@@ -87,10 +98,16 @@ composer analyse
 **Confirm:** all five report `passed` / `pass 29` / `errors: 0`, none report `failed`. Save
 the five outputs — §10 asks you to compare against a known-good baseline.
 
-Two caveats:
+Three caveats:
 
 - **The 1 skipped test is expected.** It is the MySQL-only unreachable-database preflight
   test, skipped on the SQLite run by design.
+- **Your local MySQL may not be MySQL.** `composer test:mysql` runs against whatever
+  `DB_TEST_*` points at — on this machine that is **MariaDB 10.4**, while CI's gate 5 runs
+  against a real **`mysql:8.4`** service. They agree on every assertion count, but the
+  *row order* a query returns can differ between them (that is exactly how the device
+  tie-order bug in `c61a8bc` passed locally and failed in CI). Treat CI's gate 5 as the
+  authoritative MySQL result.
 - **Former flake — resolved in `b9063a3`.** `tests/Feature/Video/EmbedTokenPlaybackTest.php`
   used to compare a token it signed with its own `now()+10min` against the token the server
   rendered with *its* `now()`, so a second-boundary crossing between the two made the strings
@@ -101,7 +118,9 @@ Two caveats:
 **Why this runs locally, not on the server:** step 5.1 installs Composer with `--no-dev`,
 which removes Pest, Pint and PHPStan from `vendor/`. Running the gates on the production box
 would mean installing dev dependencies in production. Run them here and paste the output into
-your deploy notes.
+your deploy notes. **CI now runs these same five gates on every push** (§14 item 6), so a
+green run on the commit you are about to deploy is a second, independent confirmation —
+check it with `gh run list --limit 1` before you start step 5.
 
 ### 1.2 Tag `phase-11` exists and is pushed
 
@@ -113,8 +132,9 @@ git tag -l phase-11
 git ls-remote --tags origin phase-11
 ```
 
-**Confirm:** both commands print `phase-11`, and `git rev-list -n1 phase-11` equals the sha
-from §1.1 (`e605cc5`).
+**Confirm:** both commands print `phase-11`, and `git rev-list -n1 phase-11` resolves to
+`e605cc5`. That tag intentionally pins an **older** commit than §1.1's `main` HEAD — it marks
+the end of Phase 11, not the current tip. It only has to exist and be pushed.
 
 ### 1.3 A domain is registered and Cloudflare is configured (name servers pointed)
 
@@ -197,8 +217,8 @@ Nothing here is a stop — but read them so you don't act on the stale version.
 | # | Where | Says | Reality | What to do |
 |---|---|---|---|---|
 | 1 | `docs/DEPLOY.md` §3, §5 | `SESSION_DOMAIN` is checked by `app:preflight` | **Now true.** PROJECT_BRIEF §7 flagged it as claimed-but-missing; Phase 11 added `checkSessionDomain()` (`app/Console/Commands/AppPreflightCommand.php:111`) plus tests | Nothing. This runbook repeats the claim legitimately, and `docs/DEPLOY.md` needed no change for it |
-| 2 | `README.md:123` | `Mini security pass before deploy \| Not run as a discrete pass` | Stale — Phase 11 ran it (`docs/SECURITY_PASS.md`, tag `phase-11`) | Not edited here (README is outside this runbook's scope). Proposed fix: `Complete (Phase 11 — docs/SECURITY_PASS.md)` |
-| 3 | `README.md` gate table | 762 / 730 tests | Stale — current is 822 / 790 | Use §1.1's table, not README's |
+| 2 | `README.md:123` | `Mini security pass before deploy \| Not run as a discrete pass` | **Corrected in `c21ca36`** — README now reads `Run (Phase 11) — docs/SECURITY_PASS.md`, which is true | Nothing. Kept here as history: the runbook's original observation was right when written |
+| 3 | `README.md` gate table | 762 / 730 tests | Still stale — README was corrected once in `c21ca36` to 824 / 792, and `c61a8bc` added one more test, so current is **825 / 793** | Use §1.1's table, not README's |
 | 4 | `docs/DEPLOY.md` §2 | Node.js: "any current LTS" | Too loose — Vite 8.3.1's `engines` field is `^20.19.0 \|\| >=22.12.0`; an older LTS fails `npm ci` with `EBADENGINE` | Pin per §2.6; `docs/DEPLOY.md` §2 is updated by this runbook |
 | 5 | `docs/DEPLOY.md` §8 | "set `backup.notifications.mail.to` to a real address" | **Resolved in `c859e74`.** `config/backup.php` now reads `env('BACKUP_NOTIFY_EMAIL') ?: env('MAIL_FROM_ADDRESS', 'hello@example.com')`, and `.env.example` ships `BACKUP_NOTIFY_EMAIL=` (blank → falls back to `MAIL_FROM_ADDRESS`) | Set `BACKUP_NOTIFY_EMAIL=<an-address-you-read>` in the production `.env`, and give `MAIL_MAILER` a real transport — otherwise alerts still only reach `storage/logs/laravel.log`. Don't edit `config/backup.php` on the server (it would drift from git) |
 | 6 | `CENTRAL_DOMAINS` | implied to be flexible | Central routing is `Route::domain()` over exactly the listed hostnames. A `www.<DOMAIN>` DNS record would reach the app, fail tenant resolution and 404 (fail-closed, TENANCY.md) | Do **not** create a `www` record. Add `www.<DOMAIN>` to `CENTRAL_DOMAINS` only if you actually want it served |
@@ -228,7 +248,9 @@ The same commit made the alert address configurable (§1.7 item 5) and added
 binaries exist but are not on `PATH`.
 
 *Original description below, preserved verbatim for history. Everything after the "Cause"
-list describes the pre-`c859e74` state.*
+list describes the pre-`c859e74` state — including its "**all 822 tests are green**" figure,
+which was true on `e605cc5` and is now **825** (§1.1). The number is historical, not a live
+claim.*
 
 **Do not skip this.** It will silently break §8 (the nightly backup), §10.11 and the §11
 restore path.
@@ -518,13 +540,18 @@ git pull --ff-only
 git log --oneline -1
 ```
 
-**Expected / Confirm:** `e605cc5 Phase 11: mini security pass`, and:
+**Expected / Confirm:** `git log --oneline -1` matches `origin/main`'s current HEAD (last
+verified 2026-10-03: `c61a8bc fix(devices): deterministic tie-break in enforceLimit victim
+selection`), and:
 
 ```bash
-ls -d ~/htdocs/<APP_DIR_basename>/public && git tag --points-at HEAD
+ls -d ~/htdocs/<APP_DIR_basename>/public && git tag -l phase-11 && git rev-list -n1 phase-11
 ```
 
-…prints the `public/` directory and `phase-11` (the tag points at the same commit).
+…prints the `public/` directory, then `phase-11` and `e605cc5` — which is what proves
+`git fetch --tags` actually brought the tags over. Note that `git tag --points-at HEAD`
+prints **nothing** on `main`: the tag deliberately pins an older commit than the branch tip
+(see §1.2), so that was never a check that `main` is at the tag.
 
 > Cloning into `~/htdocs/<DOMAIN>` keeps CloudPanel's vhost docroot (which points at
 > `~/htdocs/<DOMAIN>/public`) valid — that's why we replace the placeholder rather than clone
@@ -1438,11 +1465,34 @@ Nothing below has a usable default. Have all of it before step 1 starts.
 4. **Documentation drift in `README.md` — RESOLVED in `c21ca36`.** `README.md:123` now reads
    "Run (Phase 11) — docs/SECURITY_PASS.md", and the gate table has been corrected twice
    (762/730 → 822/790 → 824/792, the last from the two `backup` canaries added in `c859e74`).
-   Recorded here rather than deleted so the drift history stays visible.
+   It has drifted one further behind since — `c61a8bc` added a test, so current is 825/793
+   (§1.7 item 3). Recorded here rather than deleted so the drift history stays visible.
 
 5. **Two `[UNVERIFIED]` items carried from `docs/SECURITY_PASS.md`:** the exact Cloudflare
    dashboard labels for §7.5's security headers, and the rate-limiting rule quota in §7.7.
    Neither is confirmed against a live account — check both in your dashboard at deploy time.
+
+6. **CI already runs every gate in §1.1 — check it before you start step 5.** *(Not an open
+   question — an addition to this list on 2026-10-03.)* Two workflows were added after this
+   runbook was written and it did not originally reference them:
+
+   - `.github/workflows/ci.yml` (since `9ff5f11`) runs on **every push** and on every PR
+     targeting `main`. One job, five gates run **sequentially** (the same
+     process-timeout reasoning as §1.1), against a `mysql:8.4` service container:
+     Gate 1 lint → Gate 2 analyse → Gate 3 SQLite suite (`backup` group excluded) → Gate 4 JS
+     → Gate 5 MySQL suite. This is the only place the suite runs against real MySQL 8.4 —
+     see the engine caveat in §1.1.
+   - `.github/workflows/backup-canary.yml` (since `b6d2e61`) runs nightly at **03:00 UTC**
+     and on `workflow_dispatch`. It does not call `backup:run` directly — it runs
+     `composer test -- --group=backup`, i.e. the execution canary from §1.8, which shells out
+     to `backup:run --only-db` against SQLite (ubuntu-latest ships `sqlite3`). The MySQL side
+     of that same pipeline is exercised by CI gate 5.
+
+   What to do: `gh run list --limit 1` and require `completed / success` on the exact commit
+   you are deploying. Do **not** treat a red gate as a local-only problem — the first red run
+   (`37036620403`) found a real ordering bug in `DeviceRegistrar::enforceLimit()` that every
+   local run had passed, fixed in `c61a8bc`. **A gate failure in CI that passed locally is
+   reported raw and fixed at the root, never worked around by weakening the gate.**
 
 *Removed from this list on 2026-10-02 (both now closed): the backup compressor defect — fixed
 in `c859e74`, full write-up preserved in §1.8 — and the uncommitted
