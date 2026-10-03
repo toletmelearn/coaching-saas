@@ -792,7 +792,7 @@ that is exactly the kind of thing this step exists to catch.
 
 ```bash
 cd <APP_DIR>
-php artisan app:preflight
+php artisan app:preflight --require-production
 echo "exit=$?"
 ```
 
@@ -803,9 +803,12 @@ INFO  All preflight checks passed.
 exit=0
 ```
 
-If it instead prints `Not running in production — preflight checks are informational only
-here.` with `exit=0`, your `.env` still says `APP_ENV=local` — go back to §4.4. **A no-op
-preflight is not a passing preflight.**
+If it instead prints `APP_ENV is "local", not "production" — this command was run with
+--require-production.` with `exit=2`, your `.env` still says `APP_ENV=local` — go back to
+§4.4. **A no-op preflight is not a passing preflight** — `--require-production` is exactly
+what turns that no-op into the hard failure a deploy should get. Without the flag the
+command still exits `0` outside production (unchanged, for local/dev runs), so always pass
+it here.
 
 `app:preflight` is the last build step deliberately (docs/DEPLOY.md §4): it's the smoke test
 that the deploy left the app in a safe state, and a non-zero exit means "stop — this deploy is
@@ -824,7 +827,7 @@ The first column quotes the command's real output verbatim.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Not running in production — preflight checks are informational only here.` | `APP_ENV` is still `local` | §4.4: `APP_ENV=production` |
+| `Not running in production — preflight checks are informational only here.` (bare run — exits 0), or with `--require-production`: `APP_ENV is "…", not "production" — this command was run with --require-production.` **and exit code 2** | `APP_ENV` is still `local` — **exit code 2 here clearly means "you forgot `APP_ENV=production`"** | §4.4: `APP_ENV=production` |
 | `APP_DEBUG is true — must be false in production.` | `.env.example` ships `true` | §4.4: `APP_DEBUG=false` |
 | `APP_KEY is empty — run php artisan key:generate.` | step 4.5 skipped or failed | re-run `php artisan key:generate --force` |
 | `APP_URL must start with https:// (got: "…").` | still `http://localhost:8000` or missing scheme | §4.4: `APP_URL=https://<DOMAIN>` |
@@ -1170,7 +1173,7 @@ corrupted database is the only case where you reach for a restore.
 | 10.9 | Owner password reset signs out the student's devices | As owner → People → a student → **Reset password**. Then look at the student's phone | A temporary password is shown **once**; the student's other devices are signed out on their next request; the student logs back in with the temporary password and is forced to change it | This revocation happens only when the reset target's role is `Student` (`UserController::resetPassword`). Resetting a *staff* account does **not** revoke devices — that's intended, not a bug |
 | 10.10 | Teacher's progress page reflects the student's activity | As owner/teacher, open the course's progress page | The video progress and the note-lesson completion from §10.6 appear | Stale data usually means the page is being cached at the edge — check §7.4's cache rules only cover `sw.js`/`manifest.webmanifest`; if progress HTML is cached, that's an unintended Cloudflare cache setting to remove |
 | 10.11 | `backup:run` produces a file | `cd <APP_DIR> && php artisan backup:run` | A new `*.zip` in `<APP_DIR>/storage/app/backups/`, and (after §8.3) in `<OFFSITE_PATH>/` | **Expected to succeed** since `c859e74` (§1.8). If it fails for any *other* reason, `php artisan backup:list` shows disk reachability, and `mysqldump` being absent from `PATH` is the next most likely cause — on a host where the binary exists but is not on `PATH`, set `MYSQL_DUMP_BINARY_PATH` (documented in `.env.example`) |
-| 10.12 | `app:preflight` passes on the real environment | `cd <APP_DIR> && php artisan app:preflight; echo "exit=$?"` | `INFO  All preflight checks passed.` and `exit=0` | Use §6.2's table. Remember a no-op "informational only" message means `APP_ENV` isn't `production` |
+| 10.12 | `app:preflight` passes on the real environment | `cd <APP_DIR> && php artisan app:preflight --require-production; echo "exit=$?"` | `INFO  All preflight checks passed.` and `exit=0` | Use §6.2's table. Exit code 2 with `APP_ENV is "…" …` means `APP_ENV` isn't `production` (the no-op is no longer silently green when the flag is passed) |
 
 **Acceptance:** all twelve rows pass. Anything else means the deploy isn't finished —
 either roll forward with a fix or execute §11.

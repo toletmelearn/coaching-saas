@@ -12,13 +12,29 @@ use Throwable;
 
 class AppPreflightCommand extends Command
 {
-    protected $signature = 'app:preflight';
+    protected $signature = 'app:preflight
+                            {--require-production : Fail with exit code 2 when APP_ENV is not production, instead of the informational no-op (deploys should always pass this — docs/DEPLOY_RUNBOOK.md §6.1)}';
 
     protected $description = 'Verify the production environment is safely configured before/after a deploy.';
 
     public function handle(): int
     {
         if (! app()->environment('production')) {
+            // Without --require-production this stays the informational no-op it has always
+            // been (exit 0), so local/dev runs are unchanged. With the flag — which the
+            // deploy runbook passes — a forgotten APP_ENV=production fails loudly instead of
+            // printing a line nobody is forced to read (PROJECT_BRIEF §6, SP-7). Exit code
+            // is INVALID (2), not FAILURE (1): 1 means "a real preflight check failed",
+            // 2 means "you are not even measuring the production environment".
+            if ($this->option('require-production')) {
+                $this->components->error(sprintf(
+                    'APP_ENV is "%s", not "production" — this command was run with --require-production.',
+                    app()->environment(),
+                ));
+
+                return self::INVALID;
+            }
+
             $this->components->info('Not running in production — preflight checks are informational only here.');
 
             return self::SUCCESS;

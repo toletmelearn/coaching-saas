@@ -40,9 +40,24 @@ test('passes when everything is configured correctly', function () {
 
 test('is a no-op outside production', function () {
     // Deliberately broken config — but since we're not in production, none of it matters.
+    // Exit 0 here is the *default*: the loud failure (exit 2) only happens when the caller
+    // asks for it with --require-production, which is what the deploy runbook now does
+    // (docs/DEPLOY_RUNBOOK.md §6.1 / §10.12) and what the next test asserts. Without the
+    // flag this informational no-op stays SUCCESS by design (SP-7's fix is opt-in).
     config(['app.debug' => true, 'app.key' => '']);
 
     $this->artisan('app:preflight')->assertSuccessful();
+});
+
+test('fails with exit code 2 outside production when --require-production is passed', function () {
+    // Same deliberately broken config as the no-op test above — the flag is the only difference.
+    config(['app.debug' => true, 'app.key' => '']);
+
+    $this->artisan('app:preflight', ['--require-production' => true])
+        ->expectsOutputToContain('this command was run with --require-production')
+        // self::INVALID = 2, deliberately not 1 (FAILURE): exit 1 means a real preflight
+        // check failed, exit 2 means APP_ENV isn't production at all — "you forgot APP_ENV=production".
+        ->assertExitCode(2);
 });
 
 test('fails when APP_DEBUG is true', function () {
