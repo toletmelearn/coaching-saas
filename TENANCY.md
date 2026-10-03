@@ -49,6 +49,11 @@ protected $fillable = ['name', 'slug', /* ... other fields ... */];
 
 This prevents accidental or malicious `fill(['tenant_id' => ...])` attacks.
 
+*Exception: `TenantDomain` is a central table that deliberately does not use `BelongsToTenant`,
+and its `$fillable` does include `tenant_id`. Its single creation site, `CreateInstituteAction`,
+passes `tenant_id` explicitly. `TenantDomain::create($request->all())` would attach a hostname
+to an arbitrary tenant and must never be written.*
+
 ## Tenant-aware route model binding
 
 - Route model binding resolves models through the tenant-scoped query (i.e. respects the

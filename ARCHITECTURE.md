@@ -38,12 +38,15 @@ tenant role.
 Video and payments are abstracted behind interfaces so a tenant-specific or future provider
 can be swapped in without touching call sites:
 
-- **Video provider interface** — `app/Contracts/VideoProvider.php` (planned). First and only
-  implementation for the pilot is Bunny Stream. See [VIDEO.md](VIDEO.md). A `youtube`
+- **Video provider interface** — `app/Contracts/VideoProvider.php` (shipped). Two
+  implementations exist: `BunnyVideoProvider` (production) and `FakeVideoProvider` (local
+  development). See [VIDEO.md](VIDEO.md). A `youtube`
   provider value is reserved for free-preview lessons, which bypass the interface entirely
   since they play directly from a public YouTube URL.
-- **Payment provider interface** — `app/Contracts/PaymentProvider.php` (planned). First
-  implementation is a manual UPI flow. See [PAYMENTS.md](PAYMENTS.md).
+- **Payment provider interface** — `app/Contracts/PaymentProvider.php` (planned — the file
+  does not exist yet). Phase 10 shipped the manual UPI screenshot-approval flow deliberately
+  *without* a provider contract: it needs no external API, so there is nothing to abstract.
+  A contract becomes real with the Stage C automated gateway. See [PAYMENTS.md](PAYMENTS.md).
 
 Both interfaces are designed so each tenant can eventually plug in their own account/library
 under the same provider, or a different provider entirely, without a schema change beyond
