@@ -363,7 +363,7 @@ suite went green 3× consecutively after the fix. Recorded rather than deleted b
 8. **Is `laravel/pao` intentional?** — **RESOLVED in `ca73b30`: yes, keep it.** The source was read and the answer recorded in §6 item 12: while running under an AI agent it re-emits Pest/PHPUnit/PHPStan/Pint output as the structured JSON final line of every gate, and is inert otherwise — **including in CI**: run `37090769580`'s log contains zero `"tool":"pest"` JSON lines and instead shows plain `PASS …` output, so the detector does not treat GitHub Actions as an agent. Output format only, never pass/fail.
 9. **Should `docs/DEPLOY.md`'s `SESSION_DOMAIN` preflight claim become a real check, or should the doc change?** — **RESOLVED in `e605cc5`: the check was added, so the doc stands.** `AppPreflightCommand::checkSessionDomain()` with a passing test (`…empty string docs/DEPLOY.md tells you to use`) and a failing test (`…widens the session cookie to a shared parent domain`). The §7 `docs/DEPLOY.md` row is closed on the same commit.
 10. **Who owns the "mini security pass" (`README.md:123`) — is it a discrete pass or already covered by the suite?** — **RESOLVED in `e605cc5`: a discrete pass, already run.** It produced `docs/SECURITY_PASS.md` (tag `phase-11`): ten findings, three fixed in code with tests (`SESSION_DOMAIN` preflight, three missing `app:preflight` failing branches, video-upload rate limits), two fixed as documentation, five left open. `README.md:123` was corrected to "Run (Phase 11) — docs/SECURITY_PASS.md" in `c21ca36`.
-11. **Should `composer test:mysql`'s four excluded Unit files stay excluded?** `DatabaseVersionCheckTest` and `LoginRateLimiterTest` are arguably DB-adjacent (`phpunit.mysql.xml` vs README:493). — **RESOLVED: yes, stay excluded — decision recorded, not revisited.** `phpunit.mysql.xml` now carries an XML comment naming all four (`ExampleTest`, `DatabaseVersionCheckTest`, `LoginRateLimiterTest`, `YoutubeUrlParserTest`) and why: none touches the database (plain assertions, pure string parsing, or the array cache), they already run in the SQLite suite, and against MySQL they would only add wall-clock time. Commit `docs: record why four Unit files are excluded from the MySQL suite` — SHA pinned in the next commit.
+11. **Should `composer test:mysql`'s four excluded Unit files stay excluded?** `DatabaseVersionCheckTest` and `LoginRateLimiterTest` are arguably DB-adjacent (`phpunit.mysql.xml` vs README:493). — **RESOLVED: yes, stay excluded — decision recorded, not revisited.** `phpunit.mysql.xml` now carries an XML comment naming all four (`ExampleTest`, `DatabaseVersionCheckTest`, `LoginRateLimiterTest`, `YoutubeUrlParserTest`) and why: none touches the database (plain assertions, pure string parsing, or the array cache), they already run in the SQLite suite, and against MySQL they would only add wall-clock time. Commit `docs: record why four Unit files are excluded from the MySQL suite`, SHA `74dff54`.
 
 **Still open: 1.** Questions 2–11 are answered above with their commit
 SHA. Recorded, not deleted, per the convention used throughout this document.
@@ -400,13 +400,15 @@ composer test:mysql  # 5. scripts.test:mysql → pest --configuration=phpunit.my
 ### The one command that must pass before deploy
 
 ```sh
-php artisan app:preflight
+php artisan app:preflight --require-production
 ```
 
 Per `README.md` ("Other useful Artisan commands") and `docs/DEPLOY.md` §5 — run it before
 every deploy. It is a **no-op outside `APP_ENV=production`**
-(`tests/Feature/Console/AppPreflightCommandTest.php:38`), refuses `VIDEO_DRIVER=fake`, and
-is the last line of defence for a misconfigured production `.env`.
+(`tests/Feature/Console/AppPreflightCommandTest.php:38`) — and the flag's effect is exactly
+to make that no-op visible: outside production it now fails loudly with exit 2 (`ab58045`).
+It refuses `VIDEO_DRIVER=fake`, and is the last line of defence for a misconfigured
+production `.env`.
 
 ---
 

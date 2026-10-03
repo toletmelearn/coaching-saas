@@ -514,8 +514,10 @@ into `C:\Windows\System32\drivers\etc\hosts` instead of typing them by hand.
 | `composer lint`          | Format code with Laravel Pint (`vendor/bin/pint --test` to check without writing). |
 | `composer analyse`       | Static analysis with Larastan (PHPStan) at level 5.                |
 
-Other useful Artisan commands: `php artisan app:preflight` (production readiness — run it
-before every deploy), `php artisan migrate:fresh --seed` (reset local data), `php artisan
+Other useful Artisan commands: `php artisan app:preflight --require-production` (production
+readiness — run it before every deploy; without the flag it is a no-op outside production,
+so the flag fails loudly if `APP_ENV` isn't production), `php artisan migrate:fresh --seed`
+(reset local data), `php artisan
 local:hosts` (print hosts-file lines), `php artisan platform-admin:create` (create a
 platform admin outside local/testing).
 
