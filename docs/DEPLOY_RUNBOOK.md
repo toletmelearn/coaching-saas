@@ -1210,7 +1210,7 @@ git reset --hard <PREV_SHA>
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 php artisan optimize
-php artisan app:preflight
+php artisan app:preflight --require-production
 ```
 
 **Confirm:** `app:preflight` exits 0 and §7.8's `curl` checks are green again.
@@ -1232,7 +1232,7 @@ composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 php artisan optimize
 php artisan up
-php artisan app:preflight
+php artisan app:preflight --require-production
 ```
 
 **`DROP DATABASE` is destructive.** Confirm `~/backup/predeploy/` actually contains a file
@@ -1269,7 +1269,7 @@ gunzip -c /tmp/restore/<DB_DUMP>.sql.gz | mysql -ucoaching_saas -p coaching_saas
 rsync -a /tmp/restore/<path-to>/storage/app/private/ <APP_DIR>/storage/app/private/
 php artisan up
 php artisan optimize
-php artisan app:preflight
+php artisan app:preflight --require-production
 ```
 
 **Confirm:** preflight exits 0, an attachment PDF downloads for a logged-in student, and §10.12
@@ -1287,7 +1287,7 @@ passes.
 **Rollback in one paragraph:** to undo a bad deploy, note the current `git rev-parse HEAD`,
 then `git reset --hard <PREV_SHA>` in `<APP_DIR>` and re-run the build block
 (`composer install --no-dev --optimize-autoloader && npm ci && npm run build &&
-php artisan optimize && php artisan app:preflight`) — that alone is enough whenever no
+php artisan optimize && php artisan app:preflight --require-production`) — that alone is enough whenever no
 migration ran. If a migration *did* run, the old code plus the new schema is the failure mode
 you're trying to escape, so take the app down (`php artisan down`), drop and recreate
 `coaching_saas`, pipe the pre-deploy `mysqldump` from §11.1 back in, check out the previous
@@ -1373,7 +1373,7 @@ php artisan migrate --force            # expect: Nothing to migrate.
 php artisan optimize
 
 # ── §6 Preflight ────────────────────────────────────────────────── as site user
-php artisan app:preflight
+php artisan app:preflight --require-production
 echo "exit=$?"
 
 # ── §7 Verification (Cloudflare configured first) ───────────────── from any host
@@ -1415,7 +1415,7 @@ composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 php artisan migrate --force
 php artisan optimize
-php artisan app:preflight
+php artisan app:preflight --require-production
 ```
 
 **Do not run** `php artisan db:seed` at any point (docs/DEPLOY.md §4).

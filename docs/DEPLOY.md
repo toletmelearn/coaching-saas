@@ -188,7 +188,7 @@ composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 php artisan migrate --force
 php artisan optimize
-php artisan app:preflight
+php artisan app:preflight --require-production
 ```
 
 `app:preflight` is the last step deliberately — it's a smoke test that the deploy actually
@@ -225,7 +225,7 @@ friendly translated page for every visitor (guest or logged-in), and any user al
 logged in there is logged out on their next request. **Reactivate** from the same page to
 restore it.
 
-## 5. `php artisan app:preflight`
+## 5. `php artisan app:preflight --require-production`
 
 Fails (non-zero exit) in production if any of: `APP_DEBUG=true`, `APP_KEY` empty, `APP_URL`
 not `https://`, `PLATFORM_DOMAIN`/`TENANT_BASE_DOMAIN`/`CENTRAL_DOMAINS` still at the local
@@ -239,8 +239,12 @@ institute icon and re-encode uploaded logos), `VIDEO_DRIVER=fake`, or `VIDEO_DRI
 with no `BUNNY_STREAM_ACCOUNT_API_KEY`. Per-tenant Bunny library
 credentials are *not* checked here — they don't exist yet for a tenant that has never
 uploaded video — and are instead validated lazily at first use, surfacing a teacher-facing
-error if library creation fails. Outside production it's a no-op (informational only) — safe
-to run locally without it blocking anything.
+error if library creation fails. Without options, outside production it's a no-op
+(informational only) — safe to run locally without it blocking anything. **Pass
+`--require-production` (as every deploy step above and in the runbook does) to turn that
+no-op into a hard failure instead**: outside production it then prints
+`APP_ENV is "…", not "production" — this command was run with --require-production.` and
+exits 2, so a deploy that forgot `APP_ENV=production` cannot get a green preflight.
 
 ## 6. Cron and the queue worker
 
