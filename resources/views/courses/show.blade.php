@@ -14,6 +14,48 @@
         </div>
     @endif
 
+    @if ($upcomingClasses->isNotEmpty() || $pastClasses->isNotEmpty())
+        <section class="mb-6 ui-fade">
+            <div class="ui-section-title">
+                <h2 class="ui-h2">{{ __('live_classes.section_title') }}</h2>
+            </div>
+
+            <ul class="ui-list">
+                @foreach ($upcomingClasses as $liveClass)
+                    @php $minutes = (int) ceil(($liveClass->starts_at->getTimestamp() - now()->getTimestamp()) / 60); @endphp
+                    <li>
+                        <div style="display: flex; align-items: center; gap: 0.625rem; padding-block: 0.375rem; flex-wrap: wrap;">
+                            <a href="{{ url('/live-classes/'.$liveClass->id) }}" class="min-w-0" style="flex: 1; font-weight: 550;">
+                                {{ $liveClass->title }}
+                            </a>
+
+                            @if ($liveClass->status === \App\Enums\LiveClassStatus::Live)
+                                <x-badge tone="danger">{{ __('live_classes.live_now') }}</x-badge>
+                            @elseif ($minutes > (int) config('coaching.live_class_join_window_minutes', 15))
+                                <x-badge tone="neutral">{{ __('live_classes.starts_in', ['minutes' => max(0, $minutes)]) }}</x-badge>
+                            @else
+                                <x-badge tone="brand">{{ __('live_classes.upcoming') }}</x-badge>
+                            @endif
+                        </div>
+                    </li>
+                @endforeach
+
+                @foreach ($pastClasses as $liveClass)
+                    <li>
+                        <div style="display: flex; align-items: center; gap: 0.625rem; padding-block: 0.375rem; flex-wrap: wrap;">
+                            <a href="{{ url('/live-classes/'.$liveClass->id) }}" class="min-w-0" style="flex: 1; font-weight: 550;">
+                                {{ $liveClass->title }}
+                            </a>
+                            <x-badge tone="neutral">
+                                {{ $liveClass->status === \App\Enums\LiveClassStatus::Ended ? __('live_classes.ended') : __('live_classes.cancelled') }}
+                            </x-badge>
+                        </div>
+                    </li>
+                @endforeach
+            </ul>
+        </section>
+    @endif
+
     @forelse ($course->chapters as $chapter)
         @php $publishedLessons = $chapter->lessons->where('status', \App\Enums\LessonStatus::Published); @endphp
         <section class="mb-6 ui-fade">

@@ -17,5 +17,12 @@ Schedule::command('backup:clean')->daily()->at('01:30')->onOneServer();
 // see VIDEO.md). Every minute per docs/specs/phase-5-video.md.
 Schedule::command('videos:sync')->everyMinute()->onOneServer();
 
+// Live classes (Phase 12): status transitions and attendance hygiene, both
+// every minute — a class must go live within a minute of its start (the join
+// gate reads status), and a silently closed tab must stop accruing attendance
+// within a minute of its last beacon.
+Schedule::command('live-classes:update-status')->everyMinute()->onOneServer();
+Schedule::command('live-classes:close-stale-attendance')->everyMinute()->onOneServer();
+
 // Deletes device rows not seen for 60+ days (Phase 8 — see docs/specs/phase-8-devices.md).
 Schedule::command('devices:prune')->daily()->onOneServer();

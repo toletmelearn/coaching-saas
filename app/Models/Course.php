@@ -88,4 +88,15 @@ class Course extends Model
     {
         return $this->hasMany(Enrolment::class);
     }
+
+    /**
+     * Named after the {liveClass} route parameter so scopeBindings() on the
+     * manage live-class routes resolves a class through this course (Phase 12).
+     *
+     * @return HasMany<LiveClass, $this>
+     */
+    public function liveClasses(): HasMany
+    {
+        return $this->hasMany(LiveClass::class)->orderBy('starts_at');
+    }
 }

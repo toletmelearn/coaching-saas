@@ -15,6 +15,7 @@ use App\Http\Controllers\LessonController;
 use App\Http\Controllers\LessonProgressController;
 use App\Http\Controllers\LessonVideoStreamController;
 use App\Http\Controllers\LessonVideoUploadController;
+use App\Http\Controllers\LiveClassController;
 use App\Http\Controllers\Manage\ChapterController as ManageChapterController;
 use App\Http\Controllers\Manage\CourseController as ManageCourseController;
 use App\Http\Controllers\Manage\CourseProgressController as ManageCourseProgressController;
@@ -23,6 +24,8 @@ use App\Http\Controllers\Manage\HelpController as ManageHelpController;
 use App\Http\Controllers\Manage\LessonAttachmentController as ManageLessonAttachmentController;
 use App\Http\Controllers\Manage\LessonController as ManageLessonController;
 use App\Http\Controllers\Manage\LessonVideoController as ManageLessonVideoController;
+use App\Http\Controllers\Manage\LiveClassAttendanceController as ManageLiveClassAttendanceController;
+use App\Http\Controllers\Manage\LiveClassController as ManageLiveClassController;
 use App\Http\Controllers\Manage\PaymentController as ManagePaymentController;
 use App\Http\Controllers\Manage\SettingsController as ManageSettingsController;
 use App\Http\Controllers\Manage\UserDeviceController as ManageUserDeviceController;
@@ -155,6 +158,14 @@ Route::middleware('require.tenant')->group(function () {
                 Route::post('lessons/{lesson}/progress', [LessonProgressController::class, 'heartbeat']);
                 Route::put('lessons/{lesson}/completion', [LessonProgressController::class, 'completion']);
 
+                // Live classes (Phase 12) — student-facing, on the same stack as
+                // /dashboard. {liveClass} resolves through the TenantScope global
+                // scope, so another tenant's class id is a 404; authorisation
+                // (enrolment/staff) happens per-action in LiveClassPolicy.
+                Route::get('live-classes/{liveClass}', [LiveClassController::class, 'show']);
+                Route::get('live-classes/{liveClass}/join', [LiveClassController::class, 'join']);
+                Route::post('live-classes/{liveClass}/heartbeat', [LiveClassController::class, 'heartbeat']);
+
                 Route::get('users', [UserController::class, 'index'])->name('users.index');
                 Route::get('users/create', [UserController::class, 'create']);
                 Route::post('users', [UserController::class, 'store']);
@@ -238,6 +249,23 @@ Route::middleware('require.tenant')->group(function () {
                     Route::get('courses/{course}/progress', [ManageCourseProgressController::class, 'index']);
                     Route::get('courses/{course}/progress/export', [ManageCourseProgressController::class, 'export']);
                     Route::get('courses/{course}/progress/{user}', [ManageCourseProgressController::class, 'show']);
+
+                    // Live classes (Phase 12) — every teacher surface scoped
+                    // through {course}: scopeBindings() resolves {liveClass}
+                    // via the course relation, so a class id from another
+                    // course (or tenant) is a 404, never a 403, and the
+                    // feature flag 404s the whole group when it is off.
+                    Route::prefix('courses/{course}')->scopeBindings()->group(function () {
+                        Route::get('live-classes', [ManageLiveClassController::class, 'index']);
+                        Route::get('live-classes/create', [ManageLiveClassController::class, 'create']);
+                        Route::post('live-classes', [ManageLiveClassController::class, 'store']);
+                        Route::get('live-classes/{liveClass}/attendance', [ManageLiveClassAttendanceController::class, 'index']);
+                        Route::get('live-classes/{liveClass}/attendance/export', [ManageLiveClassAttendanceController::class, 'export']);
+                        Route::get('live-classes/{liveClass}/edit', [ManageLiveClassController::class, 'edit']);
+                        Route::patch('live-classes/{liveClass}', [ManageLiveClassController::class, 'update']);
+                        Route::post('live-classes/{liveClass}/cancel', [ManageLiveClassController::class, 'cancel']);
+                        Route::delete('live-classes/{liveClass}', [ManageLiveClassController::class, 'destroy']);
+                    });
                 });
             });
         });

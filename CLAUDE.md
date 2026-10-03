@@ -12,8 +12,8 @@ that later phases depend on holding. A change that violates one of them is a bug
 passes tests that don't happen to check for it.
 
 See also [ARCHITECTURE.md](ARCHITECTURE.md), [VIDEO.md](VIDEO.md),
-[PAYMENTS.md](PAYMENTS.md), [PRIVACY.md](PRIVACY.md), and [ROADMAP.md](ROADMAP.md) for the
-rest of the system design.
+[PAYMENTS.md](PAYMENTS.md), [LIVE_CLASSES.md](LIVE_CLASSES.md), [PRIVACY.md](PRIVACY.md),
+and [ROADMAP.md](ROADMAP.md) for the rest of the system design.
 
 ## Never bypass model events on tenant-owned models
 

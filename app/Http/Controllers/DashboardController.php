@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\LiveClassStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
 use App\Models\Enrolment;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
+use App\Models\LiveClass;
 use App\Models\Payment;
 use App\Support\GettingStartedChecklist;
 use App\Support\LessonAccess;
@@ -75,11 +77,39 @@ class DashboardController extends Controller
             ]];
         });
 
+        // Live classes (Phase 12): what this student's enrolled courses are
+        // running right now, and what starts inside the announcement window.
+        // Feature-flagged: with LIVE_CLASSES_ENABLED=false this costs zero
+        // queries and the dashboard renders exactly as it did before Phase 12.
+        $liveNowClasses = collect();
+        $startingSoonClasses = collect();
+        $enrolledCourseIds = $active->pluck('course_id');
+
+        if ((bool) config('coaching.live_classes_enabled') && $enrolledCourseIds->isNotEmpty()) {
+            $liveNowClasses = LiveClass::with('course')
+                ->whereIn('course_id', $enrolledCourseIds)
+                ->where('status', LiveClassStatus::Live->value)
+                ->orderBy('starts_at')
+                ->get();
+
+            $startingSoonClasses = LiveClass::with('course')
+                ->whereIn('course_id', $enrolledCourseIds)
+                ->where('status', LiveClassStatus::Scheduled->value)
+                ->whereBetween('starts_at', [
+                    now(),
+                    now()->addHours((int) config('coaching.live_class_upcoming_window_hours', 24)),
+                ])
+                ->orderBy('starts_at')
+                ->get();
+        }
+
         return view('dashboard.student', [
             'user' => $user,
             'active' => $active,
             'ended' => $ended,
             'courseProgress' => $courseProgress,
+            'liveNowClasses' => $liveNowClasses,
+            'startingSoonClasses' => $startingSoonClasses,
         ]);
     }
 

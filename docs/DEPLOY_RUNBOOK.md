@@ -24,6 +24,12 @@ estimate, added the engine caveat there, fixed §1.2's now-stale "same sha" depe
 refreshed §1.7 item 3 and §4.1's expected HEAD, and added §14 item 6 describing both
 workflows. Same rule as before: originals are preserved, resolved items are marked.
 
+**Phase 12 additions, 2026-10-03.** Live classes shipped behind `LIVE_CLASSES_ENABLED`
+(default off). This pass refreshed §1.1's gate-output table (now 906 / 874 / 29), added
+§4.4's live-class key rows and §6.2's Jitsi failure row, and marked §1.7 item 3 / §14 item 4
+as re-synced. The feature changes nothing in this runbook's procedure unless you choose to
+turn it on — see §4.4 and docs/DEPLOY.md §3b.
+
 ---
 
 ## How to use this runbook
@@ -68,7 +74,8 @@ git log --oneline -1
 ```
 
 **Confirm:** the line equals `origin/main`'s current HEAD. Last verified **2026-10-03**:
-`c61a8bc fix(devices): deterministic tie-break in enforceLimit victim selection`. Do **not**
+the **Phase 12 (live classes)** commit — previously `c61a8bc fix(devices): deterministic
+tie-break in enforceLimit victim selection`. Do **not**
 expect this to equal the `phase-11` tag — that pins an older commit (see §1.2).
 
 Then run the gates **one at a time, never concurrently** — Composer's default
@@ -84,13 +91,13 @@ composer lint
 composer analyse
 ```
 
-**Expected raw output** (each command's last meaningful line, captured on `c61a8bc`,
-2026-10-03 — `duration_ms` varies by machine, the test/assertion counts should not):
+**Expected raw output** (each command's last meaningful line, captured on the Phase 12
+commit, 2026-10-03 — `duration_ms` varies by machine, the test/assertion counts should not):
 
 | Command | Expected final line |
 |---|---|
-| `composer test` | `{"tool":"pest","result":"passed","tests":825,"passed":824,"assertions":2436,"duration_ms":151980,"skipped":1}` |
-| `composer test:mysql` | `{"tool":"pest","result":"passed","tests":793,"passed":793,"assertions":2396,"duration_ms":113000}` |
+| `composer test` | `{"tool":"pest","result":"passed","tests":906,"passed":905,"assertions":2812,"duration_ms":143033,"skipped":1}` |
+| `composer test:mysql` | `{"tool":"pest","result":"passed","tests":874,"passed":874,"assertions":2772,"duration_ms":153255}` |
 | `composer test:js` | `ℹ tests 29` … `ℹ pass 29` … `ℹ fail 0` |
 | `composer lint` | `{"tool":"pint","result":"passed"}` |
 | `composer analyse` | `{"tool":"phpstan","result":"passed","errors":0}` |
@@ -218,7 +225,7 @@ Nothing here is a stop — but read them so you don't act on the stale version.
 |---|---|---|---|---|
 | 1 | `docs/DEPLOY.md` §3, §5 | `SESSION_DOMAIN` is checked by `app:preflight` | **Now true.** PROJECT_BRIEF §7 flagged it as claimed-but-missing; Phase 11 added `checkSessionDomain()` (`app/Console/Commands/AppPreflightCommand.php:111`) plus tests | Nothing. This runbook repeats the claim legitimately, and `docs/DEPLOY.md` needed no change for it |
 | 2 | `README.md:123` | `Mini security pass before deploy \| Not run as a discrete pass` | **Corrected in `c21ca36`** — README now reads `Run (Phase 11) — docs/SECURITY_PASS.md`, which is true | Nothing. Kept here as history: the runbook's original observation was right when written |
-| 3 | `README.md` gate table | 762 / 730 tests | Still stale — README was corrected once in `c21ca36` to 824 / 792, and `c61a8bc` added one more test, so current is **825 / 793** | Use §1.1's table, not README's |
+| 3 | `README.md` gate table | 762 / 730 tests | Was stale for a while (corrected in `c21ca36` to 824 / 792, `c61a8bc` → 825 / 793); **re-synced with Phase 12 — README now reads 906 / 874 / 29, same as §1.1** | Nothing — both tables agree again |
 | 4 | `docs/DEPLOY.md` §2 | Node.js: "any current LTS" | Too loose — Vite 8.3.1's `engines` field is `^20.19.0 \|\| >=22.12.0`; an older LTS fails `npm ci` with `EBADENGINE` | Pin per §2.6; `docs/DEPLOY.md` §2 is updated by this runbook |
 | 5 | `docs/DEPLOY.md` §8 | "set `backup.notifications.mail.to` to a real address" | **Resolved in `c859e74`.** `config/backup.php` now reads `env('BACKUP_NOTIFY_EMAIL') ?: env('MAIL_FROM_ADDRESS', 'hello@example.com')`, and `.env.example` ships `BACKUP_NOTIFY_EMAIL=` (blank → falls back to `MAIL_FROM_ADDRESS`) | Set `BACKUP_NOTIFY_EMAIL=<an-address-you-read>` in the production `.env`, and give `MAIL_MAILER` a real transport — otherwise alerts still only reach `storage/logs/laravel.log`. Don't edit `config/backup.php` on the server (it would drift from git) |
 | 6 | `CENTRAL_DOMAINS` | implied to be flexible | Central routing is `Route::domain()` over exactly the listed hostnames. A `www.<DOMAIN>` DNS record would reach the app, fail tenant resolution and 404 (fail-closed, TENANCY.md) | Do **not** create a `www` record. Add `www.<DOMAIN>` to `CENTRAL_DOMAINS` only if you actually want it served |
@@ -249,7 +256,8 @@ binaries exist but are not on `PATH`.
 
 *Original description below, preserved verbatim for history. Everything after the "Cause"
 list describes the pre-`c859e74` state — including its "**all 822 tests are green**" figure,
-which was true on `e605cc5` and is now **825** (§1.1). The number is historical, not a live
+which was true on `e605cc5` and is now **906** (§1.1; the intermediate 825 was the count at
+`c61a8bc`). The number is historical, not a live
 claim.*
 
 **Do not skip this.** It will silently break §8 (the nightly backup), §10.11 and the §11
@@ -630,6 +638,10 @@ Edit `.env`. Nothing here can be left to defaults.
 | `MAIL_MAILER` | `log` | keep `log` unless you have real SMTP — see the note below | — |
 | `VIDEO_DRIVER` | `fake` (since `9173eb9`) | **change to** `VIDEO_DRIVER=bunny` | yes (`fake` is refused in production) |
 | `BUNNY_STREAM_ACCOUNT_API_KEY` | empty (since `9173eb9`) | **set** `BUNNY_STREAM_ACCOUNT_API_KEY=<BUNNY_ACCOUNT_KEY>` | yes |
+| `LIVE_CLASSES_ENABLED` | `false` | leave `false`, **or** `true` + the two `JITSI_*` keys below (Phase 12 — docs/DEPLOY.md §3b) | when `true`: both JaaS keys become required |
+| `JITSI_APP_ID` | empty | only if enabling live classes: the JaaS (8x8.vc) app id | yes, when `LIVE_CLASSES_ENABLED=true` |
+| `JITSI_APP_SECRET` | empty | only if enabling live classes: the JaaS signing secret | yes, when `LIVE_CLASSES_ENABLED=true` |
+| `LIVE_CLASSES_RECORDING_ENABLED` | `false` | leave `false` (JaaS recording is a paid add-on) | — |
 | `DB_TEST_*` | set | leave, unless you created `coaching_saas_test` (§3) | — |
 
 **Two lines you must set** (both keys now exist in `.env.example` as of `9173eb9`, but with
@@ -842,6 +854,7 @@ The first column quotes the command's real output verbatim.
 | `The GD PHP extension is not loaded…` / `…was built without FreeType support…` | site's PHP has no `gd`, or a build without FreeType | CloudPanel → site → PHP Settings → enable `gd`; re-check with §2.3's `php -r` line |
 | `VIDEO_DRIVER=fake is never allowed in production.` | `.env.example` ships `VIDEO_DRIVER=fake` (the local default) and the production `.env` never overrode it | set `VIDEO_DRIVER=bunny` (§4.4) |
 | `VIDEO_DRIVER=bunny but BUNNY_STREAM_ACCOUNT_API_KEY is not set.` | the key line wasn't added | add `BUNNY_STREAM_ACCOUNT_API_KEY=<BUNNY_ACCOUNT_KEY>` (§4.4) |
+| `Live classes are enabled but the Jitsi (JaaS) keys JITSI_APP_ID / JITSI_APP_SECRET are missing — set both or turn LIVE_CLASSES_ENABLED off.` | `LIVE_CLASSES_ENABLED=true` with one or both JaaS keys unset (Phase 12) | add both keys (§4.4) or set `LIVE_CLASSES_ENABLED=false` — the feature can't be half-enabled: with the flag off, every live-class route 404s and preflight stops asking (docs/DEPLOY.md §3b) |
 
 ---
 
@@ -1468,8 +1481,9 @@ Nothing below has a usable default. Have all of it before step 1 starts.
 4. **Documentation drift in `README.md` — RESOLVED in `c21ca36`.** `README.md:123` now reads
    "Run (Phase 11) — docs/SECURITY_PASS.md", and the gate table has been corrected twice
    (762/730 → 822/790 → 824/792, the last from the two `backup` canaries added in `c859e74`).
-   It has drifted one further behind since — `c61a8bc` added a test, so current is 825/793
-   (§1.7 item 3). Recorded here rather than deleted so the drift history stays visible.
+   It drifted once further — `c61a8bc` made it 825/793 (§1.7 item 3) — and was **re-synced
+   with Phase 12: README and §1.1 both read 906 / 874 / 29 now.** Recorded here rather than
+   deleted so the drift history stays visible.
 
 5. **Two `[UNVERIFIED]` items carried from `docs/SECURITY_PASS.md`:** the exact Cloudflare
    dashboard labels for §7.5's security headers, and the rate-limiting rule quota in §7.7.

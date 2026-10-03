@@ -50,4 +50,41 @@ return [
     */
 
     'device_switch_flag' => env('COACHING_DEVICE_SWITCH_FLAG', 5),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Live classes (Phase 12)
+    |--------------------------------------------------------------------------
+    |
+    | LIVE_CLASSES_ENABLED gates everything: the routes 404, the dashboard and
+    | course-page sections render nothing, and app:preflight demands the JaaS
+    | keys. Recording is a separate, default-off flag (Decision B): when it is
+    | off, nothing in the UI claims a class is being recorded — only the
+    | opt-in "may be recorded" disclosure renders when a JaaS recording add-on
+    | is actually attached.
+    |
+    */
+
+    'live_classes_enabled' => env('LIVE_CLASSES_ENABLED', false),
+    'live_classes_recording_enabled' => env('LIVE_CLASSES_RECORDING_ENABLED', false),
+
+    // Students may open the room this many minutes before starts_at (and the
+    // show page switches from countdown to Join at the same threshold — one
+    // source of truth for both the gate and the button).
+    'live_class_join_window_minutes' => env('LIVE_CLASSES_JOIN_WINDOW_MINUTES', 15),
+
+    // Length of a class scheduled without an explicit ends_at.
+    'live_class_default_duration_minutes' => env('LIVE_CLASSES_DEFAULT_DURATION_MINUTES', 90),
+
+    // An attendance row with no heartbeat for this long is closed by
+    // live-classes:close-stale-attendance (left_at = last_seen_at).
+    'live_class_stale_minutes' => env('LIVE_CLASSES_STALE_MINUTES', 5),
+
+    // Heartbeat budget: 2 accepted beacons per 60 seconds per user per class;
+    // the third in the window is a flat 429.
+    'live_class_heartbeat_max_attempts' => env('LIVE_CLASSES_HEARTBEAT_MAX_ATTEMPTS', 2),
+    'live_class_heartbeat_decay_seconds' => env('LIVE_CLASSES_HEARTBEAT_DECAY_SECONDS', 60),
+
+    // The dashboard announces classes starting within this many hours.
+    'live_class_upcoming_window_hours' => env('LIVE_CLASSES_UPCOMING_WINDOW_HOURS', 24),
 ];

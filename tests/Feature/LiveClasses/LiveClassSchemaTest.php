@@ -392,26 +392,31 @@ test('joined_at, last_seen_at, left_at, duration_seconds and tenant_id are not m
     expect((int) $row->duration_seconds)->toBe(120)
         ->and($row->left_at)->toBeNull();
 
-    // Negative: a plain update() routes through fill(), which must ignore all of them
-    $before = [
-        'joined_at' => $row->joined_at->format('Y-m-d H:i:s'),
-        'last_seen_at' => $row->last_seen_at->format('Y-m-d H:i:s'),
-        'tenant_id' => (int) $row->tenant_id,
-    ];
+    // Negative: a plain update() routes through fill(), which must ignore all of them.
+    // Wrapped in the tenant context like every other save in this suite: the locked
+    // BelongsToTenant saving hook rejects any save without one, and the point under
+    // test is fill()'s guarding, not context handling.
+    inTenant($f['tenant'], function () use ($row) {
+        $before = [
+            'joined_at' => $row->joined_at->format('Y-m-d H:i:s'),
+            'last_seen_at' => $row->last_seen_at->format('Y-m-d H:i:s'),
+            'tenant_id' => (int) $row->tenant_id,
+        ];
 
-    $row->update([
-        'joined_at' => now()->subYear(),
-        'last_seen_at' => now()->addYear(),
-        'left_at' => now(),
-        'duration_seconds' => 999999,
-        'tenant_id' => 999999,
-    ]);
+        $row->update([
+            'joined_at' => now()->subYear(),
+            'last_seen_at' => now()->addYear(),
+            'left_at' => now(),
+            'duration_seconds' => 999999,
+            'tenant_id' => 999999,
+        ]);
 
-    $row->refresh();
+        $row->refresh();
 
-    expect((int) $row->duration_seconds)->toBe(120)
-        ->and($row->left_at)->toBeNull()
-        ->and($row->joined_at->format('Y-m-d H:i:s'))->toBe($before['joined_at'])
-        ->and($row->last_seen_at->format('Y-m-d H:i:s'))->toBe($before['last_seen_at'])
-        ->and((int) $row->tenant_id)->toBe($before['tenant_id']);
+        expect((int) $row->duration_seconds)->toBe(120)
+            ->and($row->left_at)->toBeNull()
+            ->and($row->joined_at->format('Y-m-d H:i:s'))->toBe($before['joined_at'])
+            ->and($row->last_seen_at->format('Y-m-d H:i:s'))->toBe($before['last_seen_at'])
+            ->and((int) $row->tenant_id)->toBe($before['tenant_id']);
+    });
 });

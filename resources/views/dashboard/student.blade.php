@@ -3,6 +3,52 @@
 @section('content')
     <x-page-header :kicker="__('users.dashboard.welcome')" :title="__('nav.my_courses')" />
 
+    @if ($liveNowClasses->isNotEmpty() || $startingSoonClasses->isNotEmpty())
+        <div class="ui-section-title">
+            <h2 class="ui-h2">{{ __('live_classes.section_title') }}</h2>
+        </div>
+        <ul class="ui-list ui-fade mb-6">
+            @foreach ($liveNowClasses as $liveClass)
+                <li>
+                    <div class="ui-list-item">
+                        <div class="min-w-0 flex-1">
+                            <a href="{{ url('/live-classes/'.$liveClass->id) }}" class="ui-h2" style="display: block; text-decoration: none;">
+                                {{ $liveClass->title }}
+                            </a>
+                            <p class="ui-subtle" style="margin-top: 0.125rem;">{{ $liveClass->course?->title }}</p>
+                        </div>
+                        <div style="flex: none; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
+                            <x-badge tone="danger">{{ __('live_classes.live_now') }}</x-badge>
+                            <x-link href="{{ url('/live-classes/'.$liveClass->id) }}" variant="primary" size="sm">
+                                {{ __('live_classes.join') }}
+                            </x-link>
+                        </div>
+                    </div>
+                </li>
+            @endforeach
+            @foreach ($startingSoonClasses as $liveClass)
+                <li>
+                    <div class="ui-list-item">
+                        <div class="min-w-0 flex-1">
+                            <a href="{{ url('/live-classes/'.$liveClass->id) }}" class="ui-h2" style="display: block; text-decoration: none;">
+                                {{ $liveClass->title }}
+                            </a>
+                            <p class="ui-subtle" style="margin-top: 0.125rem;">{{ $liveClass->course?->title }}</p>
+                        </div>
+                        <div style="flex: none; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
+                            <x-badge tone="neutral">
+                                {{ __('live_classes.starts_in', ['minutes' => (int) ceil(($liveClass->starts_at->getTimestamp() - now()->getTimestamp()) / 60)]) }}
+                            </x-badge>
+                            <x-link href="{{ url('/live-classes/'.$liveClass->id) }}" size="sm">
+                                {{ __('live_classes.upcoming') }}
+                            </x-link>
+                        </div>
+                    </div>
+                </li>
+            @endforeach
+        </ul>
+    @endif
+
     <ul class="ui-list ui-fade mb-6">
         @forelse ($active as $enrolment)
             @php $progress = $courseProgress[$enrolment->course_id] ?? null; @endphp

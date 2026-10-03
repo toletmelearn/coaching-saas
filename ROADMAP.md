@@ -28,7 +28,7 @@ milestones. Phase titles match the spec files' own titles.
 Stage A is done when tenant isolation is provably enforced (schema + tests), before any
 product feature is built on top of it.
 
-## Stage B — Pilot (Phases 4, 5, 6, 7, 8, 9, 10 — all done, plus Phase 11 and the deploy)
+## Stage B — Pilot (Phases 4, 5, 6, 7, 8, 9, 10 — all done, plus Phases 11 and 12 and the deploy)
 
 - Phase 4: **Courses, Lessons, Notes and Manual Enrolment** — courses, chapters, lessons,
   PDF attachments, free YouTube previews, manual enrolment (spec:
@@ -53,19 +53,25 @@ product feature is built on top of it.
 - Phase 11: a focused security pass (session/tenancy replay checks, rate limits, signed URL
   expirations) before deploy — no spec file; recorded in
   [docs/SECURITY_PASS.md](docs/SECURITY_PASS.md) (git tag `phase-11`) — done.
+- Phase 12: **Live Classes via Jitsi Meet** — schedule a class per course/lesson,
+  enrolment-gated server-minted join, heartbeat attendance, teacher report + CSV export
+  (see [LIVE_CLASSES.md](LIVE_CLASSES.md); spec:
+  [phase-12-live-classes.md](docs/specs/phase-12-live-classes.md)) — done, flag-gated
+  behind `LIVE_CLASSES_ENABLED` (off by default).
 - Deploy: **the friend running the pilot institute is tenant #1 — the current milestone.**
 
 Stage B is scoped to what one real tenant needs to run their coaching business day to day —
 not every feature in this document.
 
-## Stage C — Gateway, domains, hardening (payment gateway, Phases 12, 13, 14, DPDP consent) — not started
+## Stage C — Gateway, domains, hardening (payment gateway, Phases 13, 14, 15, DPDP consent) — not started
 
 - Automated payment gateway integration (per-tenant accounts, idempotent webhooks — see
   [PAYMENTS.md](PAYMENTS.md)) — **no phase number**: the number it used to claim collides
   with Phase 8 (One Device per Student).
-- Phase 12: custom domains + TLS via Caddy on-demand (see [SECURITY.md](SECURITY.md)).
-- Phase 13: queues at scale, audit logging.
-- Phase 14: catch-all — whatever was deferred from Stage B.
+- Phase 13: custom domains + TLS via Caddy on-demand (see [SECURITY.md](SECURITY.md)) —
+  *renumbered from 12 when Live Classes took that number in git history.*
+- Phase 14: queues at scale, audit logging.
+- Phase 15: catch-all — whatever was deferred from Stage B.
 - DPDP consent flow: guardian fields, `consents` table, export/delete tooling (see
   [PRIVACY.md](PRIVACY.md)).
 

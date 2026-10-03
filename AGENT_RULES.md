@@ -24,8 +24,8 @@
 ## Project invariants
 
 These encode the guardrails established in [TENANCY.md](TENANCY.md), [SECURITY.md](SECURITY.md),
-[VIDEO.md](VIDEO.md), [PAYMENTS.md](PAYMENTS.md), and [PRIVACY.md](PRIVACY.md) — read those
-first for the reasoning.
+[VIDEO.md](VIDEO.md), [PAYMENTS.md](PAYMENTS.md), [LIVE_CLASSES.md](LIVE_CLASSES.md), and
+[PRIVACY.md](PRIVACY.md) — read those first for the reasoning.
 
 1. **Fail closed on tenant resolution.** An unrecognized hostname is rejected, never routed
    to a default or "demo" tenant.
@@ -77,3 +77,10 @@ first for the reasoning.
 20. **When a security or tenancy invariant and a feature request conflict, the invariant
     wins.** Raise the conflict instead of quietly relaxing scoping, signing, or validation
     to make a feature easier to ship.
+21. **A live class's room, join URL and attendance time are never client-derived.** The
+    room name and JaaS JWT are minted server-side per request (never mass-assignable,
+    never rendered into a page — only a 302 leaves the server), enrolment and the join
+    window are re-derived on every show/join/heartbeat, and credited attendance comes only
+    from server timestamps (≤60 s per heartbeat, policy 403 before throttle 429). Feature
+    off (`LIVE_CLASSES_ENABLED=false`, the default) means 404 everywhere, and
+    `app:preflight` refuses production if the flag is on without both JaaS keys.

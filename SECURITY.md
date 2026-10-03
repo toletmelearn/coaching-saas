@@ -370,6 +370,42 @@ recordings are traceable to an individual viewer rather than only proving *a* le
   first 8KB — a reliable binary/text signal that a real CSV never trips, regardless of
   what a cell's text happens to contain.
 
+## Live classes (Phase 12)
+
+- **The Jitsi room name and join URL never reach a rendered page.** They exist server-side
+  only, and leave it exclusively inside the 302 `Location` of the Join redirect
+  (`App\Support\LiveClasses\JitsiJoinUrl`), so a page, a log line or a referrer can never
+  leak a room. The room name itself is generated in `LiveClass`'s `creating` hook — 32
+  random letters plus a tenant-derived `[a-f]` suffix, digit-free so no numeric id can
+  appear inside one — and is deliberately absent from `$fillable`; a posted
+  `jitsi_room_name` is ignored and `UNIQUE(tenant_id, jitsi_room_name)` makes a forced
+  duplicate loud.
+- **The JaaS app secret is a signing key, nothing else.** `JITSI_APP_SECRET` is read from
+  config, used by `JitsiJwt` to sign an HS256 token (`iss`/`aud` = app id, `exp` = +120
+  minutes, display name/email under `context.user`) inside the join request, and is never
+  rendered, logged, or accepted from a client — asserted by
+  `tests/Feature/LiveClasses/LiveClassSecurityTest.php`. The token is minted and consumed
+  in one request: there is no token endpoint on our app to replay against.
+- **Entry is re-derived server-side on every verb.** `LiveClassPolicy` requires
+  staff/owner or a valid enrolment for *view*, and *join* additionally requires the class
+  to be open (`live`, or scheduled inside the `LIVE_CLASSES_JOIN_WINDOW_MINUTES` window,
+  default 15). The join page answers refusals with a friendly flash; the heartbeat API
+  answers every refusal with a flat **403** — and the policy runs **before** the
+  rate-limit throttle, so an unauthorised caller can never consume an enrolled student's
+  heartbeat budget.
+- **Attendance columns are server-derived, full stop.** The heartbeat request body is
+  ignored outright: credited time is the wall-clock delta since the row's own
+  server-written `last_seen_at`, capped at **60 seconds per beat** (2 beats/minute/user/
+  class, third → 429), and the stale sweep backdates `left_at` to that same
+  `last_seen_at`, never to "now". Forged timestamps can neither open, close, nor inflate a
+  stay.
+- **The report and its CSV export are staff-only** (`manageLiveClasses` on the course) and
+  formula-guarded like every other CSV in the app (`CsvFormulaGuard`), with a UTF-8 BOM so
+  Excel doesn't mangle names.
+- **Everything is 404 while `LIVE_CLASSES_ENABLED=false`** (the default) — the feature's
+  mere existence isn't visible, and `app:preflight` fails production if the flag is on
+  without both JaaS keys.
+
 ## Custom domains and TLS
 
 - Tenants may eventually bring a custom domain instead of `*.coaching.test`

@@ -1,7 +1,7 @@
 # Agent guidance
 
 This project's binding rules for AI agents live in **`AGENT_RULES.md`** (20 process
-rules + 20 project invariants).
+rules + 21 project invariants).
 
 Before making any change, read — in this order:
 

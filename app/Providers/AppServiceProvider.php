@@ -7,11 +7,13 @@ use App\Contracts\VideoProvider;
 use App\Macros\BlueprintTenancyMacro;
 use App\Models\Course;
 use App\Models\Enrolment;
+use App\Models\LiveClass;
 use App\Models\Payment;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Policies\CoursePolicy;
 use App\Policies\EnrolmentPolicy;
+use App\Policies\LiveClassPolicy;
 use App\Policies\PaymentPolicy;
 use App\Policies\TenantPolicy;
 use App\Policies\UserPolicy;
@@ -55,6 +57,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Enrolment::class, EnrolmentPolicy::class);
         Gate::policy(Tenant::class, TenantPolicy::class);
         Gate::policy(Payment::class, PaymentPolicy::class);
+        Gate::policy(LiveClass::class, LiveClassPolicy::class);
 
         // App\Listeners\RegisterUserDevice (Phase 8) needs no explicit Event::listen()
         // call here — Application::configure() enables event auto-discovery by default

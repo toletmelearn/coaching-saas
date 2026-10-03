@@ -54,10 +54,19 @@ class AppPreflightCommand extends Command
             $this->checkNoLocalhostDemoDomain(),
             $this->checkVideoDriver(),
             $this->checkGdFreetype(),
+            $this->checkJitsiConfig(),
         ]);
 
         if ($failures === []) {
             $this->components->info('All preflight checks passed.');
+
+            if ((bool) config('coaching.live_classes_enabled')) {
+                // Visible proof the check actually saw the configured app id
+                // (LiveClassPreflightTest requires "Jitsi" in a passing run too).
+                $this->components->info(
+                    'Jitsi live classes enabled — JaaS app id '.config('services.jitsi.app_id').' configured.'
+                );
+            }
 
             return self::SUCCESS;
         }
@@ -256,6 +265,28 @@ class AppPreflightCommand extends Command
 
         if ($driver === 'bunny' && empty(config('services.bunny.account_api_key'))) {
             return 'VIDEO_DRIVER=bunny but BUNNY_STREAM_ACCOUNT_API_KEY is not set.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Decision A (docs/specs/phase-12-live-classes.md): JaaS free tier, one app id +
+     * secret per deployment, used solely to sign the short-lived join JWT. Without both
+     * keys every join would 500 in production while the UI still advertised "Join", so a
+     * deployment that switched LIVE_CLASSES_ENABLED on must also configure the keys —
+     * or switch the flag back off. The literal "Jitsi" in the failure message is part of
+     * the LiveClassPreflightTest contract.
+     */
+    private function checkJitsiConfig(): ?string
+    {
+        if (! (bool) config('coaching.live_classes_enabled')) {
+            return null;
+        }
+
+        if (empty(config('services.jitsi.app_id')) || empty(config('services.jitsi.app_secret'))) {
+            return 'Live classes are enabled but the Jitsi (JaaS) keys JITSI_APP_ID / JITSI_APP_SECRET '
+                .'are missing — set both or turn LIVE_CLASSES_ENABLED off.';
         }
 
         return null;

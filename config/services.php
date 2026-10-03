@@ -51,4 +51,21 @@ return [
         'account_api_key' => env('BUNNY_STREAM_ACCOUNT_API_KEY'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Jitsi Meet as a Service (JaaS, 8x8.vc) — live classes (Phase 12)
+    |--------------------------------------------------------------------------
+    |
+    | One app id + secret per deployment (Decision A), used for exactly one
+    | thing: signing the short-lived join JWT server-side. app:preflight
+    | refuses production when coaching.live_classes_enabled is true and
+    | either value is missing. The secret is never rendered, redirected or
+    | logged — see SECURITY.md.
+    |
+    */
+    'jitsi' => [
+        'app_id' => env('JITSI_APP_ID'),
+        'app_secret' => env('JITSI_APP_SECRET'),
+    ],
+
 ];

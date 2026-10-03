@@ -3,8 +3,8 @@
 Multi-tenant SaaS for coaching institutes, built on Laravel 13 / PHP 8.3. Single codebase,
 single database, tenant isolation enforced at the schema and application layer. See
 [ARCHITECTURE.md](ARCHITECTURE.md), [TENANCY.md](TENANCY.md), [SECURITY.md](SECURITY.md),
-[VIDEO.md](VIDEO.md), [PAYMENTS.md](PAYMENTS.md), [PRIVACY.md](PRIVACY.md) and
-[ROADMAP.md](ROADMAP.md) for the rest of the design.
+[VIDEO.md](VIDEO.md), [PAYMENTS.md](PAYMENTS.md), [PRIVACY.md](PRIVACY.md),
+[LIVE_CLASSES.md](LIVE_CLASSES.md) and [ROADMAP.md](ROADMAP.md) for the rest of the design.
 
 ---
 
@@ -83,8 +83,8 @@ gate:
 
 | Gate | Command | Result (as verified) |
 |------|---------|----------------------|
-| Unit + feature tests (SQLite) | `composer test` | **825 tests, 824 passed, 1 skipped** (the skip is the documented MySQL-only preflight test) |
-| Tenancy/auth/etc. on real MySQL | `composer test:mysql` | **793 / 793 passed** |
+| Unit + feature tests (SQLite) | `composer test` | **906 tests, 905 passed, 1 skipped** (the skip is the documented MySQL-only preflight test) |
+| Tenancy/auth/etc. on real MySQL | `composer test:mysql` | **874 / 874 passed** |
 | JS unit tests (Node, no browser) | `composer test:js` | **29 / 29 passed** |
 | Formatting | `composer lint` | **clean** (Pint reports no changes needed) |
 | Static analysis | `composer analyse` | **0 errors** at Larastan level 5 |
@@ -110,6 +110,7 @@ gate:
 | 8 | [phase-8-devices.md](docs/specs/phase-8-devices.md) | One device per student (1–3 limit), device list/sign-out UI, revocation reasons, `devices:prune`, 30-day sessions |
 | 9 | [phase-9-pilot.md](docs/specs/phase-9-pilot.md) | Bulk CSV student import (preview → confirm), 15-minute one-time credentials sheet with WhatsApp links, CSV formula-injection guard, login help line, getting-started checklist, Help page, mobile People cards |
 | 10 | [phase-10-payments.md](docs/specs/phase-10-payments.md) | Manual UPI payments: `payments` table with composite tenant FKs, course-fee pricing, screenshot upload (re-encoded, private disk), owner approve/reject queue, idempotent approval, per-viewer signed screenshot URLs |
+| 12 | [phase-12-live-classes.md](docs/specs/phase-12-live-classes.md) | Live classes via Jitsi (JaaS): enrolment-gated server-minted join (room name + JWT minted per request), heartbeat attendance with server-derived time, status scheduler, teacher attendance report + formula-guarded CSV — whole feature behind `LIVE_CLASSES_ENABLED` (off by default), see [LIVE_CLASSES.md](LIVE_CLASSES.md) |
 
 Also shipped alongside: **production readiness** (Phase 4.6A — no trust of forwarded host,
 Cloudflare trusted-proxy ranges, session cookie domain tests), **`php artisan app:preflight`**,
@@ -132,12 +133,13 @@ Cloudflare).
 > **Note on phase numbering:** [ROADMAP.md](ROADMAP.md)'s original numbering (Phase 5 =
 > dashboards, Phase 6 = video, Phase 7 = PDFs) does **not** match the numbering actually used
 > by the specs and the git history (Phase 5 = video, 6 = branding/PWA, 7 = progress, 8 =
-> devices, 9 = pilot). The spec column above is authoritative; the roadmap needs renumbering.
-> Since this note was written the sequence has also grown past Phase 9: **Phase 10 (manual
-> UPI payments)** shipped as Stage B (`f8d5b6a`, `docs/specs/phase-10-payments.md`) and
-> **Phase 11 (mini security pass)** exists as git `e605cc5` + tag `phase-11`
-> (`docs/SECURITY_PASS.md`) — both take numbers the roadmap also assigns to other features,
-> which is part of why the renumbering is still owed.
+> devices, 9 = pilot). The spec column above is authoritative. The sequence has since grown
+> past Phase 9: **Phase 10 (manual UPI payments)** shipped as Stage B (`f8d5b6a`,
+> `docs/specs/phase-10-payments.md`), **Phase 11 (mini security pass)** exists as git
+> `e605cc5` + tag `phase-11` (`docs/SECURITY_PASS.md`), and **Phase 12 (live classes)**
+> (`1177a9c` + this phase, `docs/specs/phase-12-live-classes.md`) — ROADMAP's Stage C
+> entries shifted to 13/14/15 accordingly. The roadmap itself was rewritten to the
+> canonical numbering in `2926163` and extended for Phase 12 with this phase.
 
 ---
 
@@ -149,14 +151,15 @@ Cloudflare).
    mass-assignable), and routing/middleware (`Route::domain()` for central routes,
    `RequireTenant` pinned ahead of `SubstituteBindings`). Failing closed is the default:
    no context → an exception, unknown host → 404, never "tenant #1".
-2. **Documentation is a first-class artefact.** Eight root design docs
+2. **Documentation is a first-class artefact.** Nine root design docs
    ([ARCHITECTURE](ARCHITECTURE.md), [TENANCY](TENANCY.md), [SECURITY](SECURITY.md),
    [VIDEO](VIDEO.md), [PAYMENTS](PAYMENTS.md), [PRIVACY](PRIVACY.md),
-   [ROADMAP](ROADMAP.md), [AGENT_RULES](AGENT_RULES.md)) plus 13 spec/brief files under
+   [LIVE_CLASSES](LIVE_CLASSES.md), [ROADMAP](ROADMAP.md), [AGENT_RULES](AGENT_RULES.md))
+   plus 15 spec/brief files under
    `docs/specs/`. Non-obvious decisions carry their reasoning *next to the code* (see the
    middleware-priority comment in `bootstrap/app.php`). There are **zero
    `TODO`/`FIXME`/`HACK` markers** in the codebase.
-3. **Test-to-code ratio is ~2:1** (17,002 test lines vs 8,170 app lines), with security
+3. **Test-to-code ratio is ~2:1** (19,125 test lines vs 9,294 app lines), with security
    behaviour tested explicitly — cross-tenant login rejection, session replay, token-key
    cross-tenant misuse, secrets never in HTML or logs, CSV formula injection, rate limits.
 4. **All five quality gates are green** — tests on both SQLite *and* real MySQL, JS tests,
@@ -191,11 +194,14 @@ Cloudflare).
    on MariaDB 10.4 could not surface — the reason CI exists.
 3. **No coverage measurement.** `phpunit.xml` declares `<source>` but no coverage run is
    configured, so "what is untested" is unknown.
-4. **Documentation drift — one instance remains.** The heading used to say *three* known
-   instances while listing four; of those four, the "Phase 2 status / VideoProvider
-   (planned) / README counts" trio is now **zero — all three resolved this session**:
-   - **Still open — the sole unresolved entry:** [ROADMAP.md](ROADMAP.md) phase numbering
-     disagrees with the specs and git history (detailed above).
+4. **Documentation drift — none remain.** The heading used to say *three* known
+   instances while listing four, then *one instance remains*; of those, the "Phase 2
+   status / VideoProvider (planned) / README counts" trio is now **zero — all three
+   resolved**:
+   - **RESOLVED in `2926163` (and completed by Phase 12's commit):** [ROADMAP.md](ROADMAP.md)
+     phase numbering now agrees with the specs and git history — the file was rewritten to
+     the canonical numbering in `2926163`, then extended when **Phase 12 (live classes)**
+     took that number (the Stage C entries moved to 13/14/15), detailed above.
    - **RESOLVED in `693d47f`:** [ARCHITECTURE.md](ARCHITECTURE.md) no longer calls
      `app/Contracts/VideoProvider.php` "(planned)" — it now records both shipped
      implementations, `BunnyVideoProvider` and `FakeVideoProvider`.
@@ -204,8 +210,9 @@ Cloudflare).
      `TENANCY.md`).
    - **RESOLVED in `cc6bed7`:** this README's own counts were re-synced to HEAD — the gate
      table, test lines, routes, `lang/en` and `tests/Feature` file counts, including the
-     `composer test:mysql` line that once described only `tests/Feature/Tenancy` (now
-     20 suites / 793 tests).
+     `composer test:mysql` line that once described only `tests/Feature/Tenancy` (20
+     suites / 793 tests at that commit; **21 suites / 874 tests** after Phase 12, and the
+     counts above re-synced again with it).
 5. **`.env` has drifted from `.env.example`.** The local `.env` carries
    `SESSION_LIFETIME=120` while `.env.example` specifies `43200` (the Phase 8 30-day decision
    documented in SECURITY.md), and lacks `SESSION_SECURE_COOKIE`, `PLATFORM_DOMAIN` and
@@ -245,25 +252,25 @@ Cloudflare).
 app/
   Actions/          Domain actions shared by controllers (EnrolStudentAction, CreateInstituteAction)
   Auth/             Tenant-aware user provider
-  Console/Commands/ app:preflight, devices:prune, local:hosts, platform-admin:create, tenant:create, videos:sync
+  Console/Commands/ app:preflight, devices:prune, local:hosts, live-classes:*, platform-admin:create, tenant:create, videos:sync
   Database/         TenantBuilder (tenant-safe query builder)
-  Enums/            11 backed enums (roles, statuses, reasons)
-  Http/             31 controllers (+ base) across Admin/, Auth/, Manage/ and top level, 8 middleware
-  Models/           14 models; tenant-owned ones use BelongsToTenant
-  Policies/         Course, Enrolment, Tenant, User
+  Enums/            13 backed enums (roles, statuses, reasons)
+  Http/             37 controllers (+ base) across Admin/, Auth/, Manage/ and top level, 8 middleware
+  Models/           17 models; tenant-owned ones use BelongsToTenant
+  Policies/         Course, Enrolment, LiveClass, Payment, Tenant, User
   Scopes/           TenantScope (throws when no context)
   Services/Video/   BunnyVideoProvider, FakeVideoProvider
-  Support/          Branding, Csv, Devices, Import, Pwa, Video, TenantContext, ProgressRecorder…
+  Support/          Branding, Csv, Devices, Import, LiveClasses (JitsiJwt, JitsiJoinUrl), Pwa, Video, TenantContext, ProgressRecorder…
   Traits/           BelongsToTenant
 bootstrap/app.php   Middleware wiring, trusted proxies, exception handling
 config/             coaching, tenancy, cloudflare, preflight, backup, services…
-database/           24 migrations, 12 factories, 2 seeders (TenantSeeder does the demo data)
-docs/               DEPLOY, DEPLOY_RUNBOOK, PILOT_CHECKLIST, SECURITY_PASS, specs/ (14 phase specs and briefs), superpowers/
-lang/en/            16 translation files
+database/           26 migrations, 12 factories, 2 seeders (TenantSeeder does the demo data)
+docs/               DEPLOY, DEPLOY_RUNBOOK, PILOT_CHECKLIST, SECURITY_PASS, specs/ (15 phase specs and briefs), superpowers/
+lang/en/            17 translation files
 public/             Front controller, PWA icons
 resources/          css, fonts, js (sw, pwa, lesson-progress, progress-tracker, video-upload), Blade views
-routes/             web.php (146 routes), console.php (scheduler)
-tests/              Pest: Unit/ (12 files), Feature/ (113 files), js/ (Node), Fixtures/
+routes/             web.php (158 routes), console.php (scheduler)
+tests/              Pest: Unit/ (14 files), Feature/ (124 files), js/ (Node), Fixtures/
 ```
 
 ---
@@ -346,6 +353,13 @@ is the only supported driver in local/testing; `VIDEO_DRIVER=fake` is refused by
 `php artisan app:preflight` in production, so never set it there. See
 [docs/specs/phase-5-video.md](docs/specs/phase-5-video.md) and
 [docs/DEPLOY.md](docs/DEPLOY.md) for the `bunny` driver's production setup.
+
+Live classes work locally the same way — the whole feature is simply **off** until you set
+`LIVE_CLASSES_ENABLED=true` (then every live-class route 404s, the dashboard and course
+sections render nothing, and preflight stops caring about Jitsi). Turning it on requires
+real `JITSI_APP_ID`/`JITSI_APP_SECRET` values (a JaaS app id/secret pair) before a join
+can complete: the room itself is free, but the join JWT has to be signed with your keys.
+See [LIVE_CLASSES.md](LIVE_CLASSES.md).
 
 **Testing an actual video upload locally**, rather than just the app's own test suite,
 needs XAMPP's PHP to allow a file that size through *before* Laravel ever sees it. Edit
@@ -508,8 +522,8 @@ into `C:\Windows\System32\drivers\etc\hosts` instead of typing them by hand.
 |--------------------------|-------------------------------------------------------------------|
 | `composer setup`         | One-shot install: `composer install`, copy `.env`, `key:generate`, `migrate`, `npm install`, `npm run build`. |
 | `composer dev`           | Run the Laravel dev stack (`php artisan dev`).                    |
-| `composer test`          | Run the full Pest suite (825 tests) against an in-memory SQLite database. |
-| `composer test:mysql`    | Run the MySQL variant of the suite — 20 suites / 793 tests: every `tests/Feature/` directory plus the schema- and security-relevant `tests/Unit/` directories — against the real `coaching_saas_test` database (set `DB_TEST_*` in `.env`). Excludes only `tests/Feature/ExampleTest.php`, `tests/Feature/ErrorPagesTest.php` and four `tests/Unit/` files that need no database. |
+| `composer test`          | Run the full Pest suite (906 tests) against an in-memory SQLite database. |
+| `composer test:mysql`    | Run the MySQL variant of the suite — 21 suites / 874 tests: every `tests/Feature/` directory plus the schema- and security-relevant `tests/Unit/` directories — against the real `coaching_saas_test` database (set `DB_TEST_*` in `.env`). Excludes only `tests/Feature/ExampleTest.php`, `tests/Feature/ErrorPagesTest.php` and four `tests/Unit/` files that need no database. |
 | `composer test:js`       | Run the Node test-runner suite for `resources/js/{sw,progress-tracker}.js` (no browser needed). |
 | `composer lint`          | Format code with Laravel Pint (`vendor/bin/pint --test` to check without writing). |
 | `composer analyse`       | Static analysis with Larastan (PHPStan) at level 5.                |

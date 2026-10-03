@@ -127,7 +127,8 @@ class LiveClassFixtures
      * An attendance row for $user in $class, written the way the heartbeat
      * writer will write it: every guarded column through forceFill.
      *
-     * Defaults: a 30-minute session ending now with duration_seconds = 1800.
+     * Defaults: joined 30 minutes ago, last seen 30 minutes ago, still open
+     * (left_at null — pass 'left_at' to close the stay), duration 1800.
      */
     public static function attend(LiveClass $class, User $user, array $attributes = []): LiveClassAttendance
     {
@@ -138,7 +139,10 @@ class LiveClassFixtures
                 'user_id' => $user->id,
                 'joined_at' => $attributes['joined_at'] ?? now()->subMinutes(30),
                 'last_seen_at' => $attributes['last_seen_at'] ?? now()->subMinutes(30),
-                'left_at' => $attributes['left_at'] ?? now(),
+                // Open by default, exactly as the join path writes it: the row
+                // only gets a left_at when the stay actually ends (the report
+                // fixture passes it explicitly for closed stays).
+                'left_at' => $attributes['left_at'] ?? null,
                 'duration_seconds' => $attributes['duration_seconds'] ?? 1800,
             ])->save();
 

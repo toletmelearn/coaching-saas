@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Chapter;
 use App\Models\Lesson;
 use App\Support\YoutubeUrlParser;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -123,9 +124,24 @@ class LessonController extends Controller
         $courseId = $lesson->course_id;
         $attachments = $lesson->attachments()->get();
 
-        DB::transaction(function () use ($lesson) {
-            $lesson->delete();
-        });
+        try {
+            DB::transaction(function () use ($lesson) {
+                $lesson->delete();
+            });
+        } catch (QueryException $e) {
+            // The composite FK from live_classes.lesson_id restricts this delete
+            // (Phase 12): a linked live class must be unlinked first so a session
+            // record can never vanish silently. SQLSTATE 23000 = integrity
+            // violation; anything else is a real failure and gets rethrown.
+            $sqlState = $e->errorInfo[0] ?? '';
+
+            if ($sqlState !== '23000') {
+                throw $e;
+            }
+
+            return redirect("/manage/lessons/{$lesson->id}/edit")
+                ->withErrors(['lesson' => __('live_classes.lesson_in_use')]);
+        }
 
         foreach ($attachments as $attachment) {
             Storage::disk($attachment->disk)->delete($attachment->path);
