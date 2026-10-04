@@ -97,8 +97,9 @@ git pull --ff-only
 git log --oneline -1
 ```
 
-**Confirm:** the line equals `origin/main`'s current HEAD. Last verified **2026-10-03**:
-the **Phase 12 (live classes)** commit — previously `c61a8bc fix(devices): deterministic
+**Confirm:** the line equals `origin/main`'s current HEAD. Last verified **2026-10-04**:
+`88b2688 Phase 13.1: fix missing admin_audit_logs migration` — previously the **Phase 12
+(live classes)** commit, and before that `c61a8bc fix(devices): deterministic
 tie-break in enforceLimit victim selection`. Do **not**
 expect this to equal the `phase-11` tag — that pins an older commit (see §1.2).
 
@@ -128,6 +129,42 @@ sync, 2026-10-04 — `duration_ms` varies by machine, the test/assertion counts 
 
 **Confirm:** all five report `passed` / `pass 29` / `errors: 0`, none report `failed`. Save
 the five outputs — §10 asks you to compare against a known-good baseline.
+
+### 1.1a — No pending migrations
+
+Tests always pass regardless of your local database state — `RefreshDatabase` rebuilds the
+schema from every migration on every run. Your local MySQL only advances when you run
+`php artisan migrate` by hand, so a phase can ship code (and a migration) that is never
+applied locally until something breaks.
+
+```bash
+php artisan migrate:status
+```
+
+**Confirm:** every row reads `Ran`. If any row reads `Pending`, the local database is
+behind:
+
+```bash
+php artisan migrate
+```
+
+Then re-run `php artisan migrate:status` and confirm every row reads `Ran`.
+
+**Why this matters on a real deploy:** the same check on the production server happens in
+§5.3 (`php artisan migrate --force`). This precondition catches the local case before it
+reaches the server.
+
+**How to avoid this recurring:** after every `git pull`, run `php artisan migrate`. Add a
+post-merge git hook if you prefer automation:
+
+```bash
+# .git/hooks/post-merge
+#!/bin/sh
+php artisan migrate --no-interaction
+```
+
+Mark it executable (`chmod +x .git/hooks/post-merge`). This is a local convenience — do
+**not** commit the hook; `.git/hooks/` is not tracked.
 
 Three caveats:
 
@@ -792,6 +829,11 @@ php artisan migrate --force
 
 **Expected:** `Nothing to migrate.`
 
+**If `php artisan migrate --force` outputs anything other than `DONE` for each migration,
+stop and do not proceed to §6.** Run `php artisan migrate:status` to see which migrations
+ran and which are pending. Do not run the app until you have either completed the
+migrations or restored from the pre-deploy dump in §11.1.
+
 ### 5.4 Optimize
 
 ```bash
@@ -1448,10 +1490,12 @@ deploy is just):
 
 ```bash
 cd <APP_DIR>
+# Before pulling, confirm no unapplied migrations locally (§1.1a)
 git pull --ff-only
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 php artisan migrate --force
+# If migrate prints anything other than DONE, stop and read §5.3
 php artisan optimize
 php artisan app:preflight --require-production
 ```
@@ -1537,6 +1581,9 @@ Nothing below has a usable default. Have all of it before step 1 starts.
    (`37036620403`) found a real ordering bug in `DeviceRegistrar::enforceLimit()` that every
    local run had passed, fixed in `c61a8bc`. **A gate failure in CI that passed locally is
    reported raw and fixed at the root, never worked around by weakening the gate.**
+
+Migration drift is now caught at §1.1a and §5.3. The Phase 13.1 incident (three migrations
+shipped but never applied locally) is why this check exists.
 
 *Removed from this list on 2026-10-02 (both now closed): the backup compressor defect — fixed
 in `c859e74`, full write-up preserved in §1.8 — and the uncommitted
