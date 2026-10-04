@@ -46,6 +46,14 @@ gate table is refreshed to **982 / 950 / 29**; the procedure below is unchanged,
 only new deploy dependency is that the feature still needs `JITSI_APP_ID`/`JITSI_APP_SECRET`
 set before it is switched on (§4.4, unchanged).
 
+**Phase 13.1 additions, 2026-10-04.** Post-shipment fix for Phase 13
+(`docs/specs/phase-13-admin-panel.md` §Post-shipment fix): the committed-but-never-applied
+`admin_audit_logs` migration (plus the two Phase 12.1 live-class migrations) was applied
+with `php artisan migrate`, and a schema canary test was added. This pass refreshed §1.1's
+gate-output table and the drift rows that quote it to **983 / 951 / 29**; the procedure
+below is unchanged. Standing lesson for deploys: a green suite cannot see an un-migrated
+target database — run `php artisan migrate --status` (step 5) rather than trusting tests.
+
 ---
 
 ## How to use this runbook
@@ -107,13 +115,13 @@ composer lint
 composer analyse
 ```
 
-**Expected raw output** (each command's last meaningful line, captured at the Phase 12.1
+**Expected raw output** (each command's last meaningful line, captured at the Phase 13.1
 sync, 2026-10-04 — `duration_ms` varies by machine, the test/assertion counts should not):
 
 | Command | Expected final line |
 |---|---|
-| `composer test` | `{"tool":"pest","result":"passed","tests":982,"passed":981,"assertions":3239,"duration_ms":173403,"skipped":1}` |
-| `composer test:mysql` | `{"tool":"pest","result":"passed","tests":950,"passed":950,"assertions":3199,"duration_ms":191478}` |
+| `composer test` | `{"tool":"pest","result":"passed","tests":983,"passed":982,"assertions":3240,"duration_ms":188510,"skipped":1}` |
+| `composer test:mysql` | `{"tool":"pest","result":"passed","tests":951,"passed":951,"assertions":3200,"duration_ms":156263}` |
 | `composer test:js` | `ℹ tests 29` … `ℹ pass 29` … `ℹ fail 0` |
 | `composer lint` | `{"tool":"pint","result":"passed"}` |
 | `composer analyse` | `{"tool":"phpstan","result":"passed","errors":0}` |
@@ -241,7 +249,7 @@ Nothing here is a stop — but read them so you don't act on the stale version.
 |---|---|---|---|---|
 | 1 | `docs/DEPLOY.md` §3, §5 | `SESSION_DOMAIN` is checked by `app:preflight` | **Now true.** PROJECT_BRIEF §7 flagged it as claimed-but-missing; Phase 11 added `checkSessionDomain()` (`app/Console/Commands/AppPreflightCommand.php:111`) plus tests | Nothing. This runbook repeats the claim legitimately, and `docs/DEPLOY.md` needed no change for it |
 | 2 | `README.md:123` | `Mini security pass before deploy \| Not run as a discrete pass` | **Corrected in `c21ca36`** — README now reads `Run (Phase 11) — docs/SECURITY_PASS.md`, which is true | Nothing. Kept here as history: the runbook's original observation was right when written |
-| 3 | `README.md` gate table | 762 / 730 tests | Was stale for a while (corrected in `c21ca36` to 824 / 792, `c61a8bc` → 825 / 793); **re-synced with Phase 12 — README read 907 / 875 / 29, same as §1.1; re-synced again with Phase 13 — both then read 964 / 932 / 29; **re-synced once more with Phase 12.1 — both now read 982 / 950 / 29** | Nothing — both tables agree again |
+| 3 | `README.md` gate table | 762 / 730 tests | Was stale for a while (corrected in `c21ca36` to 824 / 792, `c61a8bc` → 825 / 793); **re-synced with Phase 12 — README read 907 / 875 / 29, same as §1.1; re-synced again with Phase 13 — both then read 964 / 932 / 29; **re-synced once more with Phase 12.1 — both then read 982 / 950 / 29; re-synced with Phase 13.1 — both now read 983 / 951 / 29** | Nothing — both tables agree again |
 | 4 | `docs/DEPLOY.md` §2 | Node.js: "any current LTS" | Too loose — Vite 8.3.1's `engines` field is `^20.19.0 \|\| >=22.12.0`; an older LTS fails `npm ci` with `EBADENGINE` | Pin per §2.6; `docs/DEPLOY.md` §2 is updated by this runbook |
 | 5 | `docs/DEPLOY.md` §8 | "set `backup.notifications.mail.to` to a real address" | **Resolved in `c859e74`.** `config/backup.php` now reads `env('BACKUP_NOTIFY_EMAIL') ?: env('MAIL_FROM_ADDRESS', 'hello@example.com')`, and `.env.example` ships `BACKUP_NOTIFY_EMAIL=` (blank → falls back to `MAIL_FROM_ADDRESS`) | Set `BACKUP_NOTIFY_EMAIL=<an-address-you-read>` in the production `.env`, and give `MAIL_MAILER` a real transport — otherwise alerts still only reach `storage/logs/laravel.log`. Don't edit `config/backup.php` on the server (it would drift from git) |
 | 6 | `CENTRAL_DOMAINS` | implied to be flexible | Central routing is `Route::domain()` over exactly the listed hostnames. A `www.<DOMAIN>` DNS record would reach the app, fail tenant resolution and 404 (fail-closed, TENANCY.md) | Do **not** create a `www` record. Add `www.<DOMAIN>` to `CENTRAL_DOMAINS` only if you actually want it served |
@@ -272,7 +280,7 @@ binaries exist but are not on `PATH`.
 
 *Original description below, preserved verbatim for history. Everything after the "Cause"
 list describes the pre-`c859e74` state — including its "**all 822 tests are green**" figure,
-which was true on `e605cc5` and is now **982** (§1.1; the intermediates were 825 at
+which was true on `e605cc5` and is now **983** (§1.1; the intermediates were 825 at
 `c61a8bc`, 907 at the `phase-12` tag and 964 at the Phase 13 sync). The number is historical, not a live
 claim.*
 
@@ -1501,7 +1509,7 @@ Nothing below has a usable default. Have all of it before step 1 starts.
    It drifted once further — `c61a8bc` made it 825/793 (§1.7 item 3) — and was **re-synced
    with Phase 12: README and §1.1 both read 907 / 875 / 29**, then **re-synced with
    Phase 13: both read 964 / 932 / 29**, then **re-synced again with Phase 12.1: both read
-   982 / 950 / 29.** Recorded here rather than
+   982 / 950 / 29**, then **re-synced with Phase 13.1: both read 983 / 951 / 29.** Recorded here rather than
    deleted so the drift history stays visible.
 
 5. **Two `[UNVERIFIED]` items carried from `docs/SECURITY_PASS.md`:** the exact Cloudflare

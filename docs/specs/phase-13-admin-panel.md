@@ -187,6 +187,52 @@ real `.env` is never touched), `Http::fake` for Bunny, `Storage::fake('backups')
   custom domains → 14, queues → 15, catch-all → 16 (recorded in `PROJECT_BRIEF.md` §3).
   `TENANCY.md`'s stale "Phase 13: queues at scale" line was corrected to Phase 15.
 
+## Post-shipment fix (Phase 13.1, 2026-10-04)
+
+**Symptom.** The first real POST to `/admin/institutes` returned a 500:
+`SQLSTATE[42S02]: Base table or view not found: 1146 — Table 'coaching_saas.admin_audit_logs' doesn't exist`.
+All five quality gates were green, including 57 Phase 13 tests that write and read
+audit rows.
+
+**Diagnosis — case (a): the migration existed but was never applied to local MySQL.**
+
+- `php artisan migrate:status | grep -i audit` → `2026_10_04_000001_create_admin_audit_logs_table .. Pending`
+  (plus the two Phase 12.1 live-class migrations — three were pending in total).
+- The migration file was committed with the phase (`git log -- database/migrations/` →
+  `3c02c8f Phase 13: platform admin control panel`).
+- The stale-schema-dump theory (case (b)) was impossible: `database/schema/` has **never
+  existed** in this repo's history, `config/database.php` has no schema config, and no
+  file or doc references `schema:dump`.
+
+**Why the tests stayed green.** `RefreshDatabase` rebuilds each test database from the
+migrations on every run (SQLite `:memory:` and the `coaching_saas_test` MySQL database),
+so the table always existed in tests while the long-lived local `coaching_saas` database
+drifted behind the code. This class of drift — code ahead of an un-migrated dev/prod
+database — is invisible to the suite by construction.
+
+**Fix.** `php artisan migrate` — no code written, no migration written. It applied the
+audit table plus the two already-committed live-class migrations
+(`2026_10_09_000001_create_live_classes_table`, `2026_10_09_000002_create_live_class_attendance_table`).
+Schema dump regeneration: not applicable (none exists, see above).
+
+**Verification (browser, end to end).** Logged in at `/admin/login`, created
+"Phase 13.1 Test Institute" (`p131fix`) via `/admin/institutes/create`:
+
+- tenant created with subdomain domain `p131fix.coaching.test` (`tenant_domains.type = subdomain`);
+- owner `ownerp131@coaching.test` created with `must_change_password = 1`;
+- the redirect **did** show the temporary password (`wd38-jasb`, "shown once") — no second bug;
+- an `admin_audit_logs` row with `action = create_tenant`, `target_type = tenant`,
+  `target_id = 3`, `admin_id = 1` was written;
+- `/admin/audit` lists the row ("create tenant · tenant #3 · 127.0.0.1").
+
+**Tests added.** `tests/Feature/Platform/Admin/AuditLogTest.php` gained the canary
+`the admin_audit_logs table exists after migration` (`Schema::hasTable('admin_audit_logs')`).
+The required second test — `institute creation is recorded against the new tenant` —
+already existed and is a real POST + `assertDatabaseHas`, not a mock. Both were proven
+against a fresh schema build with the migration file temporarily disabled: 2 fail
+(`no such table: admin_audit_logs`), and 2 pass again once it is restored. Suite totals
+moved 982 → **983** (SQLite) and 950 → **951** (MySQL); JS unchanged at 29.
+
 ## Assumptions
 
 - A platform admin who can already edit `.env`-adjacent settings needs no further

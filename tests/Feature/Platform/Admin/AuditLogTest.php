@@ -4,12 +4,21 @@ use App\Models\AdminAuditLog;
 use App\Models\PlatformAdmin;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Phase 13 feature F — the audit trail itself: every privileged action writes
  * a row (login, create_tenant, reset_password + the panel's own ops), the page
  * renders them, and ?action= filters. Deleted admins still render (no FK).
  */
+
+// Phase 13.1 — canary for the shipped bug: the migration existed but a fresh
+// schema build that skipped it would surface here, before anyone hits
+// SQLSTATE[42S02] on /admin/institutes in a real environment.
+test('the admin_audit_logs table exists after migration', function () {
+    expect(Schema::hasTable('admin_audit_logs'))->toBeTrue();
+});
+
 test('a platform admin login is recorded', function () {
     $admin = PlatformAdmin::factory()->create();
 
