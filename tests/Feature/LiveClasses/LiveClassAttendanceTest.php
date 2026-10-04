@@ -6,6 +6,10 @@ use Tests\Support\LiveClassFixtures;
 // === Join opens a row; heartbeats move it ===
 
 test('the first heartbeat advances last_seen_at and credits the elapsed seconds', function () {
+    // Pinned clock: joined_at must be written at the same instant the later
+    // travel() offsets from, or real join-request latency leaks into the credit.
+    $this->freezeTime();
+
     $f = LiveClassFixtures::setup();
     $class = LiveClassFixtures::liveClass($f['course'], $f['owner'], [
         'starts_at' => now()->subMinutes(5),
@@ -30,6 +34,10 @@ test('the first heartbeat advances last_seen_at and credits the elapsed seconds'
 });
 
 test('a single heartbeat can credit at most 60 seconds', function () {
+    // Pinned clock — see the comment in the test above: the exact 90 requires
+    // joined_at and both travel() steps to share one frozen origin.
+    $this->freezeTime();
+
     $f = LiveClassFixtures::setup();
     $class = LiveClassFixtures::liveClass($f['course'], $f['owner'], [
         'starts_at' => now()->subMinutes(5),
@@ -74,6 +82,10 @@ test('heartbeat is rate limited to 2 per minute per user per class', function ()
 });
 
 test('client-supplied timestamps and durations in the heartbeat body are ignored', function () {
+    // Pinned clock — this is the assertion that failed CI (11 vs 10) when the
+    // real time between the join's joined_at write and travel(10) crossed a second.
+    $this->freezeTime();
+
     $f = LiveClassFixtures::setup();
     $class = LiveClassFixtures::liveClass($f['course'], $f['owner'], [
         'starts_at' => now()->subMinutes(5),
@@ -169,6 +181,10 @@ test('an instant rejoin resumes the open row, but rejoining after a gap opens a 
 });
 
 test('live-classes:close-stale-attendance closes rows whose heartbeats went quiet five minutes ago', function () {
+    // Pinned clock — the frozen 30 depends on joined_at and travel(30) sharing
+    // one origin; without it, join latency crept into duration_seconds.
+    $this->freezeTime();
+
     $f = LiveClassFixtures::setup();
     $class = LiveClassFixtures::liveClass($f['course'], $f['owner'], [
         'starts_at' => now()->subMinutes(5),
@@ -273,4 +289,46 @@ test('heartbeat is refused when the class is not open for business', function ()
         ->assertForbidden();
 
     expect(inTenant($f['tenant'], fn () => LiveClassAttendance::count()))->toBe(1);
+});
+
+// === Canary ===
+
+test('heartbeat duration is computed from server timestamps, not wall-clock latency', function () {
+    // Companion to the tests above: with the clock pinned before the join,
+    // two back-to-back heartbeats must credit exactly 10 + 10. A test that
+    // let real elapsed time leak in could never land both 10 and 20 exactly,
+    // so this pins the deterministic pattern for the whole class.
+    $this->freezeTime();
+
+    $f = LiveClassFixtures::setup();
+    $class = LiveClassFixtures::liveClass($f['course'], $f['owner'], [
+        'starts_at' => now()->subMinutes(5),
+        'ends_at' => now()->addHour(),
+        'status' => 'live',
+    ]);
+
+    $this->actingAs($f['student'], 'tenant')
+        ->get("http://{$f['domain']}/live-classes/{$class->id}/join")
+        ->assertRedirect();
+
+    // Cycle 1: ten pinned seconds after the join, the credit is exactly 10.
+    $this->travel(10)->seconds();
+    $this->actingAs($f['student'], 'tenant')
+        ->post("http://{$f['domain']}/live-classes/{$class->id}/heartbeat")
+        ->assertNoContent();
+
+    $row = inTenant($f['tenant'], fn () => LiveClassAttendance::firstOrFail());
+    expect((int) $row->duration_seconds)->toBe(10);
+
+    // Cycle 2, immediately after: another exact 10 (total 20). Two exact
+    // credits in one run prove the server derived them from its own pinned
+    // timestamps — not from wall-clock latency between the requests.
+    $this->travel(10)->seconds();
+    $this->actingAs($f['student'], 'tenant')
+        ->post("http://{$f['domain']}/live-classes/{$class->id}/heartbeat")
+        ->assertNoContent();
+
+    $row->refresh();
+    expect((int) $row->duration_seconds)->toBe(20)
+        ->and($row->last_seen_at->format('Y-m-d H:i:s'))->toBe(now()->format('Y-m-d H:i:s'));
 });
