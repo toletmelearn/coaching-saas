@@ -83,8 +83,8 @@ gate:
 
 | Gate | Command | Result (as verified) |
 |------|---------|----------------------|
-| Unit + feature tests (SQLite) | `composer test` | **964 tests, 963 passed, 1 skipped** (the skip is the documented MySQL-only preflight test) |
-| Tenancy/auth/etc. on real MySQL | `composer test:mysql` | **932 / 932 passed** |
+| Unit + feature tests (SQLite) | `composer test` | **982 tests, 981 passed, 1 skipped** (the skip is the documented MySQL-only preflight test) |
+| Tenancy/auth/etc. on real MySQL | `composer test:mysql` | **950 / 950 passed** |
 | JS unit tests (Node, no browser) | `composer test:js` | **29 / 29 passed** |
 | Formatting | `composer lint` | **clean** (Pint reports no changes needed) |
 | Static analysis | `composer analyse` | **0 errors** at Larastan level 5 |
@@ -111,6 +111,7 @@ gate:
 | 9 | [phase-9-pilot.md](docs/specs/phase-9-pilot.md) | Bulk CSV student import (preview → confirm), 15-minute one-time credentials sheet with WhatsApp links, CSV formula-injection guard, login help line, getting-started checklist, Help page, mobile People cards |
 | 10 | [phase-10-payments.md](docs/specs/phase-10-payments.md) | Manual UPI payments: `payments` table with composite tenant FKs, course-fee pricing, screenshot upload (re-encoded, private disk), owner approve/reject queue, idempotent approval, per-viewer signed screenshot URLs |
 | 12 | [phase-12-live-classes.md](docs/specs/phase-12-live-classes.md) | Live classes via Jitsi (JaaS): enrolment-gated server-minted join (room name + JWT minted per request), heartbeat attendance with server-derived time, status scheduler, teacher attendance report + formula-guarded CSV — whole feature behind `LIVE_CLASSES_ENABLED` (off by default), see [LIVE_CLASSES.md](LIVE_CLASSES.md) |
+| 12.1 | *(none — a follow-up to [phase-12-live-classes.md](docs/specs/phase-12-live-classes.md))* | Live classes **discoverability**: header "Live classes" link, tenant-wide `/manage/live-classes` (Course / Title / Starts / Status / Attendance with upcoming·past·all filters, one query budget regardless of row count), a live/next/empty card on both dashboards, three Help sections, PILOT_CHECKLIST row 26 — no new schema, no route changes to Phase 12's course-scoped screens |
 | 13 | [phase-13-admin-panel.md](docs/specs/phase-13-admin-panel.md) | Platform admin control panel: health checklist with `APP_DEBUG`-gated one-click fix, service settings (encrypted secrets + Test Connection), backup run/download/delete, log viewer with search, audit log with filters, allowlisted `.env` editor + cache buttons, signed single-use login-as-owner, per-tenant Bunny usage |
 
 Also shipped alongside: **production readiness** (Phase 4.6A — no trust of forwarded host,
@@ -162,7 +163,7 @@ Cloudflare).
    `docs/specs/`. Non-obvious decisions carry their reasoning *next to the code* (see the
    middleware-priority comment in `bootstrap/app.php`). There are **zero
    `TODO`/`FIXME`/`HACK` markers** in the codebase.
-3. **Test-to-code ratio is ~2:1** (20,374 test lines vs 10,746 app lines), with security
+3. **Test-to-code ratio is ~2:1** (20,843 test lines vs 10,835 app lines), with security
    behaviour tested explicitly — cross-tenant login rejection, session replay, token-key
    cross-tenant misuse, secrets never in HTML or logs, CSV formula injection, rate limits.
 4. **All five quality gates are green** — tests on both SQLite *and* real MySQL, JS tests,
@@ -215,7 +216,7 @@ Cloudflare).
      table, test lines, routes, `lang/en` and `tests/Feature` file counts, including the
      `composer test:mysql` line that once described only `tests/Feature/Tenancy` (20
      suites / 793 tests at that commit; **21 suites / 875 tests** after Phase 12, **932
-     tests** after Phase 13, and the
+     tests** after Phase 13, **950 tests** after Phase 12.1, and the
      counts above re-synced again with each).
 5. **`.env` has drifted from `.env.example`.** The local `.env` carries
    `SESSION_LIFETIME=120` while `.env.example` specifies `43200` (the Phase 8 30-day decision
@@ -259,7 +260,7 @@ app/
   Console/Commands/ app:preflight, devices:prune, local:hosts, live-classes:*, platform-admin:create, tenant:create, videos:sync
   Database/         TenantBuilder (tenant-safe query builder)
   Enums/            13 backed enums (roles, statuses, reasons)
-  Http/             44 controllers (+ base) across Admin/, Auth/, Manage/ and top level, 9 middleware
+  Http/             45 controllers (+ base) across Admin/, Auth/, Manage/ and top level, 9 middleware
   Models/           18 models; tenant-owned ones use BelongsToTenant
   Policies/         Course, Enrolment, LiveClass, Payment, Tenant, User
   Scopes/           TenantScope (throws when no context)
@@ -273,8 +274,8 @@ docs/               DEPLOY, DEPLOY_RUNBOOK, PILOT_CHECKLIST, SECURITY_PASS, spec
 lang/en/            17 translation files
 public/             Front controller, PWA icons
 resources/          css, fonts, js (sw, pwa, lesson-progress, progress-tracker, video-upload), Blade views
-routes/             web.php (231 routes), console.php (scheduler)
-tests/              Pest: Unit/ (14 files), Feature/ (133 files), js/ (Node), Fixtures/
+routes/             web.php (232 routes), console.php (scheduler)
+tests/              Pest: Unit/ (14 files), Feature/ (135 files), js/ (Node), Fixtures/
 ```
 
 ---
@@ -526,8 +527,8 @@ into `C:\Windows\System32\drivers\etc\hosts` instead of typing them by hand.
 |--------------------------|-------------------------------------------------------------------|
 | `composer setup`         | One-shot install: `composer install`, copy `.env`, `key:generate`, `migrate`, `npm install`, `npm run build`. |
 | `composer dev`           | Run the Laravel dev stack (`php artisan dev`).                    |
-| `composer test`          | Run the full Pest suite (964 tests) against an in-memory SQLite database. |
-| `composer test:mysql`    | Run the MySQL variant of the suite — 21 suites / 932 tests: every `tests/Feature/` directory plus the schema- and security-relevant `tests/Unit/` directories — against the real `coaching_saas_test` database (set `DB_TEST_*` in `.env`). Excludes only `tests/Feature/ExampleTest.php`, `tests/Feature/ErrorPagesTest.php` and four `tests/Unit/` files that need no database. |
+| `composer test`          | Run the full Pest suite (982 tests) against an in-memory SQLite database. |
+| `composer test:mysql`    | Run the MySQL variant of the suite — 21 suites / 950 tests: every `tests/Feature/` directory plus the schema- and security-relevant `tests/Unit/` directories — against the real `coaching_saas_test` database (set `DB_TEST_*` in `.env`). Excludes only `tests/Feature/ExampleTest.php`, `tests/Feature/ErrorPagesTest.php` and four `tests/Unit/` files that need no database. |
 | `composer test:js`       | Run the Node test-runner suite for `resources/js/{sw,progress-tracker}.js` (no browser needed). |
 | `composer lint`          | Format code with Laravel Pint (`vendor/bin/pint --test` to check without writing). |
 | `composer analyse`       | Static analysis with Larastan (PHPStan) at level 5.                |
