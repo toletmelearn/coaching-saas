@@ -33,6 +33,7 @@ use App\Http\Controllers\Manage\LessonController as ManageLessonController;
 use App\Http\Controllers\Manage\LessonVideoController as ManageLessonVideoController;
 use App\Http\Controllers\Manage\LiveClassAttendanceController as ManageLiveClassAttendanceController;
 use App\Http\Controllers\Manage\LiveClassController as ManageLiveClassController;
+use App\Http\Controllers\Manage\LiveClassOverviewController as ManageLiveClassOverviewController;
 use App\Http\Controllers\Manage\PaymentController as ManagePaymentController;
 use App\Http\Controllers\Manage\SettingsController as ManageSettingsController;
 use App\Http\Controllers\Manage\UserDeviceController as ManageUserDeviceController;
@@ -313,6 +314,14 @@ Route::middleware('require.tenant')->group(function () {
                     // via the course relation, so a class id from another
                     // course (or tenant) is a 404, never a 403, and the
                     // feature flag 404s the whole group when it is off.
+
+                    // Phase 12.1 — the tenant-wide list. Until now the only way to
+                    // reach these course-scoped screens was to type the URL: this is
+                    // the header-visible page that gathers every class in one table.
+                    // Same flag, same staff/owner bar (canManageCourses), no course
+                    // in scope: it only ever reads.
+                    Route::get('live-classes', [ManageLiveClassOverviewController::class, 'index']);
+
                     Route::prefix('courses/{course}')->scopeBindings()->group(function () {
                         Route::get('live-classes', [ManageLiveClassController::class, 'index']);
                         Route::get('live-classes/create', [ManageLiveClassController::class, 'create']);

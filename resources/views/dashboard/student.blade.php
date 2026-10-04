@@ -3,6 +3,17 @@
 @section('content')
     <x-page-header :kicker="__('users.dashboard.welcome')" :title="__('nav.my_courses')" />
 
+    {{-- Live classes (Phase 12.1): the read-only summary card. The Phase 12 list
+         below stays as the full schedule (every live and starting-soon class with
+         its countdown); this card is what a student sees when nothing is running —
+         "No upcoming live classes" instead of a blank gap — and it always leads
+         with the single class that matters right now. --}}
+    @include('dashboard._live-classes-card', [
+        'liveNowClasses' => $liveNowClasses,
+        'startingSoonClasses' => $startingSoonClasses,
+        'manage' => false,
+    ])
+
     @if ($liveNowClasses->isNotEmpty() || $startingSoonClasses->isNotEmpty())
         <div class="ui-section-title">
             <h2 class="ui-h2">{{ __('live_classes.section_title') }}</h2>

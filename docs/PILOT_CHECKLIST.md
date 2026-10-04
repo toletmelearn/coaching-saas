@@ -7,7 +7,9 @@ hard to read, in the "Problem?" column.
 Rows 1–17 are the original 360px UI walkthrough. Rows 18–25 were added for the first
 production deploy (docs/DEPLOY_RUNBOOK.md §10) and need a **real phone on real HTTPS** —
 they will not pass locally over `http://`. Same "Problem?" column, same rule: work through
-them in order and write down anything that doesn't behave.
+them in order and write down anything that doesn't behave. Row 26 was added with Phase 12.1
+(live classes) and needs `LIVE_CLASSES_ENABLED=true` plus both Jitsi keys to complete —
+everything up to the final Join can be walked through locally.
 
 | # | Screen | Steps | What to check | Problem? |
 |---|--------|-------|----------------|----------|
@@ -36,6 +38,7 @@ them in order and write down anything that doesn't behave.
 | 23 | Payments (UPI) | As owner, set the institute UPI id in Settings; as a student, open the Pay page for a course | UPI id shown, the `upi://` link/QR is tappable; after uploading a payment screenshot the owner can see it and approve or reject it | |
 | 24 | Device limit | As the same student, log in on a second phone while the first is still logged in | The first device is evicted with a clear message (Phase 8), not a silent session break | |
 | 25 | Student password reset | As owner, open People → a student → "Reset password" | A temporary password is shown **once** and can be copied; that student's other devices are signed out on their next request (SECURITY.md "Device limits"), and the student logs back in with the temporary password and is forced to change it | |
+| 26 | Live classes | As owner, tap "Live classes" in the header, then the course, then "Schedule a live class" for a time a minute or two ahead; as an enrolled student, watch the dashboard card | The list shows Course / Title / Starts / Status / Attendance with working upcoming/past/all filters and tappable Edit / Join / Attendance buttons; the card flips from "Next: … at …" to "Live now: …" with a Join link; the class page and its Join button fit the screen with no sideways scroll | |
 
 **General checks on every screen above:** no horizontal scrollbar appears; every button is
 at least comfortably tappable with a thumb; text is legible without pinch-zoom.

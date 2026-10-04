@@ -17,6 +17,11 @@ return [
 
     'live_now' => 'Live now',
     'join' => 'Join live class',
+
+    // Header link to the cross-course list (Phase 12.1). Rendered only while
+    // coaching.live_classes_enabled is true, so the header can never advertise
+    // a route that answers 404.
+    'nav_label' => 'Live classes',
     'starts_in' => 'Starts in :minutes min',
     'ended' => 'This class has ended',
     'upcoming' => 'Upcoming',
@@ -100,5 +105,58 @@ return [
         'filter_all' => 'Show everyone',
         'no_attendance' => 'Nobody joined this class yet.',
         'enrolled_count' => ':count enrolled',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard card (Phase 12.1)
+    |--------------------------------------------------------------------------
+    |
+    | One three-state summary shared by both dashboards: live now, next inside
+    | coaching.live_class_upcoming_window_hours, or nothing scheduled. The
+    | owner/staff copy also points at the cross-course list; the student copy
+    | is read-only and never links into /manage.
+    |
+    */
+
+    'card' => [
+        'live_now' => 'Live now: :title',
+        'next' => 'Next: :title at :time',
+        'next_student' => 'Next live class: :title at :time',
+        'empty_owner' => 'No live classes scheduled — schedule one from Courses.',
+        'empty_student' => 'No upcoming live classes.',
+        'view_all' => 'View all live classes',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cross-course list /manage/live-classes (Phase 12.1)
+    |--------------------------------------------------------------------------
+    |
+    | The tenant-wide table an owner or staff member opens from the header:
+    | every live class of every course in one place, filterable to upcoming,
+    | past or all. Filters are read from ?filter= and anything unrecognised
+    | means "all" — never an empty page pretending to be one.
+    |
+    */
+
+    'list' => [
+        'heading' => 'Live classes',
+        'subtitle' => 'Every live class across your courses.',
+        'columns' => [
+            'course' => 'Course',
+            'title' => 'Title',
+            'starts' => 'Starts',
+            'status' => 'Status',
+            'attendance' => 'Attendance',
+            'actions' => 'Actions',
+        ],
+        'filters' => [
+            'upcoming' => 'Upcoming',
+            'past' => 'Past',
+            'all' => 'All',
+        ],
+        'empty' => 'No live classes yet. Schedule one from a course\'s live-classes page.',
+        'empty_filter' => 'No classes match this filter.',
     ],
 ];

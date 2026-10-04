@@ -31,4 +31,22 @@ return [
         'cannot_login' => 'Reset their password from the People page. If they say they were signed out on a different phone, that is the one-device-per-student limit working as intended.',
     ],
 
+    // Phase 12.1 — live classes, kept in its own group so the live-class copy
+    // sits together instead of being scattered through the two arrays above.
+    // The help page merges this group in after the sections above, so the
+    // original ten keep their order and their keys.
+    'live_classes' => [
+        'sections' => [
+            'schedule' => 'How to schedule a live class',
+            'join' => 'How students join',
+            'attendance' => 'How to see who attended',
+        ],
+
+        'body' => [
+            'schedule' => 'Open the "Live classes" link in the header, tap the course, then "Schedule a live class". Give it a title and a start time and save — it appears for every student enrolled in that course.',
+            'join' => 'Students see the class on their dashboard and on the course page. The room opens 15 minutes before the start time and stays open while it runs; they tap "Join live class" and the class opens in a new tab.',
+            'attendance' => 'From the "Live classes" link in the header, find the class and tap "Attendance". You get every enrolled student — who came and how many minutes they stayed, absentees included — with an optional minutes filter and a CSV export.',
+        ],
+    ],
+
 ];

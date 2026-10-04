@@ -69,3 +69,30 @@ test('every Help section renders through translation keys, not hardcoded strings
         $response->assertSee(__($key));
     }
 });
+
+// === Phase 12.1 — live classes ===
+
+test('the three live-class Help sections resolve from the live_classes group in lang/en/help.php', function () {
+    foreach (['schedule', 'join', 'attendance'] as $key) {
+        $section = __('help.live_classes.sections.'.$key);
+        $body = __('help.live_classes.body.'.$key);
+
+        // A missing key would return itself, which is exactly the failure this
+        // guards against: a section heading rendering as "help.live_classes...".
+        expect($section)->not->toBe('help.live_classes.sections.'.$key)
+            ->and($body)->not->toBe('help.live_classes.body.'.$key);
+    }
+});
+
+test('the Help page renders the three live-class sections with their translated copy', function () {
+    [$tenant, $domain] = helpFixture();
+    $owner = inTenant($tenant, fn () => User::factory()->owner()->create());
+
+    $response = $this->actingAs($owner, 'tenant')->get("http://{$domain}/manage/help");
+    $response->assertOk();
+
+    foreach (['schedule', 'join', 'attendance'] as $key) {
+        $response->assertSee(__('help.live_classes.sections.'.$key))
+            ->assertSee(__('help.live_classes.body.'.$key));
+    }
+});

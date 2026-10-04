@@ -77,6 +77,14 @@
                         <a href="{{ url('/users') }}" class="ui-nav-link"{!! $isCurrent('/users') !!}>
                             <x-icon name="users" :size="17" />{{ __('nav.people') }}
                         </a>
+                        @if ((bool) config('coaching.live_classes_enabled'))
+                            {{-- Phase 12.1: the tenant-wide list, linked only while
+                                 the feature is on so the header can never point at
+                                 a route that answers 404. --}}
+                            <a href="{{ url('/manage/live-classes') }}" class="ui-nav-link"{!! $isCurrent('/manage/live-classes') !!}>
+                                <x-icon name="play" :size="17" />{{ __('live_classes.nav_label') }}
+                            </a>
+                        @endif
                     @else
                         <a href="{{ url('/dashboard') }}" class="ui-nav-link"{!! $isCurrent('/dashboard') !!}>
                             <x-icon name="home" :size="17" />{{ __('nav.my_courses') }}

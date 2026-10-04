@@ -14,6 +14,7 @@ use App\Support\GettingStartedChecklist;
 use App\Support\LessonAccess;
 use App\Support\TenantContext;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -35,6 +36,11 @@ class DashboardController extends Controller
                     && ! GettingStartedChecklist::allDone($checklist);
             }
 
+            // Live classes (Phase 12.1): the same two queries the student branch
+            // runs below, but tenant-wide — an owner or staff member manages every
+            // course in this tenant, so no course filter is needed.
+            $live = $this->liveClassSummary();
+
             return view('dashboard.staff', [
                 'user' => $user,
                 'checklist' => $checklist,
@@ -42,6 +48,8 @@ class DashboardController extends Controller
                 // How many payments are waiting on a decision (Phase 10). Zero hides
                 // the badge entirely rather than showing "0".
                 'pendingPayments' => Payment::where('status', PaymentStatus::Pending->value)->count(),
+                'liveNowClasses' => $live['live'],
+                'startingSoonClasses' => $live['soon'],
             ]);
         }
 
@@ -79,38 +87,63 @@ class DashboardController extends Controller
 
         // Live classes (Phase 12): what this student's enrolled courses are
         // running right now, and what starts inside the announcement window.
-        // Feature-flagged: with LIVE_CLASSES_ENABLED=false this costs zero
-        // queries and the dashboard renders exactly as it did before Phase 12.
-        $liveNowClasses = collect();
-        $startingSoonClasses = collect();
-        $enrolledCourseIds = $active->pluck('course_id');
-
-        if ((bool) config('coaching.live_classes_enabled') && $enrolledCourseIds->isNotEmpty()) {
-            $liveNowClasses = LiveClass::with('course')
-                ->whereIn('course_id', $enrolledCourseIds)
-                ->where('status', LiveClassStatus::Live->value)
-                ->orderBy('starts_at')
-                ->get();
-
-            $startingSoonClasses = LiveClass::with('course')
-                ->whereIn('course_id', $enrolledCourseIds)
-                ->where('status', LiveClassStatus::Scheduled->value)
-                ->whereBetween('starts_at', [
-                    now(),
-                    now()->addHours((int) config('coaching.live_class_upcoming_window_hours', 24)),
-                ])
-                ->orderBy('starts_at')
-                ->get();
-        }
+        // Scoped to their own enrolments — a course they are not enrolled in
+        // never appears on their dashboard.
+        $live = $this->liveClassSummary($active->pluck('course_id'));
 
         return view('dashboard.student', [
             'user' => $user,
             'active' => $active,
             'ended' => $ended,
             'courseProgress' => $courseProgress,
-            'liveNowClasses' => $liveNowClasses,
-            'startingSoonClasses' => $startingSoonClasses,
+            'liveNowClasses' => $live['live'],
+            'startingSoonClasses' => $live['soon'],
         ]);
+    }
+
+    /**
+     * The two queries behind the dashboard's Live classes card (Phase 12.1):
+     * what is running right now, and what starts inside
+     * coaching.live_class_upcoming_window_hours (24h by default) — the same
+     * pair for both roles, differing only in scope.
+     *
+     * null $courseIds = every course in the tenant (owner/staff manage them
+     * all); otherwise only those courses (a student sees their enrolments).
+     * A feature that is switched off, or a student with no enrolments, costs
+     * zero queries — the card simply renders nothing.
+     *
+     * @param  Collection<int, int>|null  $courseIds
+     * @return array{live: Collection<int, LiveClass>, soon: Collection<int, LiveClass>}
+     */
+    private function liveClassSummary(?Collection $courseIds = null): array
+    {
+        if (! (bool) config('coaching.live_classes_enabled')) {
+            return ['live' => collect(), 'soon' => collect()];
+        }
+
+        if ($courseIds !== null && $courseIds->isEmpty()) {
+            return ['live' => collect(), 'soon' => collect()];
+        }
+
+        $live = LiveClass::query()
+            ->with('course')
+            ->where('status', LiveClassStatus::Live->value)
+            ->when($courseIds !== null, fn ($query) => $query->whereIn('course_id', $courseIds))
+            ->orderBy('starts_at')
+            ->get();
+
+        $soon = LiveClass::query()
+            ->with('course')
+            ->where('status', LiveClassStatus::Scheduled->value)
+            ->when($courseIds !== null, fn ($query) => $query->whereIn('course_id', $courseIds))
+            ->whereBetween('starts_at', [
+                now(),
+                now()->addHours((int) config('coaching.live_class_upcoming_window_hours', 24)),
+            ])
+            ->orderBy('starts_at')
+            ->get();
+
+        return ['live' => $live, 'soon' => $soon];
     }
 
     public function dismissGettingStarted(TenantContext $tenantContext): RedirectResponse

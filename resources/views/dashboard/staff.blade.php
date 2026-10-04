@@ -30,6 +30,14 @@
         </div>
     @endif
 
+    {{-- Live classes (Phase 12.1): the same three-state summary the student
+         dashboard shows, but tenant-wide, with the link into /manage/live-classes. --}}
+    @include('dashboard._live-classes-card', [
+        'liveNowClasses' => $liveNowClasses,
+        'startingSoonClasses' => $startingSoonClasses,
+        'manage' => true,
+    ])
+
     <div class="ui-fade" style="display: flex; flex-wrap: wrap; gap: 0.625rem;">
         <x-link href="{{ url('/manage/courses') }}" variant="primary">
             <x-icon name="book" :size="17" />
