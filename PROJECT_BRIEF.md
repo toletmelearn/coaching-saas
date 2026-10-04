@@ -35,7 +35,7 @@ complete too. **Not live:** nothing is deployed and no second tenant exists.
 |---|---|---|---|
 | **Phase 0** — foundation, tooling, docs | Done | git `0bc6424 Phase 0: foundation`; no spec file | `ROADMAP.md:14` |
 | **Phase 1** — central tables + hostname resolution | Done | `app/Http/Middleware/ResolveTenant.php`; `tests/Feature/Tenancy/ResolveTenantTest.php` (7 tests incl. suffix spoof) | `docs/specs/phase-1-tenant-resolution.md:3` "✅ Complete" |
-| **Phase 2** — `BelongsToTenant` isolation framework | Done | `app/Traits/BelongsToTenant.php`, `app/Scopes/TenantScope.php`, `app/Database/TenantBuilder.php`, `app/Macros/BlueprintTenancyMacro.php`; `tests/Feature/Tenancy/{BelongsToTenantTest,TenantScopeTest,TenantBuilderTest}.php` | **Contradicts docs** — `docs/specs/phase-2-belongs-to-tenant.md:3` still reads `**Status:** In Progress` although git `076cd78` + 5 follow-up fix commits shipped it |
+| **Phase 2** — `BelongsToTenant` isolation framework | Done | `app/Traits/BelongsToTenant.php`, `app/Scopes/TenantScope.php`, `app/Database/TenantBuilder.php`, `app/Macros/BlueprintTenancyMacro.php`; `tests/Feature/Tenancy/{BelongsToTenantTest,TenantScopeTest,TenantBuilderTest}.php` | Was contradicted — **RESOLVED in `693d47f`**: `docs/specs/phase-2-belongs-to-tenant.md:3` used to read `**Status:** In Progress` while git `076cd78` + 5 follow-up fix commits had shipped the phase; the spec now reads `**Status:** Complete`. Recorded in §7. |
 | **Phase 3** — tenant users and auth | Done | `app/Auth/TenantUserProvider.php`, `config/auth.php` (guards `tenant`/`platform_admin`); `tests/Feature/Auth/*` (7 files, 62 tests) | `docs/specs/phase-3-tenant-auth.md:3` "Complete (includes Phase 3.1)" |
 | **Phase P1** — platform home + `/admin` | Done | `routes/web.php:39-77`; `tests/Feature/Platform/*` (6 files) | `docs/specs/phase-p1-platform.md:3` "Complete (including P1.1)" |
 | **Phase 4** — courses, lessons, enrolment, attachments | Done | `app/Http/Controllers/Manage/*`, `app/Support/LessonAccess.php`; `tests/Feature/Courses/*` (12 files, 69 tests) | `docs/specs/phase-4-courses.md:3` "Complete" |
@@ -81,7 +81,7 @@ extended again when Phase 12 took its number (C11 below), and once more when Pha
 |---|---|---|---|---|---|
 | 0 | Foundation, tooling, docs | A | Done | *(none)* | Phase 0 — **same** |
 | 1 | Central tables + hostname resolution | A | Done | `docs/specs/phase-1-tenant-resolution.md` | Phase 1 — **same** |
-| 2 | `BelongsToTenant` isolation framework | A | Done | `docs/specs/phase-2-belongs-to-tenant.md` | Phase 2 — **same** (spec status line stale) |
+| 2 | `BelongsToTenant` isolation framework | A | Done | `docs/specs/phase-2-belongs-to-tenant.md` | Phase 2 — **same** |
 | 3 | Tenant users and authentication | A | Done | `docs/specs/phase-3-tenant-auth.md` (+ `docs/specs/phase-3-brief.md`) | Phase 3 — **same** |
 | **P1** | Platform home + `/admin` | A | Done | `docs/specs/phase-p1-platform.md` | **absent — ROADMAP has no P1** |
 | 4 | Courses, lessons, enrolment, attachments | B | Done | `docs/specs/phase-4-courses.md` | Phase 4 — same, **but ROADMAP also splits out "Phase 7: PDFs"**, which actually shipped inside Phase 4 |
