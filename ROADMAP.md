@@ -73,9 +73,14 @@ not every feature in this document.
 - Automated payment gateway integration (per-tenant accounts, idempotent webhooks — see
   [PAYMENTS.md](PAYMENTS.md)) — **no phase number**: the number it used to claim collides
   with Phase 8 (One Device per Student).
-- Phase 14: custom domains + TLS via Caddy on-demand (see [SECURITY.md](SECURITY.md)) —
-  *renumbered from 12 when Live Classes took that number, and to 14 when the admin
-  control panel took 13 (drift C12 in `PROJECT_BRIEF.md` §3).*
+- Phase 14: **Custom Domains + TLS via Caddy on-demand** — a tenant brings their own
+  domain, proves ownership with DNS TXT + routing records, and Caddy issues certificates
+  only through a database-gated ask endpoint (see [SECURITY.md](SECURITY.md) "Custom
+  domains and TLS" and [CUSTOM_DOMAINS.md](CUSTOM_DOMAINS.md)) — **planned: spec written
+  2026-10-04, not implemented** (spec:
+  [phase-14-custom-domains.md](docs/specs/phase-14-custom-domains.md)). *Renumbered from
+  12 when Live Classes took that number, and to 14 when the admin control panel took 13
+  (drift C12 in `PROJECT_BRIEF.md` §3).*
 - Phase 15: queues at scale, audit logging.
 - Phase 16: catch-all — whatever was deferred from Stage B.
 - DPDP consent flow: guardian fields, `consents` table, export/delete tooling (see
