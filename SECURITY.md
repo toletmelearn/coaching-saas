@@ -406,6 +406,63 @@ recordings are traceable to an individual viewer rather than only proving *a* le
   mere existence isn't visible, and `app:preflight` fails production if the flag is on
   without both JaaS keys.
 
+## Platform admin control panel (Phase 13)
+
+- **Every control-panel route sits behind `PlatformAdminAuth:platform_admin`**
+  (`app/Http/Middleware/PlatformAdminAuth.php`) — a subclass of Laravel's `Authenticate`
+  that checks tenant identity *first*. An authenticated tenant session on any Phase-13
+  route gets a **flat 403**, never the framework's redirect to `/admin/login`, and guests
+  keep the redirect they have always had (both pinned in `AdminRouteGuardTest` /
+  `PlatformAdminGuardTest`). The tenant check lives *inside* the auth middleware rather
+  than in a separate middleware listed before `auth` because the router sorts resolved
+  middleware against the priority list (`Illuminate\Foundation\Configuration\Middleware::$defaultPriority`,
+  extended by `prependToPriorityList` in `bootstrap/app.php`) **after** resolving names:
+  `Authenticate` matches that list through its `AuthenticatesRequests` interface and gets
+  spliced ahead of any standalone middleware sitting after the `web` group, so a
+  pre-auth 403 middleware would run second — after auth had already redirected. Being the
+  auth middleware means the check travels to whatever slot sorting picks, which is after
+  `StartSession` (a real tenant session cookie is readable there) and before
+  `SubstituteBindings`. `RejectTenantSession` + its alias were deleted once this landed.
+- **Login-as-owner is a signed, single-use, 60-second URL bound to the tenant's own
+  host.** `InstituteController::loginAsOwner` mints it on the **tenant host**
+  (`URL::temporarySignedRoute('admin.impersonate', +60s, [user, admin])` under
+  `URL::forceRootUrl`, restored in a `finally`) so the HMAC covers
+  `https://<tenant-host>/admin/impersonate?…` including host and expiry: a link minted for
+  tenant A cannot verify on tenant B (403), and an expired link cannot verify anywhere
+  (403). Consumption is gated `signed` → `Cache::add` (single-use burn, replay → 403) →
+  TenantScope-resolved user (a user id from another tenant is a 404) → **owner-role check**
+  (a staff/student id signed by an attacker with a valid key is still 403) → audit row
+  **written before** `Auth::guard('tenant')->login` + session regeneration → redirect to
+  `/dashboard`. Every state (mint, consume, refusal) is recorded in `admin_audit_logs`
+  with the admin id carried in the signed query.
+- **The `.env` editor is an allowlist, not a file editor.** `SystemEnvController::ALLOWED`
+  (15 operational keys: `APP_NAME`, `APP_URL`, `MAIL_*`, `SESSION_*`, `VIDEO_DRIVER`,
+  `PLATFORM_DOMAIN`, `TENANT_BASE_DOMAIN`, `CENTRAL_DOMAINS`) — `APP_KEY`, `DB_*`,
+  `APP_ENV` and `APP_DEBUG` are deliberately absent (only the APP_DEBUG-gated health Fix
+  can touch `APP_DEBUG`). A non-allowlisted key is a `ValidationException` (422), a
+  newline inside a value is rejected as env-injection, a blank value means "keep the
+  current entry" (nothing written, nothing audited), writes go through the `EnvFile`
+  seam as offset splices (never `preg_replace` replacement strings, which corrupt `\` and
+  `$`), and the real `.env` is never touched in tests. Every written key gets an
+  `update_setting` / `env:KEY` audit row.
+- **Service secrets are encrypted at rest and never round-trip to the client.** Service
+  settings are stored encrypted via `ServiceSettings` (DB-first, `config/services.php`
+  fallback); the settings form shows only `MAIL_PASSWORD` masked; Bunny usage reporting
+  calls the account-API endpoint with the key in the `AccessKey` header and never reads
+  the key back out. Test Connection buttons re-verify from scratch: Bunny does a live
+  `GET https://api.bunny.net/videolibrary` (throttled 10/min), Jitsi does a local
+  `JitsiJwt::verify()` round-trip — neither echoes the secret.
+- **The health Fix is double-gated and server-sourced.** The fix buttons render only when
+  `APP_DEBUG` is on, and the endpoint re-checks `config('app.debug')` and 403s when it is
+  off. The value written comes exclusively from `PreflightChecks`' server-side fix map —
+  any `key`/`value` fields posted by the client are ignored — and the run is audit-logged
+  as `update_setting` / `health_fix:KEY`.
+- **The audit log is append-only and survives deletion.** `admin_audit_logs` has
+  `UPDATED_AT = null`, no foreign keys (a deleted admin renders as a raw id, never a
+  crash), and records attempts as well as successes (`backup_run` rows exist even when the
+  backup failed; failed platform-admin logins are *not* recorded — they are not an action
+  by that admin).
+
 ## Custom domains and TLS
 
 - Tenants may eventually bring a custom domain instead of `*.coaching.test`

@@ -6,6 +6,7 @@ use App\Enums\LiveClassStatus;
 use App\Models\LiveClass;
 use App\Models\LiveClassAttendance;
 use App\Models\User;
+use App\Support\Admin\ServiceSettings;
 use App\Support\LiveClasses\JitsiJoinUrl;
 use App\Support\LiveClasses\JitsiJwt;
 use Illuminate\Http\RedirectResponse;
@@ -79,8 +80,8 @@ class LiveClassController extends Controller
 
         $this->openAttendanceSession($liveClass, $user);
 
-        $appId = (string) config('services.jitsi.app_id');
-        $secret = (string) config('services.jitsi.app_secret');
+        $appId = (string) ServiceSettings::get('jitsi_app_id');
+        $secret = (string) ServiceSettings::get('jitsi_app_secret');
 
         $jwt = JitsiJwt::make($appId, $secret, $user->name, $user->email);
         $url = JitsiJoinUrl::build($appId, $liveClass->jitsi_room_name, $jwt);

@@ -8,6 +8,7 @@ use App\Exceptions\VideoProviderException;
 use App\Models\LessonVideo;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\Admin\ServiceSettings;
 use App\Support\Video\BunnyEmbedTokenSigner;
 use App\Support\Video\BunnyUploadSignature;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +16,8 @@ use Illuminate\Support\Facades\Http;
 
 /**
  * One Bunny Stream library per tenant (VIDEO.md, AGENT_RULES.md invariant #13). The
- * platform's single account-level API key (config('services.bunny.account_api_key'))
+ * platform's single account-level API key (ServiceSettings::get('bunny_account_api_key'),
+ * read DB-first with config('services.bunny.account_api_key') as the fallback)
  * is used only to create a tenant's library; every other call — including signing
  * embed view tokens — uses that tenant's own library API key (verified against
  * https://bunny.net/docs/stream/mobile-sdk-token-authentication: "the token security
@@ -52,7 +54,7 @@ class BunnyVideoProvider implements VideoProvider
                 return;
             }
 
-            $response = Http::withHeaders(['AccessKey' => config('services.bunny.account_api_key')])
+            $response = Http::withHeaders(['AccessKey' => ServiceSettings::get('bunny_account_api_key')])
                 ->post('https://api.bunny.net/videolibrary', ['Name' => "tenant-{$tenant->id}"]);
 
             if ($response->failed()) {

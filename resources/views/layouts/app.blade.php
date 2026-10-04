@@ -131,6 +131,24 @@
 
                 <span class="ui-nav-divider" aria-hidden="true"></span>
 
+                <a href="{{ url('/admin/health') }}" class="ui-nav-link"{!! $isCurrent('/admin/health') !!}>
+                    <x-icon name="pulse" :size="17" />{{ __('platform.admin.nav.health') }}
+                </a>
+                <a href="{{ url('/admin/backups') }}" class="ui-nav-link"{!! $isCurrent('/admin/backups') !!}>
+                    <x-icon name="archive" :size="17" />{{ __('platform.admin.nav.backups') }}
+                </a>
+                <a href="{{ url('/admin/logs') }}" class="ui-nav-link"{!! $isCurrent('/admin/logs') !!}>
+                    <x-icon name="terminal" :size="17" />{{ __('platform.admin.nav.logs') }}
+                </a>
+                <a href="{{ url('/admin/audit') }}" class="ui-nav-link"{!! $isCurrent('/admin/audit') !!}>
+                    <x-icon name="list" :size="17" />{{ __('platform.admin.nav.audit') }}
+                </a>
+                <a href="{{ url('/admin/settings/services') }}" class="ui-nav-link"{!! $isCurrent('/admin/settings') !!}>
+                    <x-icon name="settings" :size="17" />{{ __('platform.admin.nav.settings') }}
+                </a>
+
+                <span class="ui-nav-divider" aria-hidden="true"></span>
+
                 <form method="POST" action="{{ url('/admin/logout') }}">
                     @csrf
                     <button type="submit" class="ui-nav-link">

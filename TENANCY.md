@@ -87,7 +87,7 @@ to an arbitrary tenant and must never be written.*
   the job execution boundary, resetting all scoped services. This prevents a request's
   `TenantContext` from leaking into a queued job. However, this is a framework safety mechanism,
   not a substitute for explicit job design: each job must still carry its own `tenant_id` and
-  re-set `TenantContext` to it (Phase 13: queues at scale will add a job middleware to enforce
+  re-set `TenantContext` to it (Phase 15: queues at scale will add a job middleware to enforce
   this pattern).
 
 ## Escape hatches: runAs() and withoutGlobalScope

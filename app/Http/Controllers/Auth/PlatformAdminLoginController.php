@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdminAuditLog;
 use App\Support\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,6 +48,9 @@ class PlatformAdminLoginController extends Controller
 
         $admin = Auth::guard('platform_admin')->user();
         $admin->forceFill(['last_login_at' => now()])->save();
+
+        // Phase 13: every privileged session start lands in the audit trail.
+        AdminAuditLog::record('login', adminId: $admin->id, ipAddress: $request->ip());
 
         return redirect('/admin/dashboard');
     }

@@ -50,6 +50,32 @@ class JitsiJwt
     }
 
     /**
+     * Verify a token against a secret by recomputing the HS256 signature.
+     *
+     * Added in Phase 13 for the "Test connection" button on
+     * /admin/settings/services: minting a throwaway token and verifying it here
+     * proves the app id + secret pair round-trips exactly the way JaaS would
+     * validate it, without any outbound network call or the secret ever leaving
+     * the process.
+     */
+    public static function verify(string $token, string $secret): bool
+    {
+        $parts = explode('.', $token);
+
+        if (count($parts) !== 3 || $secret === '') {
+            return false;
+        }
+
+        [$header, $payload, $signature] = $parts;
+
+        $expected = self::base64UrlEncode(
+            hash_hmac('sha256', "{$header}.{$payload}", $secret, true)
+        );
+
+        return hash_equals($expected, $signature);
+    }
+
+    /**
      * base64url without padding — no '+', '/' or '=' can reach a query string.
      */
     private static function base64UrlEncode(string $value): string

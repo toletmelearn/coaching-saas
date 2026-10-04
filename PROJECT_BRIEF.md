@@ -19,7 +19,8 @@ institutes. One owner builds courses (chapters → lessons with PDFs and protect
 bulk-imports students from a CSV, hands out logins over WhatsApp, enrols them, and tracks
 progress — all on the institute's own subdomain. Single codebase, single database, tenant
 isolation enforced at schema, model and routing layer. **Live:** Stage A (isolation) and
-Stage B (pilot features — including the manual UPI payment flow, Phase 10) are complete
+Stage B (pilot features — including the manual UPI payment flow, Phase 10, and the
+platform admin control panel, Phase 13) are complete
 with all five quality gates green, and those gates also run in CI on every push
 (`.github/workflows/ci.yml`, since `9ff5f11`) plus a nightly `backup:run` canary
 (`.github/workflows/backup-canary.yml`, since `b6d2e61`). **Not live:** nothing is
@@ -46,6 +47,7 @@ deployed and no second tenant exists.
 | **Security pass** (discrete pre-deploy pass) | **Done** (Phase 11) | `docs/SECURITY_PASS.md`; git `e605cc5 Phase 11: mini security pass` (tag `phase-11`); `tests/Feature/Console/AppPreflightCommandTest.php` gained a `checkSessionDomain` failing test + the `checkVideoDriver`/`checkGdFreetype` failing branches | `README.md:123` now reads "Run (Phase 11) — docs/SECURITY_PASS.md" (corrected in `c21ca36`) |
 | **Deploy runbook** | **Done** | `docs/DEPLOY_RUNBOOK.md` — ordered first-deploy procedure: gates → server prep → `.env` diff → Node/PHP → backups → domains → Cloudflare → Bunny → cron → tenant #1 → verification → rollback, plus a §13 requirements sheet and §14 open questions | (new; `README.md:124` "Not deployed" is still correct — the runbook is the *procedure*, not a deployment) |
 | **Live classes via Jitsi (JaaS)** | **Done** (Phase 12, flag-gated off by default) | `app/Http/Controllers/LiveClassController.php` (show/join/heartbeat), `app/Support/LiveClasses/{JitsiJwt,JitsiJoinUrl}.php`, `app/Policies/LiveClassPolicy.php`, both migrations (`2026_10_09_*`), both scheduled commands in `routes/console.php:24-25`; `tests/Feature/LiveClasses/` (12 files) + `tests/Unit/Support/LiveClasses/` (2 files, 80 tests — incl. `LessonDeleteGuardTest`, added when review found the lesson FK-refusal HTTP path untested) green in both suites; git `1177a9c` (Step-1 tests), `5bd533c` (clarifications), spec `docs/specs/phase-12-live-classes.md`, guide `LIVE_CLASSES.md` | `README.md` Stage-B table + `ROADMAP.md` Stage B now list it; whole feature behind `LIVE_CLASSES_ENABLED` (default false) — routes 404, widgets render nothing, preflight ignores Jitsi until the flag is on |
+| **Platform admin control panel** | **Done** (Phase 13) | `app/Http/Controllers/Admin/{HealthController,ServiceSettingsController,BackupsController,LogViewerController,AuditLogController,SystemEnvController}.php`, `app/Http/Controllers/ImpersonationController.php`, `app/Http/Middleware/PlatformAdminAuth.php`, `app/Models/AdminAuditLog.php` + migration `2026_10_04_000001_create_admin_audit_logs_table.php`, `app/Support/Admin/{ServiceSettings,EnvFile,ArtisanRunner,LogTailer,BunnyUsage}.php`, `app/Support/Preflight/PreflightChecks.php`; `tests/Feature/Platform/Admin/` 8 new files (57 tests, directory total 70) green in both suites; spec `docs/specs/phase-13-admin-panel.md` (SHA pinned in a follow-up docs commit, since a file cannot contain its own commit's hash) | `README.md` Stage-B table + `ROADMAP.md` Stage B now list it; Stage C renumbered once more to 14/15/16 (conflict C12) |
 | **First real deployment** | Not started | no deploy commit; `docs/DEPLOY.md` is a plan | `README.md:124` "Not deployed" |
 | **Custom domains** | Partial | `app/Enums/DomainType.php:8` enum case only; **no code path creates one** (`app/Actions/CreateInstituteAction.php` only mints subdomains); `tests/Feature/Tenancy/TenantDomainTest.php:25` round-trips the enum | `ROADMAP.md:40` Stage C; `TENANCY.md:5` describes them as if usable |
 | **DPDP consent flow** (guardian, `consents`, export/delete) | **Not started** | no `consents`/`guardian` migration; `grep -i consent database/migrations` → empty | `PRIVACY.md` marks "Planned schema support (not yet implemented)"; `AGENT_RULES.md` invariant 17 anticipates it |
@@ -70,7 +72,8 @@ protected lesson video`, `8faa256 Phase 6: institute settings, branding and PWA`
 `f8d5b6a Phase 10: manual UPI payment flow`, `1177a9c Phase 12: tests (Step 1)`.
 `ROADMAP.md` had never been renumbered since `13b4847 Phase 1 cleanup: roadmap order` — until
 `2926163 docs: renumber ROADMAP to match specs and git history` (see C10 and §7), then
-extended again when Phase 12 took its number (C11 below).
+extended again when Phase 12 took its number (C11 below), and once more when Phase 13
+(platform admin control panel) took its (C12 below).
 
 | Canonical # | Name | Stage | Status | Spec file | Old ROADMAP called it (before the renumbering) |
 |---|---|---|---|---|---|
@@ -88,9 +91,10 @@ extended again when Phase 12 took its number (C11 below).
 | 10 | Manual UPI payments (screenshot → owner approves) | B | Done | `docs/specs/phase-10-payments.md` | **ROADMAP Phase 10 = "owner/staff admin tooling" — different feature, same number** |
 | 11 | Mini security pass (discrete pre-deploy pass) | B | Done | *(none — `docs/SECURITY_PASS.md` instead)* | **absent — ROADMAP has no Phase 11** |
 | **12** | **Live classes via Jitsi (JaaS), flag-gated** | B | Done | `docs/specs/phase-12-live-classes.md` (+ `LIVE_CLASSES.md`) | **absent — ROADMAP's 12 was custom domains; Stage C shifted to 13/14/15 (C11)** |
-| 13 | Custom domains + TLS (Caddy) | C | Not started | *(none)* | was Phase 12 — same, **plus a stray "and PWA support" clause** (PWA already shipped in Phase 6); renumbered by C11 |
-| 14 | Queues at scale, audit logging | C | Not started | *(none)* | was Phase 13 — same; renumbered by C11 |
-| 15 | Deferred-from-B catch-all | C | Not started | *(none)* | was Phase 14 (full) — undefined content; renumbered by C11 |
+| **13** | **Platform admin control panel** | B | Done | `docs/specs/phase-13-admin-panel.md` | **absent — ROADMAP's 13 was custom domains (via C11); Stage C shifted again to 14/15/16 (C12)** |
+| 14 | Custom domains + TLS (Caddy) | C | Not started | *(none)* | was Phase 12 — same, **plus a stray "and PWA support" clause** (PWA already shipped in Phase 6); renumbered by C11, then again by C12 |
+| 15 | Queues at scale, audit logging | C | Not started | *(none)* | was Phase 13 — same; renumbered by C11, then again by C12 (note: the *admin* audit log shipped with Phase 13; what remains is app-wide) |
+| 16 | Deferred-from-B catch-all | C | Not started | *(none)* | was Phase 14 (full) — undefined content; renumbered by C11, then again by C12 |
 | — | Automated payment gateway | C | Not started | *(none)* | **ROADMAP Phase 8** (number already taken by devices) |
 
 **Every numbering conflict, exhaustively:**
@@ -108,10 +112,11 @@ extended again when Phase 12 took its number (C11 below).
 | C9 | Stage B membership: ROADMAP `{4,5,6,7,9-UP,10}` vs actual `{4,5,6,7,8,9,P1,10}` | `ROADMAP.md:19` vs `README.md:104-111` |
 | C10 | `README.md:132-135` already flagged C1 and said "the roadmap needs renumbering" — **the fix was never applied → RESOLVED in `2926163`**: `ROADMAP.md` was rewritten from scratch to the canonical numbering (Stages A–D preserved, one bullet per phase, spec titles + spec links, header block explaining the change), commit `docs: renumber ROADMAP to match specs and git history` | `README.md` vs `ROADMAP.md` |
 | C11 | **Phase 12 collision** — git history + new spec claim 12 = live classes, while ROADMAP Stage C still assigned 12 = custom domains | git `1177a9c` / `docs/specs/phase-12-live-classes.md` vs `ROADMAP.md:66` — **RESOLVED in this phase's commit**: ROADMAP Stage B now lists Phase 12 (live classes, cited spec), Stage C shifted to 13 (custom domains) / 14 (queues) / 15 (catch-all) with a renumber note; README's numbering note and weakness #4 updated to match |
+| C12 | **Phase 13 collision** — the platform admin control panel took 13, while ROADMAP Stage C (post-C11) assigned 13 = custom domains | `docs/specs/phase-13-admin-panel.md` vs `ROADMAP.md` Stage C — **RESOLVED in this phase's commit**: Stage B now lists Phase 13 (admin panel, cited spec), Stage C shifted to 14 (custom domains) / 15 (queues) / 16 (catch-all) with an inline renumber note; README's numbering note updated, `TENANCY.md:90`'s stale "Phase 13: queues at scale" corrected to Phase 15 |
 
-**Reconciled stages:** A = {0,1,2,3,P1} · B = {4,5,6,7,8,9,10,12} + production readiness +
+**Reconciled stages:** A = {0,1,2,3,P1} · B = {4,5,6,7,8,9,10,12,13} + production readiness +
 deploy (Phase 11's security pass is a discrete doc pass, not a roadmap stage) ·
-C = {gateway, 13, 14, 15, DPDP consent} · D = {subscriptions, metering, WhatsApp notifications}.
+C = {gateway, 14, 15, 16, DPDP consent} · D = {subscriptions, metering, WhatsApp notifications}.
 
 ---
 
@@ -205,7 +210,7 @@ Format: **Rule** — *Why* — **Enforced where** — **Test that catches it**.
 5. **AGENT_RULES invariant 6 ("jobs carry an explicit tenant_id") is unenforceable — there are no jobs.** `find app -type d -name Jobs` → empty; zero `dispatch()` / `ShouldQueue` references in `app/` or `routes/`.
 6. **AGENT_RULES invariants 11 and 16 still have no code path at all** — no webhook endpoint (the polling substitute remains `videos:sync` per `routes/console.php:16-17`) and no Caddy ask-endpoint. Invariant 17's consent flow is likewise unimplemented. **Two that were vacuous at the audit now have code**, both from Phase 10: invariant 12's approval handler (`app/Http/Controllers/Manage/PaymentController.php` — idempotent, `tests/Feature/Payments/PaymentReviewTest.php:263`) and invariant 9's price half (`app/Support/Payments/AmountResolver.php`). Invariant 15 remains satisfied rather than vacuous — no platform payment account exists, by design.
 7. **`backup:clean` (01:30) is scheduled *before* `backup:run` (02:00)** — `routes/console.php:13-14`. Harmless at 14-day retention, but `tests/Feature/Production/BackupConfigurationTest.php:18` asserts each cron expression independently and would still pass if the order were inverted.
-8. **README's own counts have drifted — RESOLVED in `cc6bed7`** (re-measured at `c61a8bc`, 2026-10-03): 60 vs **80** commits (`README.md:79`); 105 vs **113** `tests/Feature` PHP files (plus `tests/Feature/Tenancy/.gitkeep`, so 114 entries in total); 14 vs **16** `lang/en` files; 136 vs **146** routes (`php artisan route:list --json`); 15,291 vs **17,002** test lines (`find tests -name '*.php' | xargs cat | wc -l`); "three known instances" listing four. The gate table at `README.md:86-87` (824 / 792) is now one short too, since `c61a8bc` added a test — current is 825 / 793. *Record kept for history: every count above was re-measured and corrected in `cc6bed7`, and weakness #4's stale bullets were marked resolved in `660f329`; only the `ROADMAP.md` numbering conflict (§7) remains open.* **Phase 12 re-sync (commits `6a705de` + the lesson-guard follow-up):** the same five counts moved again — now **100 commits · 19,162 test lines · 17 lang files · 158 routes · 125 Feature files**, gates 907 / 875 / 29 — and the ROADMAP conflict closed too (`2926163` + C11).
+8. **README's own counts have drifted — RESOLVED in `cc6bed7`** (re-measured at `c61a8bc`, 2026-10-03): 60 vs **80** commits (`README.md:79`); 105 vs **113** `tests/Feature` PHP files (plus `tests/Feature/Tenancy/.gitkeep`, so 114 entries in total); 14 vs **16** `lang/en` files; 136 vs **146** routes (`php artisan route:list --json`); 15,291 vs **17,002** test lines (`find tests -name '*.php' | xargs cat | wc -l`); "three known instances" listing four. The gate table at `README.md:86-87` (824 / 792) is now one short too, since `c61a8bc` added a test — current is 825 / 793. *Record kept for history: every count above was re-measured and corrected in `cc6bed7`, and weakness #4's stale bullets were marked resolved in `660f329`; only the `ROADMAP.md` numbering conflict (§7) remains open.* **Phase 12 re-sync (commits `6a705de` + the lesson-guard follow-up):** the same five counts moved again — now **100 commits · 19,162 test lines · 17 lang files · 158 routes · 125 Feature files**, gates 907 / 875 / 29 — and the ROADMAP conflict closed too (`2926163` + C11). **Phase 13 re-sync:** moved once more to **102 commits · 20,374 test lines · 17 lang files · 231 routes · 133 Feature files**, gates 964 / 932 / 29 (plus 18 models, 27 migrations, 16 specs; ROADMAP renumbered again, C12).
 9. **`PlatformAdminDashboardController` is only ever auth-gated, never content-tested.** Every assertion on `/admin/dashboard` in `tests/Feature/Auth/PlatformAdminGuardTest.php:135,147,158,166,176` is `assertOk()` or `assertRedirect()`. `tests/Feature/Platform/PlatformStatsTest.php` tests `PlatformStats::countsByTenant()` directly, never the page that renders it.
 10. **No test asserts `DefaultIconGenerator`'s output image** — `tests/Feature/Pwa/IconsTest.php:6,23` assert headers, status codes and tenancy only; the GD/FreeType rendering path is checked solely by `AppPreflightCommand::checkGdFreetype` (a config-level boolean). `[UNVERIFIED]` whether pixel output is covered anywhere.
 11. **Three `.env.example` keys are referenced by no `env()` call in this repo's `config/`**: `BCRYPT_ROUNDS` (`.env.example:19`), `BROADCAST_CONNECTION` (`:55`), `VITE_APP_NAME` (`:92`). The first two are consumed by Laravel core defaults (no `config/hashing.php` or `config/broadcasting.php` exists); `VITE_APP_NAME` appears vestigial from the skeleton — **re-verified 2026-10-03 at `c61a8bc`**, still no reader in `config/`, `bootstrap/`, `resources/`, `vite.config.js` or `package.json`. Low severity; kept as a note rather than a defect, since removing keys from `.env.example` would only surprise anyone whose local `.env` still carries them.
@@ -256,16 +261,16 @@ this table**; the 2 rows still open are deliberate dispositions — SP-6 (defer)
 | `TENANCY.md` | `:34` | "tenant_id is not mass-assignable" stated universally | `app/Models/TenantDomain.php:18` has `tenant_id` in `$fillable` (central table). **RESOLVED in `693d47f`** — the `TenantDomain`/central-table exception paragraph now follows that section | — (closed) |
 | `README.md` | `:187` | "Documentation drift (**three** known instances)" | lists **four** bullets; this ledger has **16 rows** (15 drifts + 1 verified-correct). **RESOLVED in `660f329`** — weakness #4's heading now says "one instance remains", each bullet carries its closing SHA, and the `ROADMAP.md` item is named as the sole open entry | — (closed) |
 | `README.md` | `:79, :154, :245, :248, :249` | 60 commits · 15,291 test lines · 14 lang files · 136 routes · 105 Feature files | **80 · 17,002 · 16 · 146 · 113** (+1 `.gitkeep`), re-measured at `c61a8bc` 2026-10-03. **RESOLVED in `cc6bed7`** — all five counts (plus the gate table) re-measured and corrected at HEAD | — (closed) |
-| `README.md` | `:194-195` | `composer test:mysql` "runs 19 suites (730 tests)" | **Partly wrong** — `README.md:195` already reads "20 suites (790 tests) — corrected below", and `phpunit.mysql.xml` does have exactly **20** `<testsuite>` entries (this brief previously claimed 19). The test count has since moved on twice: 790 → 792 (`c859e74`) → **793** (`c61a8bc`). **RESOLVED in `cc6bed7`** — README now reads 20 suites / 793 tests — **refreshed at Phase 12: 21 suites / 875 tests** (the 21st suite is `LiveClasses`, covering `tests/Feature/LiveClasses` + `tests/Unit/Support/LiveClasses`) | — (closed) |
+| `README.md` | `:194-195` | `composer test:mysql` "runs 19 suites (730 tests)" | **Partly wrong** — `README.md:195` already reads "20 suites (790 tests) — corrected below", and `phpunit.mysql.xml` does have exactly **20** `<testsuite>` entries (this brief previously claimed 19). The test count has since moved on twice: 790 → 792 (`c859e74`) → **793** (`c61a8bc`). **RESOLVED in `cc6bed7`** — README now reads 20 suites / 793 tests — **refreshed at Phase 12: 21 suites / 875 tests** (the 21st suite is `LiveClasses`, covering `tests/Feature/LiveClasses` + `tests/Unit/Support/LiveClasses`) — **refreshed at Phase 13: 21 suites / 932 tests** (no new test directory; `Platform/Admin` already existed) | — (closed) |
 | `.env` vs `.env.example` | — | `.env` sets `SESSION_LIFETIME` to a different value; omits `SESSION_SECURE_COOKIE`, `PLATFORM_DOMAIN`, `TENANT_BASE_DOMAIN` | `.env.example:42` = 43200 (Phase 8 decision); README:196-200 already documents the drift | No automated guard reads `.env` |
-| `ROADMAP.md` | `:66-68` | Stage C numbered Phases 12/13/14 (custom domains/queues/catch-all) | git `1177a9c` + the new spec claim **Phase 12 = live classes**. **RESOLVED in the Phase 12 commit** — Stage B now lists Phase 12 (live classes, spec cited), Stage C shifted to 13/14/15 with an inline renumber note (conflict C11) | — (closed) |
-| `README.md` | gate table `:86-87`, layout `:250-266`, ratio `:159`, commands `:511-512` | 825/793 gates, 17,002 test lines, 146 routes, 16 lang files, 113 Feature files, 14 models, 24 migrations, 14 specs, "Eight root design docs" | Phase 12 added 80 tests, 12 routes, 1 lang file, 12 Feature files, 2 models, 2 migrations, 1 spec, and `LIVE_CLASSES.md`. **RESOLVED in the Phase 12 commits** — all counts re-measured at HEAD: **907/875/29 gates, 19,162 test lines vs 9,294 app lines, 158 routes, 17 lang files, 125 Feature files, 17 models, 26 migrations, 15 specs, nine root design docs** (layout rows also absorbed pre-existing staleness: Payment model/enums/controllers) | — (closed) |
+| `ROADMAP.md` | `:66-68` | Stage C numbered Phases 12/13/14 (custom domains/queues/catch-all) | git `1177a9c` + the new spec claim **Phase 12 = live classes**. **RESOLVED in the Phase 12 commit** — Stage B now lists Phase 12 (live classes, spec cited), Stage C shifted to 13/14/15 with an inline renumber note (conflict C11) — **then shifted again by Phase 13 to 14/15/16 (conflict C12, this phase)** | — (closed) |
+| `README.md` | gate table `:86-87`, layout `:250-266`, ratio `:159`, commands `:511-512` | 825/793 gates, 17,002 test lines, 146 routes, 16 lang files, 113 Feature files, 14 models, 24 migrations, 14 specs, "Eight root design docs" | Phase 12 added 80 tests, 12 routes, 1 lang file, 12 Feature files, 2 models, 2 migrations, 1 spec, and `LIVE_CLASSES.md`. **RESOLVED in the Phase 12 commits** — all counts re-measured at HEAD: **907/875/29 gates, 19,162 test lines vs 9,294 app lines, 158 routes, 17 lang files, 125 Feature files, 17 models, 26 migrations, 15 specs, nine root design docs** (layout rows also absorbed pre-existing staleness: Payment model/enums/controllers) — **re-resolved at Phase 13:** **964/932/29 gates, 20,374 test lines vs 10,746 app lines, 231 routes, 17 lang files, 133 Feature files, 18 models, 27 migrations, 16 specs, nine root design docs** (also refreshed: 44 controllers + base, 9 middleware) | — (closed) |
 | `README.md` | weakness #4 heading + bullets | said "one instance remains" and named ROADMAP numbering as the sole open entry | ROADMAP numbering resolved by `2926163` + the Phase 12 renumber. **RESOLVED in the Phase 12 commit** — heading now "none remain", the ROADMAP bullet marked RESOLVED, the `composer test:mysql` bullet annotated 20 suites/793 → **21 suites/875** | — (closed) |
 
 **Contradictions between docs and code: 0** — none remain. The ROADMAP numbering was the last
 conflict cluster (§3 C1–C10); `ROADMAP.md` was rewritten to the canonical numbering (C10 and
-the seven `ROADMAP.md` rows above are marked RESOLVED), and Phase 12 extended that once more
-(C11, above). **Closed since the audit:**
+the seven `ROADMAP.md` rows above are marked RESOLVED), and Phases 12 and 13 extended that
+once each (C11 and C12, above). **Closed since the audit:**
 `docs/DEPLOY.md`'s preflight claim (`e605cc5`), the `AGENTS.md` Boost stub (`ee58c2e`), the
 phase-2 status line / `ARCHITECTURE.md` "(planned)" / `TENANCY.md:34` universality (all three
 in `693d47f`), the README count rows (`cc6bed7`/`660f329`), the ROADMAP cluster (`2926163`),
@@ -314,6 +319,12 @@ passed, 1 skipped, 2,818 assertions, 204.1 s**; `composer test:mysql` = **21 sui
 tests, 875 passed, 2,778 assertions**; `composer test:js` = **29** — the +80 is Phase 12's
 `tests/Feature/LiveClasses/` (75) + `tests/Unit/Support/LiveClasses/` (5), and the 21st
 MySQL suite is `LiveClasses` (both directories, phase-paired like Video/Pwa).
+**Re-measured at the Phase 13 sync (2026-10-04):** `composer test` = **964 tests, 963
+passed, 1 skipped, 3,134 assertions, 192.8 s**; `composer test:mysql` = **21 suites / 932
+tests, 932 passed, 3,094 assertions**; `composer test:js` = **29** — the +57 is Phase 13's
+8 new files in `tests/Feature/Platform/Admin/` (the directory already existed with
+`InstituteTest` + `DemoRequestAdminTest`, which are 13 of its 70 tests; no suite was
+added or removed).
 
 | Directory | Files | Tests | Speed | Covers / notes |
 |---|---|---|---|---|
@@ -326,6 +337,7 @@ MySQL suite is `LiveClasses` (both directories, phase-paired like Video/Pwa).
 | `tests/Feature/Users/` | 5 | ~78 | fast | policy matrix (508-line `UserPolicyTest`), schema, mobile People cards |
 | `tests/Feature/Pwa/` | 6 | ~25 | fast | manifest, icons, service-worker route, offline, layout, logo route |
 | `tests/Feature/Platform/` | 6 | ~27 | fast | home, stats, demo requests, `/admin`, `route:cache` |
+| `tests/Feature/Platform/Admin/` | 10 | 70 | fast | Phase 13 control panel: route guards (strict 403), health + gated fix, service settings, system `.env` allowlist, backups, log viewer, audit log, impersonation + bunny usage — plus the pre-existing institute admin tests (13) |
 | `tests/Feature/Settings/` | 5 | ~27 | fast | mass assignment, validation, logo upload, permissions, academic year end |
 | `tests/Feature/Import/` | 4 | ~51 | fast | CSV parse, preview/confirm, credentials sheet, rate limit |
 | `tests/Feature/Production/` | 4 | ~8 | fast | cookie domain, Cloudflare proxies, backups — few but high-value |
@@ -393,10 +405,10 @@ SHA. Recorded, not deleted, per the convention used throughout this document.
 
 ```sh
 composer lint        # 1. scripts.lint  → vendor/bin/pint            (formats first, so everything below sees final code)
-composer test        # 2. scripts.test  → config:clear + pest        (907 tests, SQLite, ~140–200 s — widest signal)
+composer test        # 2. scripts.test  → config:clear + pest        (964 tests, SQLite, ~140–230 s — widest signal)
 composer test:js     # 3. scripts.test:js → node --test tests/js/**  (29 tests, no browser)
 composer analyse     # 4. scripts.analyse → phpstan level 5          (must be 0 errors)
-composer test:mysql  # 5. scripts.test:mysql → pest --configuration=phpunit.mysql.xml (875 tests, real MySQL — slowest, catches composite-FK regressions SQLite cannot)
+composer test:mysql  # 5. scripts.test:mysql → pest --configuration=phpunit.mysql.xml (932 tests, real MySQL — slowest, catches composite-FK regressions SQLite cannot)
 ```
 
 `composer lint` is listed first deliberately: it is `vendor/bin/pint` (a *writer*, not

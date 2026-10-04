@@ -1,7 +1,13 @@
 <?php
 
+use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\BackupsController;
 use App\Http\Controllers\Admin\DemoRequestController as AdminDemoRequestController;
+use App\Http\Controllers\Admin\HealthController;
 use App\Http\Controllers\Admin\InstituteController;
+use App\Http\Controllers\Admin\LogViewerController;
+use App\Http\Controllers\Admin\ServiceSettingsController;
+use App\Http\Controllers\Admin\SystemEnvController;
 use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\Auth\PlatformAdminLoginController;
 use App\Http\Controllers\Auth\PlatformAdminLogoutController;
@@ -10,6 +16,7 @@ use App\Http\Controllers\Auth\TenantLogoutController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DemoRequestController;
+use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\LessonAttachmentController;
 use App\Http\Controllers\LessonController;
 use App\Http\Controllers\LessonProgressController;
@@ -37,6 +44,7 @@ use App\Http\Controllers\PwaController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserImportController;
 use App\Http\Controllers\UserImportCredentialsController;
+use App\Http\Middleware\PlatformAdminAuth;
 use App\Support\TenantContext;
 use Illuminate\Support\Facades\Route;
 
@@ -77,6 +85,43 @@ foreach (config('tenancy.central_domains', []) as $centralDomain) {
                 Route::get('demo-requests', [AdminDemoRequestController::class, 'index']);
                 Route::post('demo-requests/{demoRequest}/mark-contacted', [AdminDemoRequestController::class, 'markContacted']);
             });
+
+            // Phase 13 — platform control panel (health, service settings, system
+            // .env editor, backups, logs, audit, per-tenant Bunny usage and
+            // login-as-owner). PlatformAdminAuth is `auth:platform_admin` plus a
+            // stricter rule for authenticated tenant sessions: a flat 403 instead
+            // of the redirect to /admin/login a plain `auth` would issue (a
+            // separate pre-auth middleware cannot work — the router's priority
+            // sort splices auth ahead of it; see the class docblock). The strict
+            // 403 contract applies only to these new routes; the legacy routes
+            // above keep their redirect behaviour (PlatformAdminGuardTest pins it).
+            Route::middleware(PlatformAdminAuth::class.':platform_admin')->group(function () {
+                Route::get('health', [HealthController::class, 'index']);
+                Route::post('health/fix', [HealthController::class, 'fix']);
+
+                Route::get('settings/services', [ServiceSettingsController::class, 'show']);
+                Route::post('settings/services', [ServiceSettingsController::class, 'store']);
+                Route::post('settings/services/test-bunny', [ServiceSettingsController::class, 'testBunny'])
+                    ->middleware('throttle:10,60');
+                Route::post('settings/services/test-jitsi', [ServiceSettingsController::class, 'testJitsi'])
+                    ->middleware('throttle:10,60');
+
+                Route::get('settings/system', [SystemEnvController::class, 'show']);
+                Route::post('settings/system', [SystemEnvController::class, 'store']);
+                Route::post('settings/system/clear-cache', [SystemEnvController::class, 'clearCache']);
+                Route::post('settings/system/optimize', [SystemEnvController::class, 'optimize']);
+
+                Route::get('backups', [BackupsController::class, 'index']);
+                Route::post('backups/run', [BackupsController::class, 'run']);
+                Route::get('backups/download', [BackupsController::class, 'download']);
+                Route::post('backups/delete', [BackupsController::class, 'delete']);
+
+                Route::get('logs', [LogViewerController::class, 'index']);
+                Route::get('audit', [AuditLogController::class, 'index']);
+
+                Route::post('institutes/{tenant}/login-as', [InstituteController::class, 'loginAsOwner']);
+                Route::get('institutes/{tenant}/bunny-usage', [InstituteController::class, 'bunnyUsage']);
+            });
         });
     });
 }
@@ -97,6 +142,19 @@ Route::middleware('require.tenant')->group(function () {
         ->name('login')
         ->middleware('device.revoked.notice');
     Route::post('login', [TenantLoginController::class, 'store']);
+
+    // Phase 13 — platform-admin "open as owner" landing pad. Deliberately
+    // pre-auth (the admin has no tenant session — that is the point of the
+    // link) and gated by the `signed` middleware: the HMAC covers the full
+    // `https://<this-host>/admin/impersonate?...` URL including host and a
+    // 60-second expiry, so a link minted for one tenant host cannot resolve
+    // anywhere else. ImpersonationController additionally burns the link after
+    // first use. Named because the tenant group registers exactly once (the
+    // central-domain loop above registers its routes per domain and takes no
+    // names).
+    Route::get('admin/impersonate', [ImpersonationController::class, 'handle'])
+        ->name('admin.impersonate')
+        ->middleware('signed');
 
     // PWA endpoints — no auth required (a guest's browser needs the manifest/icons/
     // service worker too), scoped to the tenant only via require.tenant (404 on a

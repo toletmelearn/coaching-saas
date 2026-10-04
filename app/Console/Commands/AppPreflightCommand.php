@@ -2,13 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\Models\PlatformAdmin;
-use App\Models\Tenant;
-use App\Models\TenantDomain;
-use App\Support\DatabaseVersionCheck;
+use App\Support\Admin\ServiceSettings;
+use App\Support\Preflight\PreflightChecks;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-use Throwable;
 
 class AppPreflightCommand extends Command
 {
@@ -40,22 +36,13 @@ class AppPreflightCommand extends Command
             return self::SUCCESS;
         }
 
-        $failures = array_filter([
-            $this->checkDebugDisabled(),
-            $this->checkAppKey(),
-            $this->checkAppUrlIsHttps(),
-            $this->checkDomainsConfigured(),
-            $this->checkSessionSecureCookie(),
-            $this->checkSessionDomain(),
-            ...$this->checkWritablePaths(),
-            $this->checkDatabaseReachable(),
-            $this->checkMysqlVersion(),
-            $this->checkNoDemoData(),
-            $this->checkNoLocalhostDemoDomain(),
-            $this->checkVideoDriver(),
-            $this->checkGdFreetype(),
-            $this->checkJitsiConfig(),
-        ]);
+        // The checks themselves live in PreflightChecks (extracted in Phase 13 so
+        // /admin/health runs this exact code) — this command owns only the production
+        // gate, the formatting and the exit code. Failure messages are unchanged.
+        $failures = array_filter(array_map(
+            static fn (array $outcome): ?string => $outcome['passed'] ? null : $outcome['message'],
+            app(PreflightChecks::class)->run(),
+        ));
 
         if ($failures === []) {
             $this->components->info('All preflight checks passed.');
@@ -64,7 +51,7 @@ class AppPreflightCommand extends Command
                 // Visible proof the check actually saw the configured app id
                 // (LiveClassPreflightTest requires "Jitsi" in a passing run too).
                 $this->components->info(
-                    'Jitsi live classes enabled — JaaS app id '.config('services.jitsi.app_id').' configured.'
+                    'Jitsi live classes enabled — JaaS app id '.ServiceSettings::get('jitsi_app_id').' configured.'
                 );
             }
 
@@ -78,217 +65,5 @@ class AppPreflightCommand extends Command
         }
 
         return self::FAILURE;
-    }
-
-    private function checkDebugDisabled(): ?string
-    {
-        return config('app.debug') === true
-            ? 'APP_DEBUG is true — must be false in production.'
-            : null;
-    }
-
-    private function checkAppKey(): ?string
-    {
-        return empty(config('app.key'))
-            ? 'APP_KEY is empty — run php artisan key:generate.'
-            : null;
-    }
-
-    private function checkAppUrlIsHttps(): ?string
-    {
-        $url = (string) config('app.url');
-
-        return str_starts_with($url, 'https://')
-            ? null
-            : "APP_URL must start with https:// (got: \"{$url}\").";
-    }
-
-    private function checkDomainsConfigured(): ?string
-    {
-        $platformDomain = config('tenancy.platform_domain');
-        $baseDomain = config('tenancy.tenant_base_domain');
-        $central = config('tenancy.central_domains', []);
-
-        if (in_array($platformDomain, [null, '', 'coaching.test'], true)
-            || in_array($baseDomain, [null, '', 'coaching.test'], true)
-            || $central === []) {
-            return 'PLATFORM_DOMAIN / TENANT_BASE_DOMAIN / CENTRAL_DOMAINS are not configured for production (still at the local dev default).';
-        }
-
-        return null;
-    }
-
-    private function checkSessionSecureCookie(): ?string
-    {
-        return config('session.secure') === true
-            ? null
-            : 'SESSION_SECURE_COOKIE is not true — session cookies would be sent over plain HTTP.';
-    }
-
-    /**
-     * `null` (what .env.example ships) and `''` (what docs/DEPLOY.md's `SESSION_DOMAIN=`
-     * yields) both produce a host-only session cookie; anything else would make the
-     * browser send one tenant's session cookie to every other tenant subdomain, which
-     * defeats tenant isolation before any application code runs (SECURITY.md). This
-     * check was always described in docs/DEPLOY.md §3 but was never actually implemented
-     * — added by the Phase 11 mini security pass.
-     */
-    private function checkSessionDomain(): ?string
-    {
-        $domain = config('session.domain');
-
-        if ($domain === null || $domain === '') {
-            return null;
-        }
-
-        return "SESSION_DOMAIN is set (config: {$domain}) — it must be empty/null so session cookies stay host-only. "
-            ."A shared cookie domain would send one tenant's session cookie to every other tenant subdomain (SECURITY.md).";
-    }
-
-    /**
-     * @return array<int, ?string>
-     */
-    private function checkWritablePaths(): array
-    {
-        return array_map(
-            fn (string $path) => is_writable($path) ? null : "Not writable: {$path}",
-            config('preflight.writable_paths', []),
-        );
-    }
-
-    private function checkDatabaseReachable(): ?string
-    {
-        try {
-            DB::connection()->getPdo();
-
-            return null;
-        } catch (Throwable $e) {
-            return 'Database is unreachable: '.$e->getMessage();
-        }
-    }
-
-    private function checkMysqlVersion(): ?string
-    {
-        // Seam (config/preflight.php, mirrors the GD one): when forced, this value is
-        // evaluated as the server's version *including* on SQLite — the driver gate below
-        // would otherwise make the below-minimum branch unreachable by any test (SP-9).
-        $forced = config('preflight.forced_database_version');
-
-        if ($forced !== null) {
-            return DatabaseVersionCheck::minimumViolationMessage($forced);
-        }
-
-        if (DB::connection()->getDriverName() !== 'mysql') {
-            // Not a MySQL/MariaDB connection (e.g. SQLite in local/testing) — this check
-            // only makes sense against the production database engine.
-            return null;
-        }
-
-        try {
-            $version = DB::selectOne('SELECT VERSION() as version')->version;
-        } catch (Throwable) {
-            // Already reported by checkDatabaseReachable(); don't double-report.
-            return null;
-        }
-
-        return DatabaseVersionCheck::minimumViolationMessage($version);
-    }
-
-    private function checkNoDemoData(): ?string
-    {
-        $baseDomain = config('tenancy.tenant_base_domain');
-
-        try {
-            $demoExists = Tenant::query()->where('name', 'Demo Institute')->exists()
-                || TenantDomain::query()->where('domain', "demo.{$baseDomain}")->exists()
-                || PlatformAdmin::query()->where('email', 'admin@coaching.test')->exists();
-        } catch (Throwable) {
-            // Already reported by checkDatabaseReachable(); don't double-report.
-            return null;
-        }
-
-        return $demoExists
-            ? 'A demo tenant/account exists — never seed demo data in production (see README.md "Local credentials" and docs/DEPLOY.md).'
-            : null;
-    }
-
-    /**
-     * The local-only demo.localhost domain (registered by TenantSeeder so the PWA can be
-     * tested over a secure context without HTTPS — see README.md "Local credentials")
-     * must never exist in production.
-     */
-    private function checkNoLocalhostDemoDomain(): ?string
-    {
-        try {
-            $exists = TenantDomain::query()->where('domain', 'demo.localhost')->exists();
-        } catch (Throwable) {
-            return null;
-        }
-
-        return $exists
-            ? 'The demo.localhost domain exists — this is a local PWA-testing-only domain and must never exist in production.'
-            : null;
-    }
-
-    /**
-     * The default institute icon (Phase 6) is drawn with GD's imagettftext(), which
-     * needs FreeType support compiled into GD. Read from config (see
-     * config/preflight.php) rather than calling extension_loaded('gd')/gd_info()
-     * directly, so this is mockable in tests without needing a PHP build that's
-     * actually missing the extension.
-     */
-    private function checkGdFreetype(): ?string
-    {
-        if (! config('preflight.gd_extension_loaded')) {
-            return 'The GD PHP extension is not loaded — required to generate institute icons and re-encode uploaded logos.';
-        }
-
-        if (! config('preflight.gd_freetype_supported')) {
-            return "GD is loaded but was built without FreeType support — required to draw the default institute icon's letter.";
-        }
-
-        return null;
-    }
-
-    /**
-     * Only the account-level Bunny key is checked here — per-tenant library keys don't
-     * exist yet for a tenant that has never uploaded video, so those are validated lazily
-     * at first use (docs/specs/phase-5-video.md).
-     */
-    private function checkVideoDriver(): ?string
-    {
-        $driver = config('coaching.video_driver');
-
-        if ($driver === 'fake') {
-            return 'VIDEO_DRIVER=fake is never allowed in production.';
-        }
-
-        if ($driver === 'bunny' && empty(config('services.bunny.account_api_key'))) {
-            return 'VIDEO_DRIVER=bunny but BUNNY_STREAM_ACCOUNT_API_KEY is not set.';
-        }
-
-        return null;
-    }
-
-    /**
-     * Decision A (docs/specs/phase-12-live-classes.md): JaaS free tier, one app id +
-     * secret per deployment, used solely to sign the short-lived join JWT. Without both
-     * keys every join would 500 in production while the UI still advertised "Join", so a
-     * deployment that switched LIVE_CLASSES_ENABLED on must also configure the keys —
-     * or switch the flag back off. The literal "Jitsi" in the failure message is part of
-     * the LiveClassPreflightTest contract.
-     */
-    private function checkJitsiConfig(): ?string
-    {
-        if (! (bool) config('coaching.live_classes_enabled')) {
-            return null;
-        }
-
-        if (empty(config('services.jitsi.app_id')) || empty(config('services.jitsi.app_secret'))) {
-            return 'Live classes are enabled but the Jitsi (JaaS) keys JITSI_APP_ID / JITSI_APP_SECRET '
-                .'are missing — set both or turn LIVE_CLASSES_ENABLED off.';
-        }
-
-        return null;
     }
 }

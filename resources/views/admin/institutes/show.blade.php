@@ -76,5 +76,29 @@
                 <x-button variant="secondary">{{ __('platform.admin.institutes.show.reset_owner_password') }}</x-button>
             </form>
         @endif
+
+        {{-- Phase 13 — support impersonation: mints a signed, single-use, 60-second
+             URL on the tenant host (ImpersonationController logs the session in and
+             writes the audit row). target=_blank keeps the panel open for the
+             operator; the owner select mirrors the reset-password one above. --}}
+        @if ($owners->count() > 1)
+            <form method="POST" action="{{ url('/admin/institutes/'.$tenant->id.'/login-as') }}" class="flex flex-wrap items-center gap-2" target="_blank" onsubmit="return confirm(@js(__('platform.admin.institutes.show.confirm_login_as')))">
+                @csrf
+                <label for="login_owner_id" class="sr-only">{{ __('platform.admin.institutes.show.choose_owner') }}</label>
+                <select name="owner_id" id="login_owner_id" class="rounded-md border border-gray-300 px-3 py-2 min-h-[44px]">
+                    @foreach ($owners as $owner)
+                        <option value="{{ $owner->id }}">{{ $owner->name }} — {{ $owner->email ?? $owner->phone }}</option>
+                    @endforeach
+                </select>
+                <x-button type="submit" variant="ghost">{{ __('platform.admin.institutes.show.login_as_owner') }}</x-button>
+            </form>
+        @elseif ($owners->count() === 1)
+            <form method="POST" action="{{ url('/admin/institutes/'.$tenant->id.'/login-as') }}" target="_blank" onsubmit="return confirm(@js(__('platform.admin.institutes.show.confirm_login_as')))">
+                @csrf
+                <x-button type="submit" variant="ghost">{{ __('platform.admin.institutes.show.login_as_owner') }}</x-button>
+            </form>
+        @endif
+
+        <a href="{{ url('/admin/institutes/'.$tenant->id.'/bunny-usage') }}" class="ui-btn ui-btn-ghost">{{ __('platform.admin.institutes.show.bunny_usage') }}</a>
     </div>
 @endsection
