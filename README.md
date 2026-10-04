@@ -126,7 +126,7 @@ Cloudflare).
 | Mini security pass before deploy | Run (Phase 11) — [docs/SECURITY_PASS.md](docs/SECURITY_PASS.md) | ROADMAP Stage B |
 | First real deployment / tenant #1 | Not deployed | ROADMAP Stage B |
 | Automated payment gateway (per-tenant accounts, idempotent webhooks) | Not started | ROADMAP Stage C |
-| Custom domains + TLS via Caddy on-demand | Not started (schema supports `DomainType::Custom`) | ROADMAP Stage C, SECURITY.md |
+| Custom domains + TLS via Caddy on-demand | Planned — spec written 2026-10-04, not implemented | [phase-14-custom-domains.md](docs/specs/phase-14-custom-domains.md), [CUSTOM_DOMAINS.md](CUSTOM_DOMAINS.md), ROADMAP Stage C |
 | Queues at scale, audit logging | Not started (queue driver is `database`) | ROADMAP Stage C |
 | DPDP consent flow (guardian fields, `consents` table, export/delete tooling) | Not started; under-18 handling still flagged | [PRIVACY.md](PRIVACY.md) |
 | Subscriptions, usage metering, WhatsApp notifications | Not started | ROADMAP Stage D |
