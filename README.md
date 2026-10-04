@@ -155,11 +155,12 @@ Cloudflare).
    mass-assignable), and routing/middleware (`Route::domain()` for central routes,
    `RequireTenant` pinned ahead of `SubstituteBindings`). Failing closed is the default:
    no context → an exception, unknown host → 404, never "tenant #1".
-2. **Documentation is a first-class artefact.** Nine root design docs
+2. **Documentation is a first-class artefact.** Ten root design docs
    ([ARCHITECTURE](ARCHITECTURE.md), [TENANCY](TENANCY.md), [SECURITY](SECURITY.md),
    [VIDEO](VIDEO.md), [PAYMENTS](PAYMENTS.md), [PRIVACY](PRIVACY.md),
-   [LIVE_CLASSES](LIVE_CLASSES.md), [ROADMAP](ROADMAP.md), [AGENT_RULES](AGENT_RULES.md))
-   plus 16 spec/brief files under
+   [LIVE_CLASSES](LIVE_CLASSES.md), [CUSTOM_DOMAINS](CUSTOM_DOMAINS.md),
+   [ROADMAP](ROADMAP.md), [AGENT_RULES](AGENT_RULES.md))
+   plus 17 spec/brief files under
    `docs/specs/`. Non-obvious decisions carry their reasoning *next to the code* (see the
    middleware-priority comment in `bootstrap/app.php`). There are **zero
    `TODO`/`FIXME`/`HACK` markers** in the codebase.

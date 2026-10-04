@@ -199,10 +199,12 @@ scheduler commands ride §6's existing every-minute cron entry.
 Run from the app directory on the server, as the deploy/site user:
 
 ```bash
+# Confirm no unapplied migrations locally first — see docs/DEPLOY_RUNBOOK.md §1.1a
 git pull
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 php artisan migrate --force
+# If migrate outputs anything other than DONE for each migration, stop — see docs/DEPLOY_RUNBOOK.md §5.3
 php artisan optimize
 php artisan app:preflight --require-production
 ```
