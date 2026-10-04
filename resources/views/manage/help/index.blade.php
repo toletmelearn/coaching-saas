@@ -16,6 +16,11 @@
                 $sections['live_classes.'.$liveKey] = __('help.live_classes.sections.'.$liveKey);
                 $bodies['live_classes.'.$liveKey] = __('help.live_classes.body.'.$liveKey);
             }
+
+            // Phase 15 — a plain-language section about student data, folded in
+            // with the same additive pattern as the live-classes trio above.
+            $sections['consents'] = __('consents.help_title');
+            $bodies['consents'] = __('consents.help_body');
         @endphp
         @foreach ($sections as $key => $label)
             <section class="ui-card" style="padding: 1.125rem 1.25rem;">

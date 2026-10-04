@@ -12,6 +12,7 @@ use App\Models\LiveClass;
 use App\Models\Payment;
 use App\Support\GettingStartedChecklist;
 use App\Support\LessonAccess;
+use App\Support\Payments\PaymentStateResolver;
 use App\Support\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
@@ -91,11 +92,39 @@ class DashboardController extends Controller
         // never appears on their dashboard.
         $live = $this->liveClassSummary($active->pluck('course_id'));
 
+        // Phase 15 (Part B): per-enrolment payment status for the status card.
+        // Only paid courses (fee > 0) carry a payment state; the amounts come
+        // from AmountResolver server-side, and the whole list is resolved in a
+        // single batched payments query.
+        $states = PaymentStateResolver::forEnrolments($active);
+
+        $paymentStatuses = $active
+            ->filter(fn (Enrolment $enrolment): bool => ($enrolment->course->fee_paise ?? 0) > 0)
+            ->map(function (Enrolment $enrolment) use ($states): array {
+                $state = $states[(int) $enrolment->id];
+                $payment = $state['payment'];
+
+                return [
+                    'enrolment_id' => (int) $enrolment->id,
+                    'course' => $enrolment->course->title,
+                    'state' => $state['state'],
+                    'amount' => $state['amount'],
+                    // Approved reads from the review moment, pending from the
+                    // submission moment (reviewed_at is still null then).
+                    'date' => $payment === null
+                        ? null
+                        : ($payment->reviewed_at ?? $payment->submitted_at)->format('d M Y'),
+                    'reference' => $payment?->id,
+                ];
+            })
+            ->values();
+
         return view('dashboard.student', [
             'user' => $user,
             'active' => $active,
             'ended' => $ended,
             'courseProgress' => $courseProgress,
+            'paymentStatuses' => $paymentStatuses,
             'liveNowClasses' => $live['live'],
             'startingSoonClasses' => $live['soon'],
         ]);

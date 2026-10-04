@@ -66,8 +66,11 @@ These encode the guardrails established in [TENANCY.md](TENANCY.md), [SECURITY.m
     Caddy "ask" endpoint approves only verified domains — never an open approve-any-hostname
     endpoint.
 17. **Treat under-18 users as "children" under DPDP** and do not process their data without
-    the planned guardian-consent flow once it exists; don't build features that assume
-    self-consent is always sufficient.
+    guardian consent recorded in `consents` (all four purposes + notice version + method;
+    both the creation form and the CSV import record it, and withdrawal is honoured —
+    withdrawing course delivery refuses delivery at the controller layer); erasure
+    anonymises the row instead of dropping it (sentinel email). Don't build features that
+    assume self-consent is always sufficient.
 18. **Don't state unresolved legal questions as fact.** Anything flagged "needs legal
     confirmation" in [PRIVACY.md](PRIVACY.md) stays flagged until a human with legal
     authority confirms it — don't quietly resolve it via a code comment or assumption.

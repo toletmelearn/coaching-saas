@@ -83,8 +83,8 @@ gate:
 
 | Gate | Command | Result (as verified) |
 |------|---------|----------------------|
-| Unit + feature tests (SQLite) | `composer test` | **983 tests, 982 passed, 1 skipped** (the skip is the documented MySQL-only preflight test) |
-| Tenancy/auth/etc. on real MySQL | `composer test:mysql` | **951 / 951 passed** |
+| Unit + feature tests (SQLite) | `composer test` | **1032 tests, 1031 passed, 1 skipped** (the skip is the documented MySQL-only preflight test) |
+| Tenancy/auth/etc. on real MySQL | `composer test:mysql` | **1000 / 1000 passed** |
 | JS unit tests (Node, no browser) | `composer test:js` | **29 / 29 passed** |
 | Formatting | `composer lint` | **clean** (Pint reports no changes needed) |
 | Static analysis | `composer analyse` | **0 errors** at Larastan level 5 |
@@ -110,9 +110,11 @@ gate:
 | 8 | [phase-8-devices.md](docs/specs/phase-8-devices.md) | One device per student (1–3 limit), device list/sign-out UI, revocation reasons, `devices:prune`, 30-day sessions |
 | 9 | [phase-9-pilot.md](docs/specs/phase-9-pilot.md) | Bulk CSV student import (preview → confirm), 15-minute one-time credentials sheet with WhatsApp links, CSV formula-injection guard, login help line, getting-started checklist, Help page, mobile People cards |
 | 10 | [phase-10-payments.md](docs/specs/phase-10-payments.md) | Manual UPI payments: `payments` table with composite tenant FKs, course-fee pricing, screenshot upload (re-encoded, private disk), owner approve/reject queue, idempotent approval, per-viewer signed screenshot URLs |
+| 10.1 | *(none — a follow-up to [phase-10-payments.md](docs/specs/phase-10-payments.md), recorded in [phase-15-dpdp-consent-foundation.md](docs/specs/phase-15-dpdp-consent-foundation.md))* | Student **payment status surface**: "Welcome back, [name]" dashboard greeting (identical to owner/staff), three-state payment status card (received-green / under-review-amber / needed + Pay now), and a paid-lesson gate that swaps the video player for "Payment needed" until a payment is approved — server-resolved via `PaymentStateResolver`, no schema change |
 | 12 | [phase-12-live-classes.md](docs/specs/phase-12-live-classes.md) | Live classes via Jitsi (JaaS): enrolment-gated server-minted join (room name + JWT minted per request), heartbeat attendance with server-derived time, status scheduler, teacher attendance report + formula-guarded CSV — whole feature behind `LIVE_CLASSES_ENABLED` (off by default), see [LIVE_CLASSES.md](LIVE_CLASSES.md) |
 | 12.1 | *(none — a follow-up to [phase-12-live-classes.md](docs/specs/phase-12-live-classes.md))* | Live classes **discoverability**: header "Live classes" link, tenant-wide `/manage/live-classes` (Course / Title / Starts / Status / Attendance with upcoming·past·all filters, one query budget regardless of row count), a live/next/empty card on both dashboards, three Help sections, PILOT_CHECKLIST row 26 — no new schema, no route changes to Phase 12's course-scoped screens |
 | 13 | [phase-13-admin-panel.md](docs/specs/phase-13-admin-panel.md) | Platform admin control panel: health checklist with `APP_DEBUG`-gated one-click fix, service settings (encrypted secrets + Test Connection), backup run/download/delete, log viewer with search, audit log with filters, allowlisted `.env` editor + cache buttons, signed single-use login-as-owner, per-tenant Bunny usage |
+| 15 | [phase-15-dpdp-consent-foundation.md](docs/specs/phase-15-dpdp-consent-foundation.md) | DPDP consent foundation: guardian contact fields on the student record, `consents` (4 purposes × notice version × method, composite tenant FKs, unique per grant), all-or-nothing consent recorded on student creation and bulk import, consent screens with withdrawal (course-delivery refusal 403 at the controller layer, `progress_tracking` erases that student's progress), student data screens — JSON export and irreversible erasure (pre-deletion snapshot to `consent_audit_logs`, hard-deleted enrolments, anonymised row with sentinel `erased-{id}@removed.invalid` email), Help section — *known numbering conflict C13: ROADMAP still lists Stage C as 14/15/16* |
 
 Also shipped alongside: **production readiness** (Phase 4.6A — no trust of forwarded host,
 Cloudflare trusted-proxy ranges, session cookie domain tests), **`php artisan app:preflight`**,
@@ -127,8 +129,7 @@ Cloudflare).
 | First real deployment / tenant #1 | Not deployed | ROADMAP Stage B |
 | Automated payment gateway (per-tenant accounts, idempotent webhooks) | Not started | ROADMAP Stage C |
 | Custom domains + TLS via Caddy on-demand | Planned — spec written 2026-10-04, not implemented | [phase-14-custom-domains.md](docs/specs/phase-14-custom-domains.md), [CUSTOM_DOMAINS.md](CUSTOM_DOMAINS.md), ROADMAP Stage C |
-| Queues at scale, audit logging | Not started (queue driver is `database`) | ROADMAP Stage C |
-| DPDP consent flow (guardian fields, `consents` table, export/delete tooling) | Not started; under-18 handling still flagged | [PRIVACY.md](PRIVACY.md) |
+| Queues at scale, audit logging | Not started (queue driver is `database`) — pre-assigned Phase 15 in PROJECT_BRIEF §3 before DPDP took the number (conflict C13); pending renumber to 16 in ROADMAP | ROADMAP Stage C |
 | Subscriptions, usage metering, WhatsApp notifications | Not started | ROADMAP Stage D |
 | Self-service "forgot password" | Not implemented **by design** — `password_reset_tokens` is not tenant-scoped yet and must be fixed first | SECURITY.md |
 
@@ -142,7 +143,12 @@ Cloudflare).
 > (`1177a9c` + this phase, `docs/specs/phase-12-live-classes.md`) — ROADMAP's Stage C
 > entries shifted to 13/14/15 accordingly — and **Phase 13 (platform admin control
 > panel)** (`docs/specs/phase-13-admin-panel.md`) shifted them once more, to
-> 14/15/16 (drift C12 in PROJECT_BRIEF §3). The roadmap itself was rewritten to the
+> 14/15/16 (drift C12 in PROJECT_BRIEF §3) — and **Phase 15 (DPDP consent foundation)**
+> (`fe1f138` + this phase, `docs/specs/phase-15-dpdp-consent-foundation.md`) has now taken
+> 15 for itself, pushing the still-unstarted Stage C queue/catch-all entries to 16/17
+> (conflict C13 in PROJECT_BRIEF §3 — ROADMAP's Stage C header still says 14/15/16, the
+> one open half of that conflict), with **Phase 10.1 (student payment status)** recorded
+> as a follow-up inside the Phase 15 spec. The roadmap itself was rewritten to the
 > canonical numbering in `2926163` and extended for Phases 12 and 13 with those phases.
 
 ---
@@ -160,11 +166,11 @@ Cloudflare).
    [VIDEO](VIDEO.md), [PAYMENTS](PAYMENTS.md), [PRIVACY](PRIVACY.md),
    [LIVE_CLASSES](LIVE_CLASSES.md), [CUSTOM_DOMAINS](CUSTOM_DOMAINS.md),
    [ROADMAP](ROADMAP.md), [AGENT_RULES](AGENT_RULES.md))
-   plus 17 spec/brief files under
+   plus 18 spec/brief files under
    `docs/specs/`. Non-obvious decisions carry their reasoning *next to the code* (see the
    middleware-priority comment in `bootstrap/app.php`). There are **zero
    `TODO`/`FIXME`/`HACK` markers** in the codebase.
-3. **Test-to-code ratio is ~2:1** (20,852 test lines vs 10,835 app lines), with security
+3. **Test-to-code ratio is ~2:1** (22,553 test lines vs 11,630 app lines), with security
    behaviour tested explicitly — cross-tenant login rejection, session replay, token-key
    cross-tenant misuse, secrets never in HTML or logs, CSV formula injection, rate limits.
 4. **All five quality gates are green** — tests on both SQLite *and* real MySQL, JS tests,
@@ -218,7 +224,8 @@ Cloudflare).
      `composer test:mysql` line that once described only `tests/Feature/Tenancy` (20
      suites / 793 tests at that commit; **21 suites / 875 tests** after Phase 12, **932
      tests** after Phase 13, **950 tests** after Phase 12.1, **951 tests** after Phase
-     13.1, and the counts above re-synced again with each).
+     13.1, **22 suites / 1000 tests** after Phase 15, and the counts above re-synced
+     again with each).
 5. **`.env` has drifted from `.env.example`.** The local `.env` carries
    `SESSION_LIFETIME=120` while `.env.example` specifies `43200` (the Phase 8 30-day decision
    documented in SECURITY.md), and lacks `SESSION_SECURE_COOKIE`, `PLATFORM_DOMAIN` and
@@ -260,9 +267,9 @@ app/
   Auth/             Tenant-aware user provider
   Console/Commands/ app:preflight, devices:prune, local:hosts, live-classes:*, platform-admin:create, tenant:create, videos:sync
   Database/         TenantBuilder (tenant-safe query builder)
-  Enums/            13 backed enums (roles, statuses, reasons)
-  Http/             45 controllers (+ base) across Admin/, Auth/, Manage/ and top level, 9 middleware
-  Models/           18 models; tenant-owned ones use BelongsToTenant
+  Enums/            15 backed enums (roles, statuses, reasons, consent purposes/methods)
+  Http/             47 controllers (+ base) across Admin/, Auth/, Manage/ and top level, 9 middleware
+  Models/           20 models; tenant-owned ones use BelongsToTenant
   Policies/         Course, Enrolment, LiveClass, Payment, Tenant, User
   Scopes/           TenantScope (throws when no context)
   Services/Video/   BunnyVideoProvider, FakeVideoProvider
@@ -270,12 +277,12 @@ app/
   Traits/           BelongsToTenant
 bootstrap/app.php   Middleware wiring, trusted proxies, exception handling
 config/             coaching, tenancy, cloudflare, preflight, backup, services…
-database/           27 migrations, 12 factories, 2 seeders (TenantSeeder does the demo data)
+database/           30 migrations, 12 factories, 2 seeders (TenantSeeder does the demo data)
 docs/               DEPLOY, DEPLOY_RUNBOOK, PILOT_CHECKLIST, SECURITY_PASS, specs/ (16 phase specs and briefs), superpowers/
 lang/en/            17 translation files
 public/             Front controller, PWA icons
 resources/          css, fonts, js (sw, pwa, lesson-progress, progress-tracker, video-upload), Blade views
-routes/             web.php (232 routes), console.php (scheduler)
+routes/             web.php (239 routes), console.php (scheduler)
 tests/              Pest: Unit/ (14 files), Feature/ (135 files), js/ (Node), Fixtures/
 ```
 
@@ -479,6 +486,36 @@ WhatsApp link per student — nothing is emailed or texted automatically. A cour
 can be exported as CSV from its progress page. See
 [docs/specs/phase-9-pilot.md](docs/specs/phase-9-pilot.md) and [SECURITY.md](SECURITY.md).
 
+### DPDP consent and student data (Phase 15)
+
+Creating a student (form or CSV import) records **guardian consent for all four DPDP
+purposes** — course delivery, progress tracking, communication, media processing — in the
+same transaction as the student row, stamped with who recorded it, how
+(`guardian_whatsapp` / `guardian_in_person` / `guardian_signed_form`), and which notice
+version was shown (`v1.0-2026-10-04`). Owners/staff manage this at
+`/manage/students/{id}/consents`: record a later consent, or withdraw one (with a
+reason) — withdrawing course delivery immediately blocks that student from the course
+and its lessons, and withdrawing progress tracking erases their watched-progress rows.
+`/manage/students/{id}` offers the student-data screens: a six-key JSON export
+(user, enrolments, progress, devices, consents, payments) and an irreversible erasure
+that snapshots enrolments/attendance/payments into `consent_audit_logs`, hard-deletes
+the enrolment history, and anonymises the row (`Deleted Student`,
+`erased-{id}@removed.invalid`) — confirmation requires typing the student's exact name.
+Students cannot open these screens themselves. See
+[docs/specs/phase-15-dpdp-consent-foundation.md](docs/specs/phase-15-dpdp-consent-foundation.md),
+[PRIVACY.md](PRIVACY.md) and [SECURITY.md](SECURITY.md).
+
+### Student payment status (Phase 10.1)
+
+The student dashboard greets like the owner/staff screens ("Welcome back, [name]") and
+shows a payment status card for every paid enrolment: **Payment received** (green, with
+the review date and reference), **Payment under review** (amber, submitted date), or
+**Payment needed** (with the exact amount and a "Pay now" link into the existing
+`/enrolments/{id}/payment` page). A paid lesson whose payment is not yet approved shows
+that same "Payment needed" state *instead of* the video player, resolved server-side per
+request — free courses, free previews, staff and approved payers are unaffected. See the
+Phase 15 spec (numbered 10.1 there, as a follow-up to Phase 10).
+
 ### PWA testing locally
 
 Service workers only register in a "secure context" — HTTPS, or `localhost`/`127.0.0.1`.
@@ -528,8 +565,8 @@ into `C:\Windows\System32\drivers\etc\hosts` instead of typing them by hand.
 |--------------------------|-------------------------------------------------------------------|
 | `composer setup`         | One-shot install: `composer install`, copy `.env`, `key:generate`, `migrate`, `npm install`, `npm run build`. |
 | `composer dev`           | Run the Laravel dev stack (`php artisan dev`).                    |
-| `composer test`          | Run the full Pest suite (983 tests) against an in-memory SQLite database. |
-| `composer test:mysql`    | Run the MySQL variant of the suite — 21 suites / 951 tests: every `tests/Feature/` directory plus the schema- and security-relevant `tests/Unit/` directories — against the real `coaching_saas_test` database (set `DB_TEST_*` in `.env`). Excludes only `tests/Feature/ExampleTest.php`, `tests/Feature/ErrorPagesTest.php` and four `tests/Unit/` files that need no database. |
+| `composer test`          | Run the full Pest suite (1032 tests) against an in-memory SQLite database. |
+| `composer test:mysql`    | Run the MySQL variant of the suite — 22 suites / 1000 tests: every `tests/Feature/` directory plus the schema- and security-relevant `tests/Unit/` directories — against the real `coaching_saas_test` database (set `DB_TEST_*` in `.env`). Excludes only `tests/Feature/ExampleTest.php`, `tests/Feature/ErrorPagesTest.php` and four `tests/Unit/` files that need no database. |
 | `composer test:js`       | Run the Node test-runner suite for `resources/js/{sw,progress-tracker}.js` (no browser needed). |
 | `composer lint`          | Format code with Laravel Pint (`vendor/bin/pint --test` to check without writing). |
 | `composer analyse`       | Static analysis with Larastan (PHPStan) at level 5.                |

@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ConsentMethod;
+use App\Enums\ConsentPurpose;
 use App\Enums\DeviceRevocationReason;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
+use App\Models\Consent;
 use App\Models\User;
 use App\Support\Devices\DeviceRegistrar;
 use App\Support\LoginRateLimiter;
@@ -12,6 +15,7 @@ use App\Support\TemporaryPasswordGenerator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Enum;
@@ -47,7 +51,11 @@ class UserController extends Controller
     {
         Gate::authorize('create', User::class);
 
-        return view('users.create');
+        return view('users.create', [
+            'noticeVersion' => Consent::NOTICE_VERSION,
+            'purposes' => ConsentPurpose::cases(),
+            'methods' => ConsentMethod::cases(),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -72,22 +80,77 @@ class UserController extends Controller
 
         Gate::authorize('createWithRole', [User::class, $role]);
 
+        // Phase 15: creating a student is a consent event. Guardian details and
+        // a consent for every purpose are required for role=student only — they
+        // are validated after the authorisation checks above so an unauthorised
+        // actor still gets the 403 they were always owed, and after the contact
+        // check so its error keys keep precedence. Any other role skips this
+        // entirely: guardian fields posted alongside a non-student are dropped.
+        $consentData = null;
+
+        if ($role === UserRole::Student) {
+            $consentData = $request->validate([
+                'guardian_name' => ['required', 'string', 'max:255'],
+                'guardian_relationship' => ['required', 'string', 'max:100'],
+                'guardian_phone' => ['required', 'string', 'max:20'],
+                'guardian_email' => ['nullable', 'email', 'max:255'],
+                'consents' => ['required', 'array'],
+                'consents.*' => ['string', new Enum(ConsentPurpose::class)],
+                'consent_method' => ['required', new Enum(ConsentMethod::class)],
+            ]);
+
+            if (array_diff(ConsentPurpose::values(), $consentData['consents']) !== []) {
+                throw ValidationException::withMessages([
+                    'consents' => __('consents.errors.purposes_required'),
+                ]);
+            }
+        }
+
         $temporaryPassword = TemporaryPasswordGenerator::generate();
 
-        $user = new User([
-            'name' => $data['name'],
-            'email' => $data['email'] ?? null,
-            'phone' => $data['phone'] ?? null,
-        ]);
+        $user = DB::transaction(function () use ($data, $role, $consentData, $request, $temporaryPassword) {
+            $user = new User([
+                'name' => $data['name'],
+                'email' => $data['email'] ?? null,
+                'phone' => $data['phone'] ?? null,
+            ]);
 
-        $user->forceFill([
-            'role' => $role,
-            'status' => UserStatus::Active,
-            'must_change_password' => true,
-            'password' => Hash::make($temporaryPassword),
-        ]);
+            $user->forceFill([
+                'role' => $role,
+                'status' => UserStatus::Active,
+                'must_change_password' => true,
+                'password' => Hash::make($temporaryPassword),
+            ]);
 
-        $user->save();
+            $user->save();
+
+            if ($consentData !== null) {
+                $user->forceFill([
+                    'guardian_name' => $consentData['guardian_name'],
+                    'guardian_relationship' => $consentData['guardian_relationship'],
+                    'guardian_phone' => $consentData['guardian_phone'],
+                    'guardian_email' => $consentData['guardian_email'] ?? null,
+                ])->save();
+
+                // One consent per purpose, all stamped with the same notice
+                // version, collection method and recorder — in the same
+                // transaction as the student, so a partial create is impossible.
+                foreach (ConsentPurpose::values() as $purpose) {
+                    $consent = new Consent;
+                    $consent->forceFill([
+                        'user_id' => $user->id,
+                        'purpose' => $purpose,
+                        'method' => $consentData['consent_method'],
+                        'notice_version' => Consent::NOTICE_VERSION,
+                        'granted_at' => now(),
+                        'recorded_by' => $request->user('tenant')->id,
+                    ]);
+                    $consent->save();
+                }
+            }
+
+            return $user;
+        });
 
         return $this->redirectWithTemporaryPassword($user, $temporaryPassword);
     }

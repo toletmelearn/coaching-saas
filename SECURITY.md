@@ -463,6 +463,55 @@ recordings are traceable to an individual viewer rather than only proving *a* le
   backup failed; failed platform-admin logins are *not* recorded — they are not an action
   by that admin).
 
+## DPDP consent and student erasure (Phase 15)
+
+- **Consent is validated server-side and written in the same transaction as the
+  student.** `POST /users` (and the CSV import's confirm step) refuses to create a
+  student unless all four purposes (`course_delivery`, `progress_tracking`,
+  `communication`, `media_processing`) are present, each value is a `ConsentPurpose`
+  enum case, the collection method is a `ConsentMethod` case, and the guardian block is
+  complete — then writes the rows alongside the user, stamped with `notice_version`
+  (`Consent::NOTICE_VERSION`) and `recorded_by` (the acting owner/staff). A missing
+  purpose fails with the single `consents` key and `consents.errors.purposes_required`.
+  The guardian columns are deliberately **not** in the `User` fillable array, so request
+  input can never write them directly; controllers `forceFill` them after validation.
+- **Consent rows are guarded, not fillable.** Only `user_id`, `purpose` and `method` are
+  fillable — `tenant_id`, `guardian_id`, `recorded_by`, `granted_at`, `withdrawn_at`,
+  `withdrawn_reason` and `notice_version` cannot be set through mass assignment
+  (`ConsentSchemaTest` proves it with a positive control). Every FK is composite
+  `(tenant_id, …)` → `users(tenant_id, id)`, so no consent can name a user outside its
+  tenant even when ids collide.
+- **Withdrawal is enforced at the controller layer; `LessonAccess` stays untouched.**
+  `ConsentAccess::courseDeliveryWithdrawn()` reads the student's *latest*
+  `course_delivery` grant (a later re-grant unlocks again) and `CourseController::show()`
+  / `LessonController::show()` abort 403 before anything renders. Students with no grant
+  are not blocked (blocking on missing consent is a documented scope-out, so pre-Phase-15
+  students keep working). Withdrawing `progress_tracking` hard-deletes only that
+  student's `lesson_progress` rows through the tenant-scoped query builder.
+- **Erasure is a transaction that snapshots before it deletes**
+  (`StudentDataController::erase`, owner/staff only via `UserPolicy::manageStudentData`,
+  cross-tenant ids 404 through `TenantScope`):
+  1. the typed confirmation must equal the student's **exact current name** or the
+     request fails with `consents.errors.confirmation_mismatch` and changes nothing;
+  2. key fields of the student's enrolments, live-class attendance and payments are
+     snapshotted as JSON into `consent_audit_logs.metadata` (`action = student_erased`,
+     `user_id` = student, `actor_id` = acting owner/staff) **before any delete** —
+     `payments.enrolment_id` is `ON DELETE CASCADE`, so the snapshot is the only
+     financial record that survives the next step;
+  3. `lesson_progress`, `user_devices`, `live_class_attendance` and `enrolments` rows are
+     hard-deleted (this repo has no soft deletes — "delete" means gone), taking their
+     payment rows with them;
+  4. the user row is **anonymised, never dropped**: name `Deleted Student`, email
+     `erased-{id}@removed.invalid` — a sentinel under RFC 2606 that can never resolve or
+     receive mail, kept non-null because `users_email_or_phone_check` still requires a
+     contact value (the CHECK is not relaxed) — phone and guardian columns null,
+     `remember_token` null;
+  5. consent rows survive: they are the audit trail, not personal data.
+- **Known gap (flagged, not hidden):** an erased student's live session is **not** purged
+  — the cookie stays valid until expiry even though the row behind it is anonymised.
+  The Phase 15 spec's unresolved-risks section records this; session purge on erasure
+  would belong with any future "sessions cleanup" work.
+
 ## Custom domains and TLS
 
 - Tenants may eventually bring a custom domain instead of `*.coaching.test`

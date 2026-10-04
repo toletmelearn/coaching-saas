@@ -3,6 +3,7 @@
 use App\Enums\UserStatus;
 use App\Models\Tenant;
 use App\Models\User;
+use Tests\Support\ConsentFixtures;
 
 // === Cross-Tenant Isolation ===
 
@@ -252,6 +253,9 @@ test('cannot mass-assign tenant_id via request', function () {
             'phone' => '9876543210',
             'role' => 'student',
             'tenant_id' => $otherTenant->id,
+        ] + ConsentFixtures::guardianFields() + [
+            'consents' => ConsentFixtures::PURPOSES,
+            'consent_method' => ConsentFixtures::IMPORT_METHOD,
         ]);
 
     // Positive control: the create request succeeded (the field was stripped, not rejected outright)
@@ -276,6 +280,9 @@ test('staff posting a privileged role when creating a user is forbidden, not sil
             'name' => 'Control Student',
             'email' => 'control-role@example.com',
             'role' => 'student',
+        ] + ConsentFixtures::guardianFields() + [
+            'consents' => ConsentFixtures::PURPOSES,
+            'consent_method' => ConsentFixtures::IMPORT_METHOD,
         ])->assertRedirect();
 
     // Staff requesting role=owner is forbidden outright (not silently downgraded)
@@ -316,6 +323,9 @@ test('cannot mass-assign status via request when creating', function () {
             'email' => 'test@example.com',
             'phone' => '9876543210',
             'status' => 'disabled',  // Should default to active
+        ] + ConsentFixtures::guardianFields() + [
+            'consents' => ConsentFixtures::PURPOSES,
+            'consent_method' => ConsentFixtures::IMPORT_METHOD,
         ]);
 
     // Positive control: the create request succeeded (the field was stripped, not rejected outright)
@@ -341,6 +351,9 @@ test('cannot mass-assign must_change_password via request', function () {
             'email' => 'test@example.com',
             'phone' => '9876543210',
             'must_change_password' => false,
+        ] + ConsentFixtures::guardianFields() + [
+            'consents' => ConsentFixtures::PURPOSES,
+            'consent_method' => ConsentFixtures::IMPORT_METHOD,
         ]);
 
     // Positive control: the create request succeeded (the field was stripped, not rejected outright)
@@ -367,6 +380,9 @@ test('creating a user without email or phone returns validation errors on both f
         ->post("http://{$domain}/users", [
             'name' => 'Control Contact',
             'email' => 'control-contact@example.com',
+        ] + ConsentFixtures::guardianFields() + [
+            'consents' => ConsentFixtures::PURPOSES,
+            'consent_method' => ConsentFixtures::IMPORT_METHOD,
         ])->assertRedirect();
 
     $response = $this->actingAs($owner, 'tenant')
@@ -398,6 +414,9 @@ test('owner-created user can log in with the generated temporary password and mu
             'email' => 'newstudent-temp@example.com',
             'phone' => '9876543210',
             'role' => 'student',
+        ] + ConsentFixtures::guardianFields() + [
+            'consents' => ConsentFixtures::PURPOSES,
+            'consent_method' => ConsentFixtures::IMPORT_METHOD,
         ]);
 
     $response->assertRedirect();
@@ -463,6 +482,9 @@ test('the generated temporary password matches the required format', function ()
         ->post("http://{$domain}/users", [
             'name' => 'Format Check',
             'email' => 'format-check@example.com',
+        ] + ConsentFixtures::guardianFields() + [
+            'consents' => ConsentFixtures::PURPOSES,
+            'consent_method' => ConsentFixtures::IMPORT_METHOD,
         ]);
     $createdPassword = $createResponse->getSession()->get('temporary_password');
     expect($createdPassword)->toMatch('/^[abcdefghjkmnpqrstuvwxyz23456789]{4}-[abcdefghjkmnpqrstuvwxyz23456789]{4}$/');

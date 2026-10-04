@@ -8,7 +8,9 @@ use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Models\User;
+use App\Support\ConsentAccess;
 use App\Support\LessonAccess;
+use App\Support\Payments\PaymentStateResolver;
 use App\Support\ProgressRecorder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -31,6 +33,13 @@ class LessonController extends Controller
             return redirect('/login');
         }
 
+        // Phase 15 — withdrawn course_delivery consent refuses the lesson page
+        // at the controller level (LessonAccess itself is locked and keeps its
+        // own concerns). A student with no consent row at all is unaffected.
+        if (ConsentAccess::courseDeliveryWithdrawn($user)) {
+            abort(Response::HTTP_FORBIDDEN);
+        }
+
         $enrolment = $user !== null ? $access->findEnrolment($user, $course) : null;
 
         if ($result === 'forbidden') {
@@ -41,12 +50,34 @@ class LessonController extends Controller
             ], Response::HTTP_FORBIDDEN);
         }
 
+        // Part B — a paid course stays locked until the student's payment is
+        // approved: the page renders a "Payment needed" state instead of the
+        // video player. The check lives here in the controller (never inside
+        // LessonAccess — that file is locked) and applies only to an enrolled,
+        // active student of a course with a fee: staff, guests and free-preview
+        // viewers are untouched.
+        $paymentNeeded = false;
+        $paymentAmount = null;
+
+        if ($user !== null
+            && ! $access->isStaffOrOwner($user)
+            && $enrolment !== null
+            && $enrolment->isValidNow()
+            && ($course->fee_paise ?? 0) > 0) {
+            $state = PaymentStateResolver::forEnrolment($enrolment);
+
+            if ($state['state'] !== PaymentStateResolver::APPROVED) {
+                $paymentNeeded = true;
+                $paymentAmount = $state['amount'];
+            }
+        }
+
         $lesson->load('attachments');
         $lesson->loadMissing('video');
 
         $videoPlayback = null;
 
-        if ($lesson->video !== null && $lesson->video->status === VideoStatus::Ready) {
+        if (! $paymentNeeded && $lesson->video !== null && $lesson->video->status === VideoStatus::Ready) {
             $videoPlayback = [
                 'driver' => $lesson->video->provider,
                 'url' => $videoProvider->playbackUrl($lesson->video, $user),
@@ -79,6 +110,9 @@ class LessonController extends Controller
             'previous' => $previous,
             'next' => $next,
             'videoPlayback' => $videoPlayback,
+            'paymentNeeded' => $paymentNeeded,
+            'paymentEnrolment' => $paymentNeeded ? $enrolment : null,
+            'paymentAmount' => $paymentAmount,
             'isRecordableStudent' => $isRecordableStudent,
             'progress' => $progress,
             'resumePosition' => $resumePosition,

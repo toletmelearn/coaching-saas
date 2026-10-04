@@ -3,6 +3,7 @@
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Tests\Support\ConsentFixtures;
 
 test('creating a user shows the temporary password prominently on the People page', function () {
     $tenant = Tenant::factory()->create();
@@ -16,6 +17,9 @@ test('creating a user shows the temporary password prominently on the People pag
             'name' => 'New Student',
             'email' => 'ui-new-student@example.com',
             'role' => 'student',
+        ] + ConsentFixtures::guardianFields() + [
+            'consents' => ConsentFixtures::PURPOSES,
+            'consent_method' => ConsentFixtures::IMPORT_METHOD,
         ]);
     $storeResponse->assertRedirect();
 

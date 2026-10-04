@@ -1,7 +1,49 @@
 @extends('layouts.app')
 
 @section('content')
-    <x-page-header :kicker="__('users.dashboard.welcome')" :title="__('nav.my_courses')" />
+    <x-page-header :kicker="__('users.dashboard.welcome')" :title="$user->name" />
+
+    {{-- Phase 15 (Part B) — payment status for each paid enrolment: green
+         "received", amber "under review", brand-accent "needed" with a Pay now
+         button into the existing submission page. States are resolved
+         server-side by PaymentStateResolver (see DashboardController). --}}
+    @if ($paymentStatuses->isNotEmpty())
+        <div class="ui-card ui-fade" style="padding: 1.125rem 1.25rem; margin-bottom: 1.25rem;">
+            <div class="ui-section-title" style="margin-top: 0;">
+                <h2 class="ui-h2">{{ __('payments.state.heading') }}</h2>
+            </div>
+
+            @foreach ($paymentStatuses as $status)
+                @if ($status['state'] === 'approved')
+                    <x-alert tone="success" style="margin-bottom: 0.75rem;">
+                        {{ __('payments.state.received', [
+                            'course' => $status['course'],
+                            'date' => $status['date'],
+                            'reference' => $status['reference'],
+                        ]) }}
+                    </x-alert>
+                @elseif ($status['state'] === 'pending')
+                    <x-alert tone="warning" style="margin-bottom: 0.75rem;">
+                        {{ __('payments.state.under_review', [
+                            'course' => $status['course'],
+                            'date' => $status['date'],
+                        ]) }}
+                    </x-alert>
+                @else
+                    <x-alert style="margin-bottom: 0.75rem;">
+                        <span>{{ __('payments.state.needed', [
+                            'course' => $status['course'],
+                            'amount' => __('payments.amount_format', ['amount' => number_format($status['amount'] / 100, 2)]),
+                        ]) }}</span>
+                        <x-link href="{{ url('/enrolments/'.$status['enrolment_id'].'/payment') }}" variant="primary" size="sm" style="margin-left: 0.5rem;">
+                            {{ __('payments.state.pay_now') }}
+                        </x-link>
+                    </x-alert>
+                @endif
+            @endforeach
+        </div>
+    @endif
+
 
     {{-- Live classes (Phase 12.1): the read-only summary card. The Phase 12 list
          below stays as the full schedule (every live and starting-soon class with
@@ -59,6 +101,12 @@
             @endforeach
         </ul>
     @endif
+
+    {{-- The list keeps its own heading: the page header above is the greeting
+         ("Welcome back" + the student's name), exactly like owner/staff. --}}
+    <div class="ui-section-title">
+        <h2 class="ui-h2">{{ __('nav.my_courses') }}</h2>
+    </div>
 
     <ul class="ui-list ui-fade mb-6">
         @forelse ($active as $enrolment)

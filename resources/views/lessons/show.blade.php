@@ -33,7 +33,21 @@
         @endif
     </div>
 
-    @if ($videoPlayback)
+    @if ($paymentNeeded ?? false)
+        {{-- Part B — a paid course stays sealed until the payment is approved:
+             the page shows the same "Payment needed" state as the dashboard
+             card instead of the player. The check lives in LessonController,
+             not LessonAccess (locked). --}}
+        <div class="ui-alert" role="status" style="margin-bottom: 1.25rem; display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; justify-content: space-between;">
+            <span>{{ __('payments.state.needed', [
+                'course' => $course->title,
+                'amount' => __('payments.amount_format', ['amount' => number_format($paymentAmount / 100, 2)]),
+            ]) }}</span>
+            <x-link href="{{ url('/enrolments/'.$paymentEnrolment->id.'/payment') }}" variant="primary" size="sm">
+                {{ __('payments.state.pay_now') }}
+            </x-link>
+        </div>
+    @elseif ($videoPlayback)
         <div
             id="video-wrapper-{{ $lesson->id }}"
             class="relative aspect-video w-full mb-4 bg-black ui-card"
@@ -119,7 +133,7 @@
         </div>
     @endif
 
-    @if ($isRecordableStudent && ! $videoPlayback)
+    @if ($isRecordableStudent && ! $videoPlayback && ! ($paymentNeeded ?? false))
         <form method="POST" action="{{ url('/lessons/'.$lesson->id.'/completion') }}" class="mb-5">
             @csrf
             @method('PUT')

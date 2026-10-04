@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Actions\EnrolStudentAction;
+use App\Enums\ConsentMethod;
+use App\Enums\ConsentPurpose;
 use App\Enums\CourseStatus;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
+use App\Models\Consent;
 use App\Models\Course;
 use App\Models\User;
 use App\Support\Import\CsvImportPreviewBuilder;
@@ -188,6 +191,24 @@ class UserImportController extends Controller
                         'password' => Hash::make($temporaryPassword),
                     ]);
                     $student->save();
+
+                    // Phase 15 (Decision 3): a CSV carries no guardian details,
+                    // so imported students keep guardian_* null and the owner is
+                    // expected to collect them later from the student's screen.
+                    // Consent, however, is recorded for every purpose with the
+                    // file-level method, stamped with this importer as recorder.
+                    foreach (ConsentPurpose::values() as $purpose) {
+                        $consent = new Consent;
+                        $consent->forceFill([
+                            'user_id' => $student->id,
+                            'purpose' => $purpose,
+                            'method' => ConsentMethod::GuardianInPerson->value,
+                            'notice_version' => Consent::NOTICE_VERSION,
+                            'granted_at' => now(),
+                            'recorded_by' => $user->id,
+                        ]);
+                        $consent->save();
+                    }
 
                     if ($course !== null) {
                         ($this->enrolStudent)($course, $student, now(), $endsAt, $payload['payment_note'] ?? null, $user->id);

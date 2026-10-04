@@ -36,6 +36,8 @@ use App\Http\Controllers\Manage\LiveClassController as ManageLiveClassController
 use App\Http\Controllers\Manage\LiveClassOverviewController as ManageLiveClassOverviewController;
 use App\Http\Controllers\Manage\PaymentController as ManagePaymentController;
 use App\Http\Controllers\Manage\SettingsController as ManageSettingsController;
+use App\Http\Controllers\Manage\StudentConsentsController;
+use App\Http\Controllers\Manage\StudentDataController;
 use App\Http\Controllers\Manage\UserDeviceController as ManageUserDeviceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentScreenshotController;
@@ -253,6 +255,18 @@ Route::middleware('require.tenant')->group(function () {
                     Route::post('getting-started/dismiss', [DashboardController::class, 'dismissGettingStarted']);
 
                     Route::get('help', [ManageHelpController::class, 'show']);
+
+                    // Phase 15 — DPDP consent + student data screens (owner/staff
+                    // only via UserPolicy::manageConsents/manageStudentData; the
+                    // {student}/{consent} params resolve through TenantScope, so
+                    // another tenant's ids are 404 rather than 403).
+                    Route::get('students/{student}/consents', [StudentConsentsController::class, 'index']);
+                    Route::post('students/{student}/consents', [StudentConsentsController::class, 'store']);
+                    Route::get('students/{student}/consents/{consent}/withdraw', [StudentConsentsController::class, 'withdrawForm']);
+                    Route::post('students/{student}/consents/{consent}/withdraw', [StudentConsentsController::class, 'withdraw']);
+                    Route::get('students/{student}/data', [StudentDataController::class, 'show']);
+                    Route::get('students/{student}/data/export', [StudentDataController::class, 'export']);
+                    Route::delete('students/{student}/data', [StudentDataController::class, 'erase']);
 
                     Route::get('settings', [ManageSettingsController::class, 'show']);
                     Route::patch('settings', [ManageSettingsController::class, 'update']);

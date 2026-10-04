@@ -47,6 +47,16 @@ return [
         'waiting_reason' => 'The institute will review it and tell you if anything needs redoing.',
     ],
 
+    // Phase 15 (Part B) — the three-state payment card on the student dashboard
+    // and the same "Payment needed" state on a paid lesson page.
+    'state' => [
+        'heading' => 'Payment status',
+        'received' => 'Payment received for :course on :date — reference :reference',
+        'under_review' => 'Payment under review for :course — submitted :date',
+        'needed' => 'Payment needed for :course — :amount',
+        'pay_now' => 'Pay now',
+    ],
+
     'errors' => [
         'already_pending' => 'You already have a payment awaiting review for this course. Wait for it to be reviewed before sending another.',
     ],

@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Enrolment;
-use App\Models\LiveClassAttendance;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +23,11 @@ test('the owner can erase a student: the row is anonymised, progress and devices
 
     expect($student)->not->toBeNull()
         ->and($student->name)->toBe(ConsentFixtures::ERASED_NAME)
-        ->and($student->email)->toBeNull()
+        // Decision 1 (Phase 15): a sentinel on the reserved .invalid TLD, not
+        // null — users_email_or_phone_check keeps requiring one contact column,
+        // and .invalid can never resolve or receive mail. The row id keeps it
+        // unique inside the tenant's (tenant_id, email) index.
+        ->and($student->email)->toBe('erased-'.$f['student']->id.'@removed.invalid')
         ->and($student->phone)->toBeNull()
         ->and($student->guardian_name)->toBeNull()
         ->and($student->guardian_relationship)->toBeNull()
@@ -39,7 +42,7 @@ test('the owner can erase a student: the row is anonymised, progress and devices
     expect(DB::table('consents')->where('user_id', $f['student']->id)->count())->toBe(1);
 });
 
-test('erasure soft-deletes enrolments and live-class attendance instead of dropping them', function () {
+test('erasure hard-deletes enrolments and live-class attendance and snapshots them to the erasure log', function () {
     $f = ConsentFixtures::erasureSetup();
 
     $this->actingAs($f['owner'], 'tenant')
@@ -48,16 +51,24 @@ test('erasure soft-deletes enrolments and live-class attendance instead of dropp
         ])
         ->assertRedirect();
 
-    expect(inTenant($f['tenant'], fn () => Enrolment::find($f['enrolment']->id)))->toBeNull()
-        ->and(inTenant($f['tenant'], fn () => Enrolment::withTrashed()->find($f['enrolment']->id)))->not->toBeNull()
-        ->and(inTenant($f['tenant'], fn () => LiveClassAttendance::find($f['attendance']->id)))->toBeNull()
-        ->and(inTenant($f['tenant'], fn () => LiveClassAttendance::withTrashed()->find($f['attendance']->id)))->not->toBeNull();
+    // Decision 4 (Phase 15): the rows are really gone — no soft delete — and
+    // their key fields survive as JSON in consent_audit_logs.metadata.
+    expect(DB::table('enrolments')->where('id', $f['enrolment']->id)->count())->toBe(0)
+        ->and(DB::table('live_class_attendance')->where('id', $f['attendance']->id)->count())->toBe(0);
 
-    expect(DB::table('enrolments')->where('id', $f['enrolment']->id)->value('deleted_at'))->not->toBeNull()
-        ->and(DB::table('live_class_attendance')->where('id', $f['attendance']->id)->value('deleted_at'))->not->toBeNull();
+    $row = DB::table('consent_audit_logs')
+        ->where('action', 'student_erased')
+        ->where('user_id', $f['student']->id)
+        ->first();
+
+    $metadata = json_decode((string) $row->metadata, true);
+
+    expect($metadata)->toHaveKeys(['enrolments', 'live_class_attendance', 'payments'])
+        ->and(collect($metadata['enrolments'])->pluck('id')->all())->toContain($f['enrolment']->id)
+        ->and(collect($metadata['live_class_attendance'])->pluck('id')->all())->toContain($f['attendance']->id);
 });
 
-test('erasure keeps payments as financial records but the link resolves only to the anonymised row', function () {
+test('erasure removes the payment row with its enrolment but keeps the financial record as a snapshot', function () {
     $f = ConsentFixtures::erasureSetup();
 
     $this->actingAs($f['owner'], 'tenant')
@@ -66,17 +77,25 @@ test('erasure keeps payments as financial records but the link resolves only to 
         ])
         ->assertRedirect();
 
-    $payment = inTenant($f['tenant'], fn () => Payment::find($f['payment']->id));
+    // payments.enrolment_id is ON DELETE CASCADE, so the payment row leaves
+    // with the hard-deleted enrolment (Decision 4) — the financial facts it
+    // carried are what the snapshot below keeps.
+    expect(inTenant($f['tenant'], fn () => Payment::find($f['payment']->id)))->toBeNull();
 
-    expect($payment)->not->toBeNull()
-        ->and((int) $payment->amount_paise)->toBe(PaymentFixtures::FEE_PAISE);
+    $row = DB::table('consent_audit_logs')
+        ->where('action', 'student_erased')
+        ->where('user_id', $f['student']->id)
+        ->first();
 
-    // Following the payment → enrolment → student chain lands on an anonymous row.
-    $enrolment = inTenant($f['tenant'], fn () => Enrolment::withTrashed()->find($f['enrolment']->id));
-    $linked = inTenant($f['tenant'], fn () => User::find($enrolment->user_id));
+    $metadata = json_decode((string) $row->metadata, true);
+    $snapshot = collect($metadata['payments'])->firstWhere('id', $f['payment']->id);
 
-    expect($linked)->not->toBeNull()
-        ->and($linked->name)->toBe(ConsentFixtures::ERASED_NAME);
+    expect($snapshot)->not->toBeNull()
+        ->and((int) $snapshot['amount_paise'])->toBe(PaymentFixtures::FEE_PAISE)
+        ->and((string) $snapshot['status'])->toBe('pending')
+        // The student behind the snapshot is the anonymised row, not a name.
+        ->and(inTenant($f['tenant'], fn () => User::find($f['student']->id))->name)
+        ->toBe(ConsentFixtures::ERASED_NAME);
 });
 
 test('erasure writes a consent_audit_logs entry naming the student and the actor', function () {

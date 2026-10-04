@@ -161,17 +161,22 @@ test('guardian, tenancy, grant and withdrawal columns on consents are not mass a
 
     // purpose is fillable — it is legitimate request data. If fill() below cannot
     // change even that, the guarded assertions would pass vacuously.
-    $consent->fill([
-        'tenant_id' => $f['tenant']->id + 1000000,
-        'guardian_id' => $f['owner']->id,
-        'recorded_by' => $f['staff']->id,
-        'granted_at' => '2000-01-01 00:00:00',
-        'withdrawn_at' => '2000-01-02 00:00:00',
-        'withdrawn_reason' => 'forged',
-        'notice_version' => 'forged-version',
-        'purpose' => 'communication',
-    ]);
-    $consent->save();
+    // Wrapped in the tenant context like every other save in this suite: the
+    // locked BelongsToTenant saving hook rejects any save without one, and the
+    // point under test is fill()'s guarding, not context handling.
+    inTenant($f['tenant'], function () use ($consent, $f) {
+        $consent->fill([
+            'tenant_id' => $f['tenant']->id + 1000000,
+            'guardian_id' => $f['owner']->id,
+            'recorded_by' => $f['staff']->id,
+            'granted_at' => '2000-01-01 00:00:00',
+            'withdrawn_at' => '2000-01-02 00:00:00',
+            'withdrawn_reason' => 'forged',
+            'notice_version' => 'forged-version',
+            'purpose' => 'communication',
+        ]);
+        $consent->save();
+    });
 
     $row = inTenant($f['tenant'], fn () => DB::table('consents')->where('id', $consent->id)->first());
 

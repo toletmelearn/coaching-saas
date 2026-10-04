@@ -4,6 +4,7 @@ use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Models\Tenant;
 use App\Models\User;
+use Tests\Support\ConsentFixtures;
 
 // === Role-Based Permissions ===
 
@@ -43,6 +44,9 @@ test('owner can create student accounts', function () {
             'email' => 'student@example.com',
             'phone' => '9876543210',
             'role' => 'student',
+        ] + ConsentFixtures::guardianFields() + [
+            'consents' => ConsentFixtures::PURPOSES,
+            'consent_method' => ConsentFixtures::IMPORT_METHOD,
         ]);
 
     $response->assertRedirect();
@@ -65,6 +69,9 @@ test('staff can create student accounts', function () {
             'email' => 'student@example.com',
             'phone' => '9876543210',
             'role' => 'student',
+        ] + ConsentFixtures::guardianFields() + [
+            'consents' => ConsentFixtures::PURPOSES,
+            'consent_method' => ConsentFixtures::IMPORT_METHOD,
         ]);
 
     $response->assertRedirect();
@@ -87,6 +94,9 @@ test('staff cannot create staff accounts', function () {
             'name' => 'New Student',
             'email' => 'newstudent-control@example.com',
             'role' => 'student',
+        ] + ConsentFixtures::guardianFields() + [
+            'consents' => ConsentFixtures::PURPOSES,
+            'consent_method' => ConsentFixtures::IMPORT_METHOD,
         ])->assertRedirect();
 
     $response = $this->actingAs($staff, 'tenant')
@@ -114,6 +124,9 @@ test('staff cannot create owner accounts', function () {
             'name' => 'New Student',
             'email' => 'newstudent-control2@example.com',
             'role' => 'student',
+        ] + ConsentFixtures::guardianFields() + [
+            'consents' => ConsentFixtures::PURPOSES,
+            'consent_method' => ConsentFixtures::IMPORT_METHOD,
         ])->assertRedirect();
 
     $response = $this->actingAs($staff, 'tenant')
@@ -139,6 +152,9 @@ test('student cannot create accounts', function () {
         ->post("http://{$domain}/users", [
             'name' => 'Control User',
             'email' => 'control@example.com',
+        ] + ConsentFixtures::guardianFields() + [
+            'consents' => ConsentFixtures::PURPOSES,
+            'consent_method' => ConsentFixtures::IMPORT_METHOD,
         ])->assertRedirect();
 
     $student = inTenant($tenant, fn () => User::factory()->student()->create());

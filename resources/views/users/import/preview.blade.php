@@ -3,6 +3,16 @@
 @section('content')
     <x-page-header :title="__('import.preview.heading')" />
 
+    {{-- Phase 15 — the same DPDP notice the manual creation form shows: whoever
+         confirms this file is confirming the guardian was shown it. --}}
+    <div class="ui-alert" style="margin-bottom: 1.25rem;">
+        <div>
+            <p class="ui-h2" style="margin: 0 0 0.375rem;">{{ __('consents.notice_title') }}</p>
+            <p style="margin: 0 0 0.5rem; color: var(--ink-muted);">{{ __('consents.notice_body') }}</p>
+            <p class="ui-subtle" style="margin: 0;">{{ __('consents.notice_version_label') }}: {{ \App\Models\Consent::NOTICE_VERSION }}</p>
+        </div>
+    </div>
+
     <p class="mb-4 text-sm text-gray-700">
         {{ __('import.preview.ok_count', ['count' => $ok]) }}
         &middot;

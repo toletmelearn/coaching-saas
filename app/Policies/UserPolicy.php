@@ -136,6 +136,34 @@ class UserPolicy
         return in_array($actor->role, [UserRole::Owner, UserRole::Staff], true);
     }
 
+    /**
+     * Owner and staff may open a student's consent screens (list, record,
+     * withdraw) — a student may never open them, not even their own, and
+     * non-student targets have no consent screens at all (Phase 15).
+     */
+    public function manageConsents(User $actor, User $target): bool
+    {
+        if ($target->role !== UserRole::Student) {
+            return false;
+        }
+
+        return in_array($actor->role, [UserRole::Owner, UserRole::Staff], true);
+    }
+
+    /**
+     * Owner and staff may open a student's data screens (view, JSON export,
+     * erasure). Same shape as manageConsents — the two abilities exist so each
+     * screen authorizes under its own name when either grows independently.
+     */
+    public function manageStudentData(User $actor, User $target): bool
+    {
+        if ($target->role !== UserRole::Student) {
+            return false;
+        }
+
+        return in_array($actor->role, [UserRole::Owner, UserRole::Staff], true);
+    }
+
     private function activeOwnerCount(User $target): int
     {
         return User::query()

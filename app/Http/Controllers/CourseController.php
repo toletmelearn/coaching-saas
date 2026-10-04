@@ -8,6 +8,7 @@ use App\Enums\LiveClassStatus;
 use App\Models\Course;
 use App\Models\LessonProgress;
 use App\Models\LiveClass;
+use App\Support\ConsentAccess;
 use App\Support\LessonAccess;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -31,6 +32,15 @@ class CourseController extends Controller
 
         if (! $access->courseIsVisible($user, $course)) {
             abort(Response::HTTP_NOT_FOUND);
+        }
+
+        // Phase 15 — a withdrawn course_delivery consent refuses the course
+        // right here in the controller (never inside LessonAccess, which is a
+        // locked file). Owner/staff are unaffected, and a student who never had
+        // a consent row is unaffected too: blocking on *missing* consent is
+        // explicitly out of scope for this phase.
+        if (ConsentAccess::courseDeliveryWithdrawn($user)) {
+            abort(Response::HTTP_FORBIDDEN);
         }
 
         $course->load('chapters.lessons');
