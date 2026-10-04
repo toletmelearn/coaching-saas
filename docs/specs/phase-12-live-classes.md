@@ -1,7 +1,7 @@
 # Phase 12: Live Classes via Jitsi Meet
 
-**Status:** Complete. `composer test` (906 tests, 905 passed, 1 skipped — the documented
-MySQL-only preflight test), `composer test:mysql` (874/874), `composer test:js` (29/29),
+**Status:** Complete. `composer test` (907 tests, 906 passed, 1 skipped — the documented
+MySQL-only preflight test), `composer test:mysql` (875/875), `composer test:js` (29/29),
 `composer lint`, and `composer analyse` (0 errors) all pass with zero regressions to
 Phases 1–11.
 > Test count at time of writing; see README for the current totals.
@@ -236,7 +236,7 @@ default **15**, single source of truth read by both the policy and the show page
 
 ## Required tests
 
-79 tests in `tests/Feature/LiveClasses/` (11 files) + `tests/Unit/Support/LiveClasses/`
+80 tests in `tests/Feature/LiveClasses/` (12 files) + `tests/Unit/Support/LiveClasses/`
 (2 files), green on both SQLite and MySQL:
 
 1. **Scheduling** (`LiveClassSchedulingTest`): server-owned fields come out server-derived
@@ -245,9 +245,13 @@ default **15**, single source of truth read by both the policy and the show page
    lesson must belong to the course); staff-with-permission yes, student no; room names
    unpredictable and id/title-free (12 distinct, both regex and containment tests); edit
    rules incl. cancelled-not-editable; delete = owner yes, student no; index 403s students.
-2. **Schema** (`LiveClassSchemaTest`): every column on both tables; the four index/uniqueness
+2. **Schema + lesson-delete guard** (`LiveClassSchemaTest`, `LessonDeleteGuardTest`): every
+   column on both tables; the four index/uniqueness
    contracts; five cross-tenant negative cases raising `QueryException`; two mass-assignment
-   negatives; `created_by` nullable.
+   negatives; `created_by` nullable. The guard test pins the controller behaviour layered on
+   the restrict (added when Step-2 review found it untested): deleting a lesson a live class
+   hangs off redirects to that lesson's edit page with the friendly `lesson_in_use` error,
+   and both the lesson and the class still exist afterwards.
 3. **Join** (`LiveClassJoinTest`): the happy 302 + opened attendance row; window boundaries
    on both sides; ended/cancelled refusals; owner joins without enrolment; guest → login;
    must-change-password bounce; the page never exposes URL or room name.
@@ -300,7 +304,9 @@ default **15**, single source of truth read by both the policy and the show page
 `docs/DEPLOY_RUNBOOK.md`, `PROJECT_BRIEF.md`.
 
 **Tests:** Step 1 committed the 11+2 files and fixtures (`1177a9c`, clarifications in
-`5bd533c`); Step 2's only test-file edits are the two scaffolding corrections below.
+`5bd533c`); Step 2 added `LessonDeleteGuardTest.php` (the FK-refusal HTTP path, found
+untested at final review) and made only the two scaffolding corrections below — no
+existing assertion was edited.
 
 ## Test corrections (scaffolding fixes, assertions byte-identical)
 

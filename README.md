@@ -83,8 +83,8 @@ gate:
 
 | Gate | Command | Result (as verified) |
 |------|---------|----------------------|
-| Unit + feature tests (SQLite) | `composer test` | **906 tests, 905 passed, 1 skipped** (the skip is the documented MySQL-only preflight test) |
-| Tenancy/auth/etc. on real MySQL | `composer test:mysql` | **874 / 874 passed** |
+| Unit + feature tests (SQLite) | `composer test` | **907 tests, 906 passed, 1 skipped** (the skip is the documented MySQL-only preflight test) |
+| Tenancy/auth/etc. on real MySQL | `composer test:mysql` | **875 / 875 passed** |
 | JS unit tests (Node, no browser) | `composer test:js` | **29 / 29 passed** |
 | Formatting | `composer lint` | **clean** (Pint reports no changes needed) |
 | Static analysis | `composer analyse` | **0 errors** at Larastan level 5 |
@@ -159,7 +159,7 @@ Cloudflare).
    `docs/specs/`. Non-obvious decisions carry their reasoning *next to the code* (see the
    middleware-priority comment in `bootstrap/app.php`). There are **zero
    `TODO`/`FIXME`/`HACK` markers** in the codebase.
-3. **Test-to-code ratio is ~2:1** (19,125 test lines vs 9,294 app lines), with security
+3. **Test-to-code ratio is ~2:1** (19,162 test lines vs 9,294 app lines), with security
    behaviour tested explicitly — cross-tenant login rejection, session replay, token-key
    cross-tenant misuse, secrets never in HTML or logs, CSV formula injection, rate limits.
 4. **All five quality gates are green** — tests on both SQLite *and* real MySQL, JS tests,
@@ -211,7 +211,7 @@ Cloudflare).
    - **RESOLVED in `cc6bed7`:** this README's own counts were re-synced to HEAD — the gate
      table, test lines, routes, `lang/en` and `tests/Feature` file counts, including the
      `composer test:mysql` line that once described only `tests/Feature/Tenancy` (20
-     suites / 793 tests at that commit; **21 suites / 874 tests** after Phase 12, and the
+     suites / 793 tests at that commit; **21 suites / 875 tests** after Phase 12, and the
      counts above re-synced again with it).
 5. **`.env` has drifted from `.env.example`.** The local `.env` carries
    `SESSION_LIFETIME=120` while `.env.example` specifies `43200` (the Phase 8 30-day decision
@@ -270,7 +270,7 @@ lang/en/            17 translation files
 public/             Front controller, PWA icons
 resources/          css, fonts, js (sw, pwa, lesson-progress, progress-tracker, video-upload), Blade views
 routes/             web.php (158 routes), console.php (scheduler)
-tests/              Pest: Unit/ (14 files), Feature/ (124 files), js/ (Node), Fixtures/
+tests/              Pest: Unit/ (14 files), Feature/ (125 files), js/ (Node), Fixtures/
 ```
 
 ---
@@ -522,8 +522,8 @@ into `C:\Windows\System32\drivers\etc\hosts` instead of typing them by hand.
 |--------------------------|-------------------------------------------------------------------|
 | `composer setup`         | One-shot install: `composer install`, copy `.env`, `key:generate`, `migrate`, `npm install`, `npm run build`. |
 | `composer dev`           | Run the Laravel dev stack (`php artisan dev`).                    |
-| `composer test`          | Run the full Pest suite (906 tests) against an in-memory SQLite database. |
-| `composer test:mysql`    | Run the MySQL variant of the suite — 21 suites / 874 tests: every `tests/Feature/` directory plus the schema- and security-relevant `tests/Unit/` directories — against the real `coaching_saas_test` database (set `DB_TEST_*` in `.env`). Excludes only `tests/Feature/ExampleTest.php`, `tests/Feature/ErrorPagesTest.php` and four `tests/Unit/` files that need no database. |
+| `composer test`          | Run the full Pest suite (907 tests) against an in-memory SQLite database. |
+| `composer test:mysql`    | Run the MySQL variant of the suite — 21 suites / 875 tests: every `tests/Feature/` directory plus the schema- and security-relevant `tests/Unit/` directories — against the real `coaching_saas_test` database (set `DB_TEST_*` in `.env`). Excludes only `tests/Feature/ExampleTest.php`, `tests/Feature/ErrorPagesTest.php` and four `tests/Unit/` files that need no database. |
 | `composer test:js`       | Run the Node test-runner suite for `resources/js/{sw,progress-tracker}.js` (no browser needed). |
 | `composer lint`          | Format code with Laravel Pint (`vendor/bin/pint --test` to check without writing). |
 | `composer analyse`       | Static analysis with Larastan (PHPStan) at level 5.                |
