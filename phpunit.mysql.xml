@@ -23,6 +23,9 @@
         <testsuite name="Users">
             <directory>tests/Feature/Users</directory>
         </testsuite>
+        <testsuite name="Consents">
+            <directory>tests/Feature/Consents</directory>
+        </testsuite>
         <testsuite name="Courses">
             <directory>tests/Feature/Courses</directory>
         </testsuite>
