@@ -11,6 +11,7 @@ use App\Models\LessonProgress;
 use App\Models\LiveClass;
 use App\Models\Payment;
 use App\Models\User;
+use App\Support\Access\ContentAccessGate;
 use App\Support\GettingStartedChecklist;
 use App\Support\LessonAccess;
 use App\Support\Payments\PaymentStateResolver;
@@ -23,7 +24,7 @@ use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function show(LessonAccess $access, TenantContext $tenantContext): View
+    public function show(LessonAccess $access, ContentAccessGate $gate, TenantContext $tenantContext): View
     {
         $user = Auth::guard('tenant')->user();
 
@@ -76,12 +77,16 @@ class DashboardController extends Controller
         // For each active enrolment: the first lesson the student can open that they
         // haven't completed yet (never a completed lesson — Continue always moves
         // forward), and a completed/total tally for the course's progress bar.
-        $courseProgress = $active->mapWithKeys(function (Enrolment $enrolment) use ($user, $access, $completedLessonIds) {
+        $courseProgress = $active->mapWithKeys(function (Enrolment $enrolment) use ($user, $access, $gate, $completedLessonIds) {
             $orderedLessons = Lesson::orderedPublishedForCourse($enrolment->course);
 
-            $nextLesson = $orderedLessons->first(
+            // Course-level payment and consent are decided once (no per-lesson payment queries);
+            // a student whose course is not yet open to them gets no Continue link at all.
+            $courseOpen = $gate->courseContentState($user, $enrolment->course) === 'ok';
+
+            $nextLesson = $courseOpen ? $orderedLessons->first(
                 fn (Lesson $lesson) => $access->lessonAccess($user, $lesson) === 'ok' && ! $completedLessonIds->has($lesson->id)
-            );
+            ) : null;
 
             $total = $orderedLessons->count();
             $completed = $orderedLessons->filter(fn (Lesson $lesson) => $completedLessonIds->has($lesson->id))->count();

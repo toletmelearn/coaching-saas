@@ -171,13 +171,12 @@ class UserController extends Controller
             'role' => ['sometimes', new Enum(UserRole::class)],
         ]);
 
+        // Authorised whenever `role` is present, even when it equals the current role: a self-edit
+        // that names a role is refused outright (UserPolicy::changeRole), so a probe cannot tell
+        // whether the value would have changed.
         if (array_key_exists('role', $data)) {
-            $newRole = UserRole::from($data['role']);
-
-            if ($newRole !== $user->role) {
-                Gate::authorize('changeRole', $user);
-                $user->forceFill(['role' => $newRole]);
-            }
+            Gate::authorize('changeRole', $user);
+            $user->forceFill(['role' => UserRole::from($data['role'])]);
         }
 
         if (array_key_exists('name', $data)) {

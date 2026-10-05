@@ -178,12 +178,21 @@ class EnvFile
         return $value;
     }
 
+    /**
+     * Single quotes are literal in Dotenv (no ${VAR} expansion), so they are preferred. Double quotes
+     * interpolate "$" and "${NAME}", so they are only used for a value that contains an apostrophe,
+     * and then "$" is escaped as well.
+     */
     private function formatValue(string $value): string
     {
         if ($value === '' || preg_match('/^[A-Za-z0-9_\-\.\\/:@#%+,*]+$/', $value)) {
             return $value;
         }
 
-        return '"'.addcslashes($value, '"\\').'"';
+        if (! str_contains($value, "'")) {
+            return "'".$value."'";
+        }
+
+        return '"'.str_replace(['\\', '"', '$'], ['\\\\', '\\"', '\\$'], $value).'"';
     }
 }

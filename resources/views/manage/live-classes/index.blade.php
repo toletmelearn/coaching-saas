@@ -20,7 +20,7 @@
                     <div class="min-w-0 flex-1">
                         <p class="ui-h2" style="margin: 0;">{{ $liveClass->title }}</p>
                         <p class="ui-subtle" style="margin-top: 0.125rem;">
-                            {{ $liveClass->starts_at->format('D, d M Y, H:i') }}
+                            {{ \App\Support\LiveClasses\IstDateTime::display($liveClass->starts_at) }}
                         </p>
                         <p class="ui-subtle" style="margin-top: 0.125rem;">
                             {{ __('live_classes.status.'.$liveClass->status->value) }}
@@ -62,7 +62,7 @@
                         <div class="min-w-0 flex-1">
                             <span style="font-weight: 550;">{{ $liveClass->title }}</span>
                             <p class="ui-subtle" style="margin-top: 0.125rem;">
-                                {{ $liveClass->starts_at->format('D, d M Y, H:i') }}
+                                {{ \App\Support\LiveClasses\IstDateTime::display($liveClass->starts_at) }}
                                 · {{ __('live_classes.status.'.$liveClass->status->value) }}
                             </p>
                         </div>

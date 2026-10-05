@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Enums\LiveClassStatus;
 use App\Models\LiveClass;
 use App\Models\User;
+use App\Support\Access\ContentAccessGate;
 use App\Support\LessonAccess;
 
 /**
@@ -20,12 +21,20 @@ use App\Support\LessonAccess;
  */
 class LiveClassPolicy
 {
-    public function __construct(private LessonAccess $access) {}
+    public function __construct(private LessonAccess $access, private ContentAccessGate $gate) {}
 
+    /**
+     * Staff always; a student needs a valid enrolment and the course's payment and consent rules
+     * (ContentAccessGate) to be satisfied, so an unpaid or consent-withdrawn student gets no room.
+     */
     public function view(User $actor, LiveClass $liveClass): bool
     {
-        return $this->access->isStaffOrOwner($actor)
-            || $this->access->hasValidEnrolment($actor, $liveClass->course);
+        if ($this->access->isStaffOrOwner($actor)) {
+            return true;
+        }
+
+        return $this->access->hasValidEnrolment($actor, $liveClass->course)
+            && $this->gate->courseContentState($actor, $liveClass->course) === 'ok';
     }
 
     public function join(User $actor, LiveClass $liveClass): bool

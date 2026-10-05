@@ -96,15 +96,33 @@ class PlatformAdminTwoFactorController extends Controller
         $uri = 'otpauth://totp/'.rawurlencode('Coaching SaaS:'.$admin->email)
             .'?secret='.$secret.'&issuer='.rawurlencode('Coaching SaaS');
 
-        return view('admin.two-factor-setup', ['secret' => $secret, 'uri' => $uri]);
+        return view('admin.two-factor-setup', [
+            'secret' => $secret,
+            'uri' => $uri,
+            'replacing' => $admin->hasTwoFactor(),
+        ]);
     }
 
-    public function confirmSetup(Request $request): RedirectResponse
+    public function confirmSetup(Request $request, TwoFactorVerifier $verifier): RedirectResponse
     {
         $admin = Auth::guard('platform_admin')->user();
         $secret = (string) $request->session()->get('admin_2fa_setup_secret');
+        $replacing = $admin->hasTwoFactor();
 
-        $data = $request->validate(['code' => ['required', 'string', 'max:32']]);
+        $rules = ['code' => ['required', 'string', 'max:32']];
+
+        if ($replacing) {
+            $rules['current_code'] = ['required', 'string', 'max:32'];
+        }
+
+        $data = $request->validate($rules);
+
+        // Replacing an existing enrolment needs proof of the current factor: a session alone is not
+        // enough to swap out the secret and recovery codes. The attempt counts toward the lock.
+        if ($replacing) {
+            $this->authoriseReplacement($request, $admin, $verifier, trim($data['current_code']));
+        }
+
         $step = $secret === '' ? null : Totp::matchStep($secret, trim($data['code']), time());
 
         if ($step === null) {
@@ -125,7 +143,27 @@ class PlatformAdminTwoFactorController extends Controller
 
         $request->session()->forget('admin_2fa_setup_secret');
 
+        // Audit vocabulary: two_factor_enrolled / two_factor_replaced. Never the secret or any code.
+        AdminAuditLog::record($replacing ? 'two_factor_replaced' : 'two_factor_enrolled', 'admin', $admin->id, $admin->id, $request->ip());
+
         return redirect('/admin/dashboard')->with('recovery_codes', $codes);
+    }
+
+    private function authoriseReplacement(Request $request, PlatformAdmin $admin, TwoFactorVerifier $verifier, string $currentCode): void
+    {
+        if ($this->locked($admin)) {
+            $this->audit('two_factor_locked', $admin, $request);
+
+            throw ValidationException::withMessages(['current_code' => __('admin_2fa.locked')]);
+        }
+
+        if ($verifier->acceptTotp($admin->id, $currentCode, time()) || $verifier->consumeRecoveryCode($admin->id, $currentCode)) {
+            return;
+        }
+
+        $this->audit('two_factor_failed', $admin, $request);
+
+        throw ValidationException::withMessages(['current_code' => __('admin_2fa.invalid')]);
     }
 
     /**

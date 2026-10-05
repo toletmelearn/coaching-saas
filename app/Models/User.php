@@ -77,6 +77,19 @@ class User extends Authenticatable
     }
 
     /**
+     * The one login-identifier rule: an email (trimmed, lower-cased) or a phone (normalised as above).
+     * Sign-in lookup and the login rate limiter both call this, so one account has one identity.
+     */
+    public static function normalizeLoginIdentifier(string $identifier): string
+    {
+        $identifier = trim($identifier);
+
+        return str_contains($identifier, '@')
+            ? strtolower($identifier)
+            : static::normalizePhone($identifier);
+    }
+
+    /**
      * Normalize an Indian phone number to its 10-digit canonical form,
      * stripping a leading +91/91 country code, a leading trunk 0, and spaces.
      */

@@ -54,10 +54,16 @@ class UserPolicy
     }
 
     /**
-     * Whether a target user's role may be changed. Blocks demoting the last active owner.
+     * Whether the actor may change the target's role. Only an owner may change a role, and never
+     * their own: a self-edit that includes `role` is refused for every role, owner included. Also
+     * blocks demoting the last active owner.
      */
     public function changeRole(User $actor, User $target): bool
     {
+        if ($actor->id === $target->id || $actor->role !== UserRole::Owner) {
+            return false;
+        }
+
         if ($target->role === UserRole::Owner && $this->activeOwnerCount($target) <= 1) {
             return false;
         }

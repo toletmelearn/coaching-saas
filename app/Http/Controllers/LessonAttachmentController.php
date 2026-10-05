@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\LessonAttachment;
-use App\Support\LessonAccess;
+use App\Support\Access\ContentAccessGate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\HeaderUtils;
@@ -13,11 +13,11 @@ use Symfony\Component\HttpFoundation\Response;
 
 class LessonAttachmentController extends Controller
 {
-    public function show(Course $course, Lesson $lesson, LessonAttachment $attachment, LessonAccess $access): Response
+    public function show(Course $course, Lesson $lesson, LessonAttachment $attachment, ContentAccessGate $gate): Response
     {
         $user = Auth::guard('tenant')->user();
 
-        $result = $access->lessonAccess($user, $lesson);
+        $result = $gate->lessonState($user, $lesson);
 
         if ($result === 'not_found') {
             abort(Response::HTTP_NOT_FOUND);
@@ -27,7 +27,8 @@ class LessonAttachmentController extends Controller
             return redirect('/login');
         }
 
-        if ($result === 'forbidden') {
+        // forbidden, payment_needed and consent_withdrawn all refuse the file.
+        if ($result !== 'ok') {
             abort(Response::HTTP_FORBIDDEN);
         }
 

@@ -66,6 +66,7 @@ class PreflightChecks
             ['key' => 'SESSION_ENCRYPT', 'value' => 'true'],
         );
         $add($this->checkPlatformAdminTwoFactor(), 'admin_2fa', 'Platform admin two-factor sign-in');
+        $add($this->checkBackupArchivePassword(), 'backup_archive_password', 'Backup archive password');
         $add($this->checkAppUrlIsHttps(), 'app_url', 'HTTPS application URL');
         $add($this->checkDomainsConfigured(), 'domains', 'Platform domains');
         $add(
@@ -171,6 +172,21 @@ class PreflightChecks
         return config('session.encrypt') === true
             ? null
             : 'SESSION_ENCRYPT must be true in production, so session payloads are encrypted at rest.';
+    }
+
+    /**
+     * Production only: backup archives are encrypted with BACKUP_ARCHIVE_PASSWORD. An empty
+     * password would write unencrypted archives.
+     */
+    private function checkBackupArchivePassword(): ?string
+    {
+        if (! app()->isProduction()) {
+            return null;
+        }
+
+        return filled(config('backup.backup.password'))
+            ? null
+            : 'BACKUP_ARCHIVE_PASSWORD is empty, so backup archives would not be encrypted.';
     }
 
     /**

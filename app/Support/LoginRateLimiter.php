@@ -26,22 +26,38 @@ class LoginRateLimiter
     private const IDENTIFIER_DECAY_SECONDS = 60 * 60;
 
     /**
+     * Ceiling across every account from one IP, so one address cannot spray many identifiers.
+     * Sized so a shared school or office address with a handful of users stays under it.
+     */
+    private const IP_CEILING_ATTEMPTS = 50;
+
+    private const IP_CEILING_DECAY_SECONDS = 10 * 60;
+
+    /**
      * Bounds the "IPs seen for this identifier" cache entry so a sustained distributed
      * attack (which the identifier-wide limiter above already stops after 20 attempts,
      * long before this would matter in practice) can't grow it without bound.
      */
     private const MAX_SEEN_IPS = 50;
 
+    /**
+     * Known trade-off (see SECURITY.md): the identifier-wide limit ignores the IP, so an attacker who
+     * knows an account's email or phone can lock that account for an hour from any address. It stays
+     * because it is what stops the same guessing spread across many IPs. Recovery: an owner or staff
+     * member resets the password, which clears this account's buckets (clearForUser).
+     */
     public static function tooManyAttempts(int $tenantId, string $identifier, string $ip): bool
     {
         return RateLimiter::tooManyAttempts(self::ipKey($tenantId, $identifier, $ip), self::IP_MAX_ATTEMPTS)
-            || RateLimiter::tooManyAttempts(self::identifierKey($tenantId, $identifier), self::IDENTIFIER_MAX_ATTEMPTS);
+            || RateLimiter::tooManyAttempts(self::identifierKey($tenantId, $identifier), self::IDENTIFIER_MAX_ATTEMPTS)
+            || RateLimiter::tooManyAttempts(self::ipCeilingKey($tenantId, $ip), self::IP_CEILING_ATTEMPTS);
     }
 
     public static function hit(int $tenantId, string $identifier, string $ip): void
     {
         RateLimiter::hit(self::ipKey($tenantId, $identifier, $ip), self::IP_DECAY_SECONDS);
         RateLimiter::hit(self::identifierKey($tenantId, $identifier), self::IDENTIFIER_DECAY_SECONDS);
+        RateLimiter::hit(self::ipCeilingKey($tenantId, $ip), self::IP_CEILING_DECAY_SECONDS);
 
         $seenIpsKey = self::seenIpsKey($tenantId, $identifier);
         $seenIps = Cache::get($seenIpsKey, []);
@@ -85,11 +101,17 @@ class LoginRateLimiter
     }
 
     /**
-     * Keyed HMAC, so a cache dump holds no login identifiers (emails or phone numbers) in clear.
+     * Keyed HMAC over the canonical identifier (User::normalizeLoginIdentifier), so "+91 98765 43210"
+     * and "9876543210" share one bucket, and a cache dump holds no login identifier in clear.
      */
     private static function digest(string $identifier): string
     {
-        return hash_hmac('sha256', strtolower($identifier), (string) config('app.key'));
+        return hash_hmac('sha256', User::normalizeLoginIdentifier($identifier), (string) config('app.key'));
+    }
+
+    private static function ipCeilingKey(int $tenantId, string $ip): string
+    {
+        return sprintf('login-ip:%d:%s', $tenantId, $ip);
     }
 
     private static function ipKey(int $tenantId, string $identifier, string $ip): string

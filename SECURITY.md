@@ -548,3 +548,25 @@ recordings are traceable to an individual viewer rather than only proving *a* le
   refused as well. Every refused attempt, the exit and the 60-minute expiry are audited.
 - **Session encryption.** `SESSION_ENCRYPT=true` is the default in `.env.example`, and preflight
   fails in production when it is false.
+- **Impersonation is an allow-list.** While impersonating, a GET is allowed only for the dashboard,
+  course and lesson pages, and live-class pages. Everything else is refused and audited, including the
+  student-data export, the credentials-sheet page, its download and its clear. A new admin page stays
+  closed until someone adds it to the list on purpose.
+- **Role changes are owner-only and never on self.** A user's own PATCH that includes `role` gets 403
+  for every role, owner included. Only an owner may change another user's role, and the last active
+  owner cannot be demoted.
+- **Login identifiers are canonical.** An email is lower-cased and a phone is normalised with the same
+  rule the import sheet uses (`User::normalizeLoginIdentifier`), so one account has one rate-limit bucket.
+- **Login rate limits and the trade-off.** Three limits apply: per account and IP (5 a minute), per
+  account (20 an hour), and per IP across all accounts (50 in 10 minutes). The per-account limit ignores
+  the IP, so anyone who knows an account's email or phone can lock that account for an hour from any
+  address. This is kept on purpose, because it stops the same guessing spread across many IPs.
+  **Recovery:** an owner or staff member resets that user's password, which clears the account's
+  buckets (`LoginRateLimiter::clearForUser`). Waiting an hour also works.
+- **Replacing two-factor sign-in.** An admin who already has two-factor sign-in must enter a current
+  authenticator code or an unused recovery code before a new enrolment replaces it. A wrong code counts
+  toward the 20-failure lock. Enrolment and replacement are audited as `two_factor_enrolled` and
+  `two_factor_replaced`. The audit rows never carry a secret or a code.
+- **Audit retention.** The two-factor lock counts `two_factor_failed` rows for the last hour, so any
+  retention job for `admin_audit_logs` must keep at least the last hour of those rows. Other two-factor
+  and impersonation actions have no lock dependency.

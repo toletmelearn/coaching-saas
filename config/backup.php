@@ -40,7 +40,12 @@ return [
                  *
                  * Directories used by the backup process will automatically be excluded.
                  */
-                'exclude' => [],
+                // Phase 16.1 / Batch 1 E: the .env copies written by the admin env editor hold APP_KEY
+                // and other secrets. They stay on the private disk but are never put in the archive,
+                // so a leaked backup cannot be used to decrypt columns or sessions without the key.
+                'exclude' => [
+                    storage_path('app/private/env-backups'),
+                ],
 
                 /*
                  * Determines if symlinks should be followed.
@@ -206,7 +211,7 @@ return [
          * After creating the zip, verify it can be opened and contains files.
          * Recommended for critical backups but adds a small overhead.
          */
-        'verify_backup' => false,
+        'verify_backup' => true,
 
         /*
          * The number of attempts, in case the backup command encounters an exception
