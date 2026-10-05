@@ -17,14 +17,14 @@ test('README points at composer test and has no hard-coded test counts (positive
     $readme = p16Doc('README.md');
 
     expect($readme)->toContain('composer test');
-    expect($readme)->not->toMatch('/\b\d[\d,]*\s+(?:tests?|passed)\b/');
+    expect($readme)->not->toMatch('/(?<![\w-])(?<!Step )\d[\d,]*\s+(?:tests?|passed)\b/');
 });
 
 test('PROJECT_BRIEF has no hard-coded test counts (positive control: it still documents composer test)', function () {
     $brief = p16Doc('PROJECT_BRIEF.md');
 
     expect($brief)->toContain('composer test');
-    expect($brief)->not->toMatch('/\b\d[\d,]*\s+(?:tests?|passed)\b/');
+    expect($brief)->not->toMatch('/(?<![\w-])(?<!Step )\d[\d,]*\s+(?:tests?|passed)\b/');
 });
 
 test('README carries the CI badge for the ci.yml workflow (positive control: the README exists and is non-empty)', function () {

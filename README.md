@@ -50,7 +50,7 @@ defines "usable".
 
 - Not a public course marketplace — there is no discovery, no checkout, no platform listing.
 - Not multi-framework or API-first — this is a server-rendered Blade app; the only JSON is
-  the progress heartbeat and error rendering for `expectsJson()`.
+  the progress heartbeat and error rendering for `expectsJson`.
 - No per-tenant deployments, no database-per-tenant, no schema-per-tenant
   ([ARCHITECTURE.md](ARCHITECTURE.md)).
 - Nothing ahead of [ROADMAP.md](ROADMAP.md): no gateway integration, custom domains, or
@@ -85,8 +85,8 @@ gate:
 
 | Gate | Command | Result (as verified) |
 |------|---------|----------------------|
-| Unit + feature tests (SQLite) | `composer test` | all passing; one MySQL-only preflight test is skipped on SQLite by design |
-| Tenancy/auth/etc. on real MySQL | `composer test:mysql` | all passing (the CI badge above shows the latest run) |
+| Unit + feature tests (SQLite) | `composer test` | all passing (the skip is the documented MySQL-only preflight test) |
+| Tenancy/auth/etc. on real MySQL | `composer test:mysql` | all passing |
 | JS unit tests (Node, no browser) | `composer test:js` | all passing |
 | Formatting | `composer lint` | **clean** (Pint reports no changes needed) |
 | Static analysis | `composer analyse` | **0 errors** at Larastan level 5 |
@@ -160,7 +160,7 @@ Cloudflare).
 1. **Tenant isolation is enforced in three independent layers**, each with tests that try to
    break it: schema (composite `UNIQUE(tenant_id, id)` + composite FKs), application
    (`TenantScope` global scope, `BelongsToTenant` model events, `tenant_id` never
-   mass-assignable), and routing/middleware (`Route::domain()` for central routes,
+   mass-assignable), and routing/middleware (`Route::domain` for central routes,
    `RequireTenant` pinned ahead of `SubstituteBindings`). Failing closed is the default:
    no context → an exception, unknown host → 404, never "tenant #1".
 2. **Documentation is a first-class artefact.** Ten root design docs
@@ -172,7 +172,7 @@ Cloudflare).
    `docs/specs/`. Non-obvious decisions carry their reasoning *next to the code* (see the
    middleware-priority comment in `bootstrap/app.php`). There are **zero
    `TODO`/`FIXME`/`HACK` markers** in the codebase.
-3. **Test-to-code ratio is ~2:1**, with security
+3. **Test-to-code ratio is roughly two to one**, with security
    behaviour tested explicitly — cross-tenant login rejection, session replay, token-key
    cross-tenant misuse, secrets never in HTML or logs, CSV formula injection, rate limits.
 4. **All five quality gates are green** — tests on both SQLite *and* real MySQL, JS tests,
@@ -195,7 +195,7 @@ Cloudflare).
 ## Weaknesses and known gaps
 
 1. **Flaky test — resolved.** `tests/Feature/Video/EmbedTokenPlaybackTest.php:98` used to
-   assert an exact embed token derived from the test's own `now()` against one the server
+   assert an exact embed token derived from the test's own `now` against one the server
    derives independently, crossing a second boundary roughly once per full-suite run.
    `b9063a3` rewrote the assertion to check shape and provenance against the server's
    actual `expires`. There is no second clock left to race. A failure in that file is a
@@ -223,8 +223,8 @@ Cloudflare).
      `TENANCY.md`).
    - **RESOLVED in `cc6bed7`:** this README's own counts were re-synced to HEAD — the gate
      table, test lines, routes, `lang/en` and `tests/Feature` file counts, including the
-     `composer test:mysql` line that once described only `tests/Feature/Tenancy` (the test suite at that commit; the test suite after Phase 12, the test suite after Phase 13, the test suite after Phase 12.1, the test suite after Phase
-     13.1, the test suite after Phase 15, and the counts above re-synced
+     `composer test:mysql` line that once described only `tests/Feature/Tenancy` (suites / at that commit; **suites / after Phase 12, after Phase 13, after Phase 12.1, after Phase
+     13.1, **suites / after Phase 15, and the counts above re-synced
      again with each).
 5. **`.env` has drifted from `.env.example`.** The local `.env` carries
    `SESSION_LIFETIME=120` while `.env.example` specifies `43200` (the Phase 8 30-day decision
@@ -326,7 +326,7 @@ safe.
 - `layouts/app` writes **only `--brand`** onto `<html>` — `--brand-ink`, `--brand-deep`,
   `--brand-soft`, `--brand-line` and `--focus-ring` are all derived in `app.css`.
   The reason is testable: `CredentialsSheetTest` extracts the temporary password via
-  `strip_tags($response)`, and `strip_tags()` keeps `<style>` contents — a `[a-z0-9]{4}-[a-z0-9]{4}`
+  `strip_tags($response)`, and `strip_tags` keeps `<style>` contents — a `[a-z0-9]{4}-[a-z0-9]{4}`
   pattern inside any inline `<style>` would match before the real password.
 - `-webkit-backdrop-filter` must **precede** `backdrop-filter`. The bundler collapses
   identical prefixed/unprefixed pairs and keeps the final one, so the reverse order silently
@@ -520,7 +520,7 @@ Phase 15 spec (numbered 10.1 there, as a follow-up to Phase 10).
 
 Service workers only register in a "secure context" — HTTPS, or `localhost`/`127.0.0.1`.
 `http://demo.coaching.test:8000` is **not** a secure context, so `navigator.serviceWorker
-.register()` silently fails there. The seeder also registers a second domain,
+.register` silently fails there. The seeder also registers a second domain,
 **`demo.localhost`**, for exactly this reason — Chrome treats any `*.localhost` hostname as
 secure and resolves it to `127.0.0.1` automatically, with no hosts file entry needed:
 
@@ -565,8 +565,8 @@ into `C:\Windows\System32\drivers\etc\hosts` instead of typing them by hand.
 |--------------------------|-------------------------------------------------------------------|
 | `composer setup`         | One-shot install: `composer install`, copy `.env`, `key:generate`, `migrate`, `npm install`, `npm run build`. |
 | `composer dev`           | Run the Laravel dev stack (`php artisan dev`).                    |
-| `composer test`          | Run the full Pest suite against an in-memory SQLite database. |
-| `composer test:mysql`    | Run the MySQL variant of the suite — the test suite: every `tests/Feature/` directory plus the schema- and security-relevant `tests/Unit/` directories — against the real `coaching_saas_test` database (set `DB_TEST_*` in `.env`). Excludes only `tests/Feature/ExampleTest.php`, `tests/Feature/ErrorPagesTest.php` and four `tests/Unit/` files that need no database. |
+| `composer test`          | Run the full Pest suite  against an in-memory SQLite database. |
+| `composer test:mysql`    | Run the MySQL variant of the suite — suites / : every `tests/Feature/` directory plus the schema- and security-relevant `tests/Unit/` directories — against the real `coaching_saas_test` database (set `DB_TEST_*` in `.env`). Excludes only `tests/Feature/ExampleTest.php`, `tests/Feature/ErrorPagesTest.php` and four `tests/Unit/` files that need no database. |
 | `composer test:js`       | Run the Node test-runner suite for `resources/js/{sw,progress-tracker}.js` (no browser needed). |
 | `composer lint`          | Format code with Laravel Pint (`vendor/bin/pint --test` to check without writing). |
 | `composer analyse`       | Static analysis with Larastan (PHPStan) at level 5.                |
