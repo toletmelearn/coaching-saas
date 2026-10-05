@@ -3,6 +3,7 @@
 use App\Http\Middleware\CheckTenantSuspended;
 use App\Http\Middleware\EnforceDeviceLimit;
 use App\Http\Middleware\EnforceImpersonationExpiry;
+use App\Http\Middleware\EnforceImpersonationReadOnly;
 use App\Http\Middleware\EnsureActiveTenantUser;
 use App\Http\Middleware\RedirectIfMustChangePassword;
 use App\Http\Middleware\RequireTenant;
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             EnforceImpersonationExpiry::class,
+            EnforceImpersonationReadOnly::class,
             CheckTenantSuspended::class,
             SetReferrerPolicy::class,
         ]);

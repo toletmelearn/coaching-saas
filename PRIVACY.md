@@ -103,3 +103,15 @@ and erasure all exist now (Phase 15). Still outstanding, by design or by legal p
 - **Withdrawal by the student directly** — withdrawal is also owner/staff-mediated today
   (the student's own consent screens 403); a self-service withdrawal path is part of the
   same open question as self-service export/erasure.
+
+## Phase 16.1 data-minimisation changes
+
+- **Erasure snapshot.** The copy kept in the consent audit log after erasure holds only ids, amounts,
+  status, timestamps, course ids, and for live-class attendance the class id and duration. Free-text
+  payment notes, UPI references and screenshot paths are not kept.
+- **Rate-limit keys.** Login rate-limit cache keys hold an HMAC of the identifier, not the email or
+  phone in clear.
+- **Log page.** The platform admin log viewer redacts emails, Indian mobile numbers and long digit
+  runs before display. The file on disk is unchanged.
+- **Admin audit log.** Still records IP addresses for admin actions. Retention for that log needs a
+  decision and is not yet set (open).

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdminAuditLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,6 +15,12 @@ class ImpersonationExitController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
+        $impersonation = $request->session()->get('impersonation');
+
+        if (is_array($impersonation)) {
+            AdminAuditLog::record('impersonation_exit', 'user', Auth::guard('tenant')->id(), (int) $impersonation['admin_id'], $request->ip());
+        }
+
         Auth::guard('tenant')->logout();
         $request->session()->forget('impersonation');
         $request->session()->invalidate();

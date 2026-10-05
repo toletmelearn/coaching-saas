@@ -8,6 +8,7 @@ use App\Models\TenantDomain;
 use App\Support\Admin\ServiceSettings;
 use App\Support\DatabaseVersionCheck;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 /**
@@ -58,6 +59,13 @@ class PreflightChecks
             ['key' => 'APP_DEBUG', 'value' => 'false'],
         );
         $add($this->checkAppKey(), 'app_key', 'Application key');
+        $add(
+            $this->checkSessionEncrypted(),
+            'session_encrypt',
+            'Encrypted session payloads',
+            ['key' => 'SESSION_ENCRYPT', 'value' => 'true'],
+        );
+        $add($this->checkPlatformAdminTwoFactor(), 'admin_2fa', 'Platform admin two-factor sign-in');
         $add($this->checkAppUrlIsHttps(), 'app_url', 'HTTPS application URL');
         $add($this->checkDomainsConfigured(), 'domains', 'Platform domains');
         $add(
@@ -151,6 +159,46 @@ class PreflightChecks
      * check was always described in docs/DEPLOY.md §3 but was never actually implemented
      * — added by the Phase 11 mini security pass.
      */
+    /**
+     * Production only: session payloads at rest must be encrypted (SESSION_ENCRYPT=true).
+     */
+    private function checkSessionEncrypted(): ?string
+    {
+        if (! app()->isProduction()) {
+            return null;
+        }
+
+        return config('session.encrypt') === true
+            ? null
+            : 'SESSION_ENCRYPT must be true in production, so session payloads are encrypted at rest.';
+    }
+
+    /**
+     * Production only: every platform admin must have a two-factor secret. The message names the
+     * admins so the operator knows whom to enrol.
+     */
+    private function checkPlatformAdminTwoFactor(): ?string
+    {
+        if (! app()->isProduction()) {
+            return null;
+        }
+
+        try {
+            if (! Schema::hasTable('platform_admins')) {
+                return null;
+            }
+
+            $missing = PlatformAdmin::query()->whereNull('totp_secret')->pluck('email')->all();
+        } catch (Throwable) {
+            // An unreachable database is reported by checkDatabaseReachable(), not here.
+            return null;
+        }
+
+        return $missing === []
+            ? null
+            : 'Platform admins without two-factor sign-in: '.implode(', ', $missing).'. Each must enrol at /admin/two-factor/setup.';
+    }
+
     private function checkSessionDomain(): ?string
     {
         $domain = config('session.domain');

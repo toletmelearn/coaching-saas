@@ -524,3 +524,27 @@ recordings are traceable to an individual viewer rather than only proving *a* le
   arbitrary hostname on request — an unrestricted "ask" endpoint would let anyone obtain a
   TLS certificate for any domain by simply requesting it through Caddy, which is why domain
   verification must happen and be recorded *before* the ask endpoint will say yes.
+
+## Platform admin two-factor sign-in and impersonation (Phase 16.1)
+
+- **Forced enrolment in production.** A platform admin with no TOTP secret is redirected to
+  `/admin/two-factor/setup` before reaching any admin page, in every admin route group. Outside
+  production enrolment stays optional. `php artisan app:preflight` fails in production while any
+  platform admin lacks two-factor sign-in, and names them.
+- **Recovery codes.** Enrolment shows eight single-use recovery codes once. They are stored as
+  bcrypt hashes, and each one is removed when used. Losing them and the authenticator needs an
+  operator with shell access (below).
+- **Reset command.** `php artisan platform-admin:reset-2fa {email}` clears the secret and recovery
+  codes so the admin enrols again. It is a break-glass operation for someone with server access; it
+  is never exposed over HTTP.
+- **Lock trade-off.** Twenty failed codes within an hour lock two-factor verification for that
+  admin for one hour. The lock is keyed by admin, not session, so a new password login does not
+  clear it. It refuses correct TOTP codes and recovery codes alike. The cost is deliberate: anyone
+  who knows an admin's email and password can lock that admin out for an hour. Every failed or
+  refused attempt is written to the admin audit log.
+- **Impersonation sessions are read-only.** An impersonated owner session cannot write. The rule is judged on the
+  real HTTP method (`getRealMethod()`), so a `_method` override cannot bypass it. Only `POST /logout`
+  and `POST /impersonation/exit` are allowed. Student-data export and credentials-sheet downloads are
+  refused as well. Every refused attempt, the exit and the 60-minute expiry are audited.
+- **Session encryption.** `SESSION_ENCRYPT=true` is the default in `.env.example`, and preflight
+  fails in production when it is false.

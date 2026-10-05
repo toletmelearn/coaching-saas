@@ -18,6 +18,8 @@ function passingPreflightConfig(): array
         'tenancy.tenant_base_domain' => 'coaching.app',
         'tenancy.central_domains' => ['coaching.app', 'platform.coaching.app'],
         'session.secure' => true,
+        // Phase 16.1: production requires encrypted session payloads (SESSION_ENCRYPT=true).
+        'session.encrypt' => true,
         // Host-only session cookies: null (.env.example) and '' (docs/DEPLOY.md's
         // `SESSION_DOMAIN=`) are both fine; anything else must fail preflight.
         'session.domain' => null,

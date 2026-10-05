@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\AdminAuditLog;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -22,6 +23,14 @@ class EnforceImpersonationExpiry
 
         if (is_array($impersonation)
             && Carbon::createFromTimestamp($impersonation['started_at'])->addMinutes(self::LIFETIME_MINUTES)->isPast()) {
+            AdminAuditLog::record(
+                'impersonation_expired',
+                'user',
+                Auth::guard('tenant')->id(),
+                (int) $impersonation['admin_id'],
+                $request->ip(),
+            );
+
             Auth::guard('tenant')->logout();
             $request->session()->forget('impersonation');
             $request->session()->invalidate();

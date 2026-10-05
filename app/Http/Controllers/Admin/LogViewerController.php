@@ -27,7 +27,7 @@ class LogViewerController extends Controller
             : $tailer->search($query);
 
         return view('admin.logs', [
-            'lines' => $lines,
+            'lines' => array_map(LogTailer::redact(...), $lines),
             'query' => $query,
             'path' => $tailer->path(),
             'exists' => $tailer->exists(),

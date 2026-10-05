@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AdminAuditLog;
 use App\Models\PlatformAdmin;
 use App\Support\Auth\Totp;
+use App\Support\Auth\TwoFactorVerifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -18,14 +19,20 @@ use Illuminate\View\View;
 
 /**
  * TOTP second factor for platform admins. A password proves who is asking; the pending state
- * (5 minutes, session-held) proves they have passed that step; only a valid, unreplayed code or
- * an unused recovery code completes the login. Challenge attempts are limited per admin.
+ * (5 minutes, session-held) proves they have passed that step; only a valid, unreplayed code or an
+ * unused recovery code completes the login. Failed attempts are audited, and 20 of them within an
+ * hour lock verification for that admin for an hour. The lock is keyed by admin, so a fresh password
+ * login in a new session does not clear it.
  */
 class PlatformAdminTwoFactorController extends Controller
 {
     private const PENDING_MINUTES = 5;
 
     private const ATTEMPTS_PER_MINUTE = 5;
+
+    private const LOCK_THRESHOLD = 20;
+
+    private const LOCK_WINDOW_MINUTES = 60;
 
     private const RECOVERY_CODE_COUNT = 8;
 
@@ -38,7 +45,7 @@ class PlatformAdminTwoFactorController extends Controller
         return view('admin.two-factor');
     }
 
-    public function verify(Request $request): RedirectResponse
+    public function verify(Request $request, TwoFactorVerifier $verifier): RedirectResponse
     {
         $pending = $this->pending($request);
 
@@ -61,17 +68,17 @@ class PlatformAdminTwoFactorController extends Controller
         $data = $request->validate(['code' => ['required', 'string', 'max:32']]);
         $code = trim($data['code']);
 
-        $step = Totp::matchStep((string) $admin->totp_secret, $code, time());
+        if ($this->locked($admin)) {
+            $this->audit('two_factor_locked', $admin, $request);
 
-        if ($step !== null && ($admin->totp_last_step === null || $step > $admin->totp_last_step)) {
-            $admin->forceFill(['totp_last_step' => $step])->save();
+            throw ValidationException::withMessages(['code' => __('admin_2fa.locked')]);
+        }
 
+        if ($verifier->acceptTotp($admin->id, $code, time()) || $verifier->consumeRecoveryCode($admin->id, $code)) {
             return $this->complete($request, $admin);
         }
 
-        if ($this->consumeRecoveryCode($admin, $code)) {
-            return $this->complete($request, $admin);
-        }
+        $this->audit('two_factor_failed', $admin, $request);
 
         throw ValidationException::withMessages(['code' => __('admin_2fa.invalid')]);
     }
@@ -131,21 +138,20 @@ class PlatformAdminTwoFactorController extends Controller
         return is_array($pending) ? $pending : null;
     }
 
-    private function consumeRecoveryCode(PlatformAdmin $admin, string $input): bool
+    private function locked(PlatformAdmin $admin): bool
     {
-        $needle = Str::lower(trim($input));
-        $remaining = $admin->recovery_codes ?? [];
+        $failures = AdminAuditLog::query()
+            ->where('admin_id', $admin->id)
+            ->where('action', 'two_factor_failed')
+            ->where('created_at', '>=', now()->subMinutes(self::LOCK_WINDOW_MINUTES))
+            ->count();
 
-        foreach ($remaining as $index => $hash) {
-            if (Hash::check($needle, $hash)) {
-                unset($remaining[$index]);
-                $admin->forceFill(['recovery_codes' => array_values($remaining)])->save();
+        return $failures >= self::LOCK_THRESHOLD;
+    }
 
-                return true;
-            }
-        }
-
-        return false;
+    private function audit(string $action, PlatformAdmin $admin, Request $request): void
+    {
+        AdminAuditLog::record($action, 'admin', $admin->id, $admin->id, $request->ip());
     }
 
     private function complete(Request $request, PlatformAdmin $admin): RedirectResponse

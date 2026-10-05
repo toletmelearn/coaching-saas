@@ -11,7 +11,9 @@ test('the list of IPs seen for an identifier is capped (e.g. at 50) and keeps th
         LoginRateLimiter::hit($tenantId, $identifier, "10.0.0.{$i}");
     }
 
-    $seenIps = Cache::get("login-seen-ips:{$tenantId}:{$identifier}", []);
+    // The key is an HMAC of the identifier (Phase 16.1), so it is read through the limiter's own key builder.
+    $key = (new ReflectionMethod(LoginRateLimiter::class, 'seenIpsKey'))->invoke(null, $tenantId, $identifier);
+    $seenIps = Cache::get($key, []);
 
     expect($seenIps)->toHaveCount(50)
         ->and($seenIps)->toContain('10.0.0.60')

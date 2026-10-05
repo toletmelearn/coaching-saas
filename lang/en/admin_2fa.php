@@ -21,6 +21,7 @@ return [
     ],
 
     'invalid' => 'That code is not correct.',
+    'locked' => 'Too many incorrect codes. Two-factor sign-in is locked for an hour; try again later.',
     'expired' => 'That sign-in took too long. Please log in again.',
 
 ];

@@ -130,4 +130,16 @@ class LogTailer
 
         return array_slice($matches, -$max);
     }
+
+    /**
+     * Replaces emails, Indian mobile numbers and long digit runs (card and account numbers) with
+     * placeholders, so the log page never shows a student's contact details or payment identifiers.
+     */
+    public static function redact(string $line): string
+    {
+        $line = preg_replace('/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/', '[email]', $line) ?? $line;
+        $line = preg_replace('/(?:\+?91[\s-]?)?\b[6-9]\d{4}[\s-]?\d{5}\b/', '[phone]', $line) ?? $line;
+
+        return preg_replace('/\b\d{12,}\b/', '[digits]', $line) ?? $line;
+    }
 }

@@ -141,9 +141,17 @@ class StudentDataController extends Controller
                 'actor_id' => $actor->id,
                 'action' => ConsentAuditLog::ACTION_STUDENT_ERASED,
                 'metadata' => [
-                    'enrolments' => $enrolments->map(fn ($row): array => (array) $row)->values()->all(),
-                    'live_class_attendance' => $attendance->map(fn ($row): array => (array) $row)->values()->all(),
-                    'payments' => $payments->map(fn ($row): array => (array) $row)->values()->all(),
+                    // Allowlisted: ids, amounts, status and timestamps only. Free text (payment_note,
+                    // rejection_reason), UPI references and screenshot paths are not kept.
+                    'enrolments' => $enrolments->map(fn ($row): array => collect((array) $row)->only(
+                        ['id', 'course_id', 'user_id', 'status', 'starts_at', 'ends_at', 'revoked_at', 'created_at', 'updated_at']
+                    )->all())->values()->all(),
+                    'live_class_attendance' => $attendance->map(fn ($row): array => collect((array) $row)->only(
+                        ['id', 'live_class_id', 'duration_seconds']
+                    )->all())->values()->all(),
+                    'payments' => $payments->map(fn ($row): array => collect((array) $row)->only(
+                        ['id', 'enrolment_id', 'amount_paise', 'status', 'submitted_at', 'reviewed_at', 'reviewed_by', 'created_at', 'updated_at']
+                    )->all())->values()->all(),
                 ],
             ]);
             $log->save();

@@ -100,6 +100,12 @@ class StudentConsentsController extends Controller
 
         abort_unless((int) $consent->user_id === (int) $student->id, 404);
 
+        // Idempotent: the first withdrawal is the record. A repeat POST changes nothing, so the
+        // withdrawn_at timestamp and reason in the ledger are never overwritten.
+        if ($consent->withdrawn_at !== null) {
+            return redirect("/manage/students/{$student->id}/consents");
+        }
+
         $data = $request->validate([
             'reason' => ['required', 'string', 'max:500'],
         ]);

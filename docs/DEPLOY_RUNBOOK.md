@@ -1595,6 +1595,17 @@ Nothing below has a usable default. Have all of it before step 1 starts.
 Migration drift is now caught at §1.1a and §5.3. The Phase 13.1 incident (three migrations
 shipped but never applied locally) is why this check exists.
 
+## Platform admin two-factor and session encryption (Phase 16.1)
+
+Before the first production login, set `SESSION_ENCRYPT=true` in `.env` (`.env.example` ships it on;
+`app:preflight` fails in production otherwise). Then each platform admin signs in, is sent to
+`/admin/two-factor/setup`, scans the QR code or enters the key in an authenticator app, confirms a
+code, and saves the eight recovery codes shown once. `php artisan app:preflight --require-production`
+fails while any platform admin lacks two-factor sign-in. If an admin loses both the authenticator and
+the recovery codes, run `php artisan platform-admin:reset-2fa {email}` on the server; they will be
+asked to enrol again. Twenty failed codes within an hour lock that admin's two-factor sign-in for an
+hour (see SECURITY.md for the trade-off).
+
 *Removed from this list on 2026-10-02 (both now closed): the backup compressor defect — fixed
 in `c859e74`, full write-up preserved in §1.8 — and the uncommitted
 `tests/Feature/Video/EmbedTokenPlaybackTest.php` flake fix — committed as `b9063a3`.*

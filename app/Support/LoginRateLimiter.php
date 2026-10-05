@@ -84,18 +84,26 @@ class LoginRateLimiter
         }
     }
 
+    /**
+     * Keyed HMAC, so a cache dump holds no login identifiers (emails or phone numbers) in clear.
+     */
+    private static function digest(string $identifier): string
+    {
+        return hash_hmac('sha256', strtolower($identifier), (string) config('app.key'));
+    }
+
     private static function ipKey(int $tenantId, string $identifier, string $ip): string
     {
-        return sprintf('login:%d:%s:%s', $tenantId, strtolower($identifier), $ip);
+        return sprintf('login:%d:%s:%s', $tenantId, self::digest($identifier), $ip);
     }
 
     private static function identifierKey(int $tenantId, string $identifier): string
     {
-        return sprintf('login-identifier:%d:%s', $tenantId, strtolower($identifier));
+        return sprintf('login-identifier:%d:%s', $tenantId, self::digest($identifier));
     }
 
     private static function seenIpsKey(int $tenantId, string $identifier): string
     {
-        return sprintf('login-seen-ips:%d:%s', $tenantId, strtolower($identifier));
+        return sprintf('login-seen-ips:%d:%s', $tenantId, self::digest($identifier));
     }
 }
