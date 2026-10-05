@@ -166,6 +166,16 @@ php artisan migrate --no-interaction
 Mark it executable (`chmod +x .git/hooks/post-merge`). This is a local convenience — do
 **not** commit the hook; `.git/hooks/` is not tracked.
 
+**Belt-and-braces guard (local dev):** this section's `migrate:status` check is the
+deploy-time half; `AppServiceProvider::boot()` now runs the local half. In `local`/
+`testing` environments, on request paths only (never CLI, so `artisan migrate` always
+works), a missing `consents` table stops boot with *"The local database schema is out of
+date. Run `php artisan migrate` and reload"* instead of letting the first request 500.
+Day to day, prefer `composer serve` — it runs `php artisan migrate --force` before
+`artisan serve`, so the drift never happens. The guard complements — never replaces — the
+`migrate:status` check above (it catches local dev, this check catches deploy);
+`tests/Feature/Console/SchemaDriftGuardTest.php` covers it.
+
 Three caveats:
 
 - **The 1 skipped test is expected.** It is the MySQL-only unreachable-database preflight

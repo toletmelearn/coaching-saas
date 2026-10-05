@@ -28,7 +28,7 @@ milestones. Phase titles match the spec files' own titles.
 Stage A is done when tenant isolation is provably enforced (schema + tests), before any
 product feature is built on top of it.
 
-## Stage B — Pilot (Phases 4, 5, 6, 7, 8, 9, 10 — all done, plus Phases 11, 12, 13 and the deploy)
+## Stage B — Pilot (Phases 4, 5, 6, 7, 8, 9, 10 — all done, plus Phases 11, 12, 13, 15 and the deploy)
 
 - Phase 4: **Courses, Lessons, Notes and Manual Enrolment** — courses, chapters, lessons,
   PDF attachments, free YouTube previews, manual enrolment (spec:
@@ -63,12 +63,18 @@ product feature is built on top of it.
   connection), backup management, log viewer, audit log, allowlisted `.env` editor, and
   login-as-owner impersonation (spec:
   [phase-13-admin-panel.md](docs/specs/phase-13-admin-panel.md)) — done.
+- Phase 15: **DPDP Consent Foundation** — guardian consent recorded for all four DPDP
+  purposes on student creation and bulk import, consent screens with withdrawal, JSON data
+  export and erasure (spec:
+  [phase-15-dpdp-consent-foundation.md](docs/specs/phase-15-dpdp-consent-foundation.md)) —
+  done. *Took the number 15 from Stage C's queues entry, which moved to 16 (drift C13 in
+  `PROJECT_BRIEF.md` §3).*
 - Deploy: **the friend running the pilot institute is tenant #1 — the current milestone.**
 
 Stage B is scoped to what one real tenant needs to run their coaching business day to day —
 not every feature in this document.
 
-## Stage C — Gateway, domains, hardening (payment gateway, Phases 14, 15, 16, DPDP consent) — not started
+## Stage C — Gateway, domains, hardening (payment gateway, Phases 14, 16, 17) — not started
 
 - Automated payment gateway integration (per-tenant accounts, idempotent webhooks — see
   [PAYMENTS.md](PAYMENTS.md)) — **no phase number**: the number it used to claim collides
@@ -81,10 +87,13 @@ not every feature in this document.
   [phase-14-custom-domains.md](docs/specs/phase-14-custom-domains.md)). *Renumbered from
   12 when Live Classes took that number, and to 14 when the admin control panel took 13
   (drift C12 in `PROJECT_BRIEF.md` §3).*
-- Phase 15: queues at scale, audit logging.
-- Phase 16: catch-all — whatever was deferred from Stage B.
+- Phase 16: queues at scale, audit logging. *(Renumbered from 15 when Phase 15 took that
+  number for the DPDP consent foundation — drift C13 in `PROJECT_BRIEF.md` §3.)*
+- Phase 17: catch-all — whatever was deferred from Stage B. *(Renumbered from 16 by the
+  same C13 renumber.)*
 - DPDP consent flow: guardian fields, `consents` table, export/delete tooling (see
-  [PRIVACY.md](PRIVACY.md)).
+  [PRIVACY.md](PRIVACY.md)) — **moved to Stage B and shipped as Phase 15** (that entry is
+  authoritative; drift C13 in `PROJECT_BRIEF.md` §3).
 
 ## Stage D — Growth (subscriptions, metering, WhatsApp) — not started
 

@@ -48,6 +48,10 @@
             "Composer\\Config::disableProcessTimeout",
             "@php artisan dev"
         ],
+        "serve": [
+            "@php artisan migrate --force --no-interaction",
+            "@php artisan serve"
+        ],
         "test": [
             "@php artisan config:clear --ansi @no_additional_args",
             "@php vendor/bin/pest"

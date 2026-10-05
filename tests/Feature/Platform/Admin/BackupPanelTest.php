@@ -144,3 +144,36 @@ test('a failing backup run surfaces an error flash but still records the attempt
         'admin_id' => $admin->id,
     ]);
 });
+
+test('a failed backup run renders the plain-language hint above the raw output', function () {
+    Storage::fake('backups');
+
+    $runner = new class extends ArtisanRunner
+    {
+        public function call(string $command, array $parameters = []): array
+        {
+            return ['code' => 1, 'output' => 'No such file or directory: mysqldump'];
+        }
+    };
+    $this->app->bind(ArtisanRunner::class, fn () => $runner);
+
+    $admin = PlatformAdmin::factory()->create();
+
+    $this->actingAs($admin, 'platform_admin')
+        ->post('http://coaching.test/admin/backups/run')
+        ->assertRedirect('http://coaching.test/admin/backups')
+        ->assertSessionHas('error');
+
+    $page = $this->actingAs($admin, 'platform_admin')
+        ->get('http://coaching.test/admin/backups')
+        ->assertOk()
+        ->assertSee('The backup could not run. A required system binary may be missing.')
+        ->assertSee('docs/DEPLOY_RUNBOOK.md')
+        ->assertSee('Full error below:')
+        ->assertSee('No such file or directory: mysqldump');
+
+    // The raw output renders strictly below the hint, for debugging.
+    $content = $page->getContent();
+    expect(strpos($content, 'A required system binary may be missing'))
+        ->toBeLessThan(strpos($content, 'No such file or directory: mysqldump'));
+});

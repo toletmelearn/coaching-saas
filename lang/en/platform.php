@@ -234,7 +234,7 @@ return [
             'empty' => 'No backups yet — run one now or wait for the nightly schedule.',
             'run' => 'Run backup now',
             'ran_ok' => 'Backup completed.',
-            'ran_fail' => 'Backup failed — see the output below.',
+            'ran_fail' => 'The backup could not run. A required system binary may be missing. On Windows, gzip, mysqldump, and sqlite3 are not pre-installed — install them via choco install (Administrator shell), or set SQLITE_DUMP_BINARY_PATH / MYSQL_DUMP_BINARY_PATH in .env. On Ubuntu they are pre-installed. See docs/DEPLOY_RUNBOOK.md §1.1a for the migration-drift check and §8 for the backup setup. Full error below:',
             'output' => 'Output',
             'download' => 'Download',
             'delete' => 'Delete',

@@ -114,7 +114,7 @@ gate:
 | 12 | [phase-12-live-classes.md](docs/specs/phase-12-live-classes.md) | Live classes via Jitsi (JaaS): enrolment-gated server-minted join (room name + JWT minted per request), heartbeat attendance with server-derived time, status scheduler, teacher attendance report + formula-guarded CSV — whole feature behind `LIVE_CLASSES_ENABLED` (off by default), see [LIVE_CLASSES.md](LIVE_CLASSES.md) |
 | 12.1 | *(none — a follow-up to [phase-12-live-classes.md](docs/specs/phase-12-live-classes.md))* | Live classes **discoverability**: header "Live classes" link, tenant-wide `/manage/live-classes` (Course / Title / Starts / Status / Attendance with upcoming·past·all filters, one query budget regardless of row count), a live/next/empty card on both dashboards, three Help sections, PILOT_CHECKLIST row 26 — no new schema, no route changes to Phase 12's course-scoped screens |
 | 13 | [phase-13-admin-panel.md](docs/specs/phase-13-admin-panel.md) | Platform admin control panel: health checklist with `APP_DEBUG`-gated one-click fix, service settings (encrypted secrets + Test Connection), backup run/download/delete, log viewer with search, audit log with filters, allowlisted `.env` editor + cache buttons, signed single-use login-as-owner, per-tenant Bunny usage |
-| 15 | [phase-15-dpdp-consent-foundation.md](docs/specs/phase-15-dpdp-consent-foundation.md) | DPDP consent foundation: guardian contact fields on the student record, `consents` (4 purposes × notice version × method, composite tenant FKs, unique per grant), all-or-nothing consent recorded on student creation and bulk import, consent screens with withdrawal (course-delivery refusal 403 at the controller layer, `progress_tracking` erases that student's progress), student data screens — JSON export and irreversible erasure (pre-deletion snapshot to `consent_audit_logs`, hard-deleted enrolments, anonymised row with sentinel `erased-{id}@removed.invalid` email), Help section — *known numbering conflict C13: ROADMAP still lists Stage C as 14/15/16* |
+| 15 | [phase-15-dpdp-consent-foundation.md](docs/specs/phase-15-dpdp-consent-foundation.md) | DPDP consent foundation: guardian contact fields on the student record, `consents` (4 purposes × notice version × method, composite tenant FKs, unique per grant), all-or-nothing consent recorded on student creation and bulk import, consent screens with withdrawal (course-delivery refusal 403 at the controller layer, `progress_tracking` erases that student's progress), student data screens — JSON export and irreversible erasure (pre-deletion snapshot to `consent_audit_logs`, hard-deleted enrolments, anonymised row with sentinel `erased-{id}@removed.invalid` email), Help section — *numbering conflict C13 resolved: ROADMAP Stage B now lists Phase 15* |
 
 Also shipped alongside: **production readiness** (Phase 4.6A — no trust of forwarded host,
 Cloudflare trusted-proxy ranges, session cookie domain tests), **`php artisan app:preflight`**,
@@ -129,7 +129,7 @@ Cloudflare).
 | First real deployment / tenant #1 | Not deployed | ROADMAP Stage B |
 | Automated payment gateway (per-tenant accounts, idempotent webhooks) | Not started | ROADMAP Stage C |
 | Custom domains + TLS via Caddy on-demand | Planned — spec written 2026-10-04, not implemented | [phase-14-custom-domains.md](docs/specs/phase-14-custom-domains.md), [CUSTOM_DOMAINS.md](CUSTOM_DOMAINS.md), ROADMAP Stage C |
-| Queues at scale, audit logging | Not started (queue driver is `database`) — pre-assigned Phase 15 in PROJECT_BRIEF §3 before DPDP took the number (conflict C13); pending renumber to 16 in ROADMAP | ROADMAP Stage C |
+| Queues at scale, audit logging | Not started (queue driver is `database`) — pre-assigned Phase 15 in PROJECT_BRIEF §3 before DPDP took the number (conflict C13, resolved); renumbered to **16** in ROADMAP | ROADMAP Stage C |
 | Subscriptions, usage metering, WhatsApp notifications | Not started | ROADMAP Stage D |
 | Self-service "forgot password" | Not implemented **by design** — `password_reset_tokens` is not tenant-scoped yet and must be fixed first | SECURITY.md |
 
@@ -146,8 +146,8 @@ Cloudflare).
 > 14/15/16 (drift C12 in PROJECT_BRIEF §3) — and **Phase 15 (DPDP consent foundation)**
 > (`fe1f138` + this phase, `docs/specs/phase-15-dpdp-consent-foundation.md`) has now taken
 > 15 for itself, pushing the still-unstarted Stage C queue/catch-all entries to 16/17
-> (conflict C13 in PROJECT_BRIEF §3 — ROADMAP's Stage C header still says 14/15/16, the
-> one open half of that conflict), with **Phase 10.1 (student payment status)** recorded
+> (conflict C13 in PROJECT_BRIEF §3 — resolved: ROADMAP's Stage B now lists Phase 15 and
+> its Stage C header/entries read 14/16/17), with **Phase 10.1 (student payment status)** recorded
 > as a follow-up inside the Phase 15 spec. The roadmap itself was rewritten to the
 > canonical numbering in `2926163` and extended for Phases 12 and 13 with those phases.
 

@@ -27,11 +27,18 @@ test('backup:run and backup:clean are scheduled daily', function () {
         ->and($backupClean->expression)->toBe('30 1 * * *');
 });
 
-test('the configured database dump compressor class exists', function () {
+test('the configured database dump compressor is null outside production and an existing class inside it', function () {
     $compressor = config('backup.backup.database_dump_compressor');
 
-    expect($compressor)->toBeString()
-        ->and(class_exists($compressor))->toBeTrue();
+    // Environment-conditional (config/backup.php): null outside production, where
+    // gzip may not be on the running PHP process's PATH — compression is a size
+    // optimization, not a correctness requirement. In production the configured
+    // class must exist (catches typos / stale FQCNs).
+    expect($compressor === null || (is_string($compressor) && class_exists($compressor)))->toBeTrue();
+
+    if (! app()->environment('production')) {
+        expect($compressor)->toBeNull();
+    }
 });
 
 test('backup:run succeeds with the configured compressor', function () {

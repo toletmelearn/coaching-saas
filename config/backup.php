@@ -106,7 +106,14 @@ return [
          *
          * If you do not want any compressor at all, set it to null.
          */
-        'database_dump_compressor' => GzipCompressor::class,
+        // Environment-conditional: gzip is pre-installed on the production Ubuntu
+        // host, but on Windows local dev the binary may not be on the running
+        // PHP process's PATH (a fresh shell has it; a long-running artisan serve
+        // does not inherit it). Compression is a size optimization, not a
+        // correctness requirement — the archive is a valid .zip either way.
+        'database_dump_compressor' => env('APP_ENV') === 'production'
+            ? GzipCompressor::class
+            : null,
 
         /*
          * If specified, the database dumped file name will contain a timestamp (e.g.: 'Y-m-d-H-i-s').
