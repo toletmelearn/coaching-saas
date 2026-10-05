@@ -25,7 +25,7 @@ test('the owner can record a consent for each purpose, stamped with who recorded
     foreach ($rows as $row) {
         expect((int) $row->recorded_by)->toBe($f['owner']->id)
             ->and((int) $row->tenant_id)->toBe($f['tenant']->id)
-            ->and($row->method)->toBe('guardian_in_person')
+            ->and($row->method)->toBe('owner_attested')
             ->and($row->notice_version)->toBe(ConsentFixtures::NOTICE_VERSION)
             ->and($row->granted_at)->not->toBeNull()
             ->and($row->withdrawn_at)->toBeNull();
@@ -153,7 +153,7 @@ test('creating a student records the guardian details and a consent for every pu
 
     foreach ($rows as $row) {
         expect((int) $row->recorded_by)->toBe($f['owner']->id)
-            ->and($row->method)->toBe('guardian_in_person')
+            ->and($row->method)->toBe('owner_attested')
             ->and($row->notice_version)->toBe(ConsentFixtures::NOTICE_VERSION)
             ->and($row->granted_at)->not->toBeNull();
     }
@@ -289,7 +289,7 @@ test('bulk import shows the consent notice and records a consent for every impor
     $preview->assertSee(__('consents.notice_title'));
 
     $this->actingAs($f['owner'], 'tenant')
-        ->post("http://{$f['domain']}/users/import/confirm", ['token' => $preview->viewData('token')])
+        ->post("http://{$f['domain']}/users/import/confirm", ['token' => $preview->viewData('token'), 'guardian_consent' => '1'])
         ->assertRedirect();
 
     $imported = [

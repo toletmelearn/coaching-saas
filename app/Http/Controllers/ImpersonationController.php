@@ -49,6 +49,8 @@ class ImpersonationController extends Controller
         Auth::guard('tenant')->login($user);
         $request->session()->regenerate();
 
+        $request->session()->put('impersonation', ['admin_id' => $adminId, 'started_at' => now()->timestamp]);
+
         return redirect('/dashboard');
     }
 }

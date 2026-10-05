@@ -69,8 +69,10 @@ test('after erasure the old session is redirected to login and the devices and r
 
     freshRequestCycle();
 
-    // The old session must now be refused.
-    $this->actingAs($f['student'], 'tenant')
+    // The old session must now be refused. The user is reloaded from the database, as a real
+    // request would do: the pre-erasure model instance still reports status active.
+    $reloaded = inTenant($f['tenant'], fn () => User::find($f['student']->id));
+    $this->actingAs($reloaded, 'tenant')
         ->get("http://{$f['domain']}/dashboard")
         ->assertRedirect("http://{$f['domain']}/login");
 

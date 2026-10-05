@@ -22,6 +22,9 @@ class ConsentAuditLog extends Model
     /** The audit action written when a student is erased. */
     public const ACTION_STUDENT_ERASED = 'student_erased';
 
+    /** A payment screenshot could not be deleted after erasure committed. */
+    public const ACTION_SCREENSHOT_DELETE_FAILED = 'screenshot_delete_failed';
+
     protected function casts(): array
     {
         return [

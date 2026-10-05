@@ -38,6 +38,18 @@
         'manage' => true,
     ])
 
+    @if ($user->role->isOwner() && $studentsMissingGuardian->isNotEmpty())
+        <div class="ui-card" style="margin-bottom: 1.5rem;">
+            <h2 class="ui-h2">{{ __('consents.guardian_gap.title') }}</h2>
+            <p class="ui-subtle">{{ __('consents.guardian_gap.help') }}</p>
+            <ul style="list-style: none; display: grid; gap: 0.375rem;">
+                @foreach ($studentsMissingGuardian as $gapStudent)
+                    <li><a href="{{ url('/users/'.$gapStudent->id) }}" class="ui-link">{{ $gapStudent->name }}</a></li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <div class="ui-fade" style="display: flex; flex-wrap: wrap; gap: 0.625rem;">
         <x-link href="{{ url('/manage/courses') }}" variant="primary">
             <x-icon name="book" :size="17" />

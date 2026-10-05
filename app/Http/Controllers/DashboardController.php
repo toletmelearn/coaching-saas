@@ -10,6 +10,7 @@ use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Models\LiveClass;
 use App\Models\Payment;
+use App\Models\User;
 use App\Support\GettingStartedChecklist;
 use App\Support\LessonAccess;
 use App\Support\Payments\PaymentStateResolver;
@@ -29,12 +30,19 @@ class DashboardController extends Controller
         if ($user->role->canManageUsers()) {
             $checklist = null;
             $showGettingStarted = false;
+            $studentsMissingGuardian = collect();
 
             if ($user->role === UserRole::Owner) {
                 $tenant = $tenantContext->get();
                 $checklist = GettingStartedChecklist::forTenant($tenant);
                 $showGettingStarted = $tenant->getting_started_dismissed_at === null
                     && ! GettingStartedChecklist::allDone($checklist);
+                // DPDP: students with neither a guardian name nor a guardian phone recorded.
+                $studentsMissingGuardian = User::where('role', UserRole::Student)
+                    ->whereNull('guardian_name')
+                    ->whereNull('guardian_phone')
+                    ->orderBy('name')
+                    ->get(['id', 'name']);
             }
 
             // Live classes (Phase 12.1): the same two queries the student branch
@@ -46,6 +54,7 @@ class DashboardController extends Controller
                 'user' => $user,
                 'checklist' => $checklist,
                 'showGettingStarted' => $showGettingStarted,
+                'studentsMissingGuardian' => $studentsMissingGuardian,
                 // How many payments are waiting on a decision (Phase 10). Zero hides
                 // the badge entirely rather than showing "0".
                 'pendingPayments' => Payment::where('status', PaymentStatus::Pending->value)->count(),

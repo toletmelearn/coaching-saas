@@ -11,12 +11,14 @@ use App\Http\Controllers\Admin\SystemEnvController;
 use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\Auth\PlatformAdminLoginController;
 use App\Http\Controllers\Auth\PlatformAdminLogoutController;
+use App\Http\Controllers\Auth\PlatformAdminTwoFactorController;
 use App\Http\Controllers\Auth\TenantLoginController;
 use App\Http\Controllers\Auth\TenantLogoutController;
 use App\Http\Controllers\CourseController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DemoRequestController;
 use App\Http\Controllers\ImpersonationController;
+use App\Http\Controllers\ImpersonationExitController;
 use App\Http\Controllers\LessonAttachmentController;
 use App\Http\Controllers\LessonController;
 use App\Http\Controllers\LessonProgressController;
@@ -47,6 +49,8 @@ use App\Http\Controllers\PwaController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserImportController;
 use App\Http\Controllers\UserImportCredentialsController;
+use App\Http\Middleware\BlockWhileImpersonating;
+use App\Http\Middleware\EnforcePlatformTwoFactorEnrolment;
 use App\Http\Middleware\PlatformAdminAuth;
 use App\Support\TenantContext;
 use Illuminate\Support\Facades\Route;
@@ -71,10 +75,17 @@ foreach (config('tenancy.central_domains', []) as $centralDomain) {
         Route::prefix('admin')->group(function () {
             Route::get('login', [PlatformAdminLoginController::class, 'show']);
             Route::post('login', [PlatformAdminLoginController::class, 'store']);
+            Route::get('two-factor', [PlatformAdminTwoFactorController::class, 'challenge']);
+            Route::post('two-factor', [PlatformAdminTwoFactorController::class, 'verify']);
+
+            Route::middleware('auth:platform_admin')->group(function () {
+                Route::get('two-factor/setup', [PlatformAdminTwoFactorController::class, 'setup']);
+                Route::post('two-factor/setup', [PlatformAdminTwoFactorController::class, 'confirmSetup']);
+            });
             Route::post('logout', [PlatformAdminLogoutController::class, 'store'])
                 ->middleware('auth:platform_admin');
 
-            Route::middleware('auth:platform_admin')->group(function () {
+            Route::middleware('auth:platform_admin', EnforcePlatformTwoFactorEnrolment::class)->group(function () {
                 Route::get('dashboard', [PlatformAdminDashboardController::class, 'show']);
 
                 Route::get('institutes', [InstituteController::class, 'index']);
@@ -98,7 +109,7 @@ foreach (config('tenancy.central_domains', []) as $centralDomain) {
             // sort splices auth ahead of it; see the class docblock). The strict
             // 403 contract applies only to these new routes; the legacy routes
             // above keep their redirect behaviour (PlatformAdminGuardTest pins it).
-            Route::middleware(PlatformAdminAuth::class.':platform_admin')->group(function () {
+            Route::middleware([PlatformAdminAuth::class.':platform_admin', EnforcePlatformTwoFactorEnrolment::class])->group(function () {
                 Route::get('health', [HealthController::class, 'index']);
                 Route::post('health/fix', [HealthController::class, 'fix']);
 
@@ -188,10 +199,11 @@ Route::middleware('require.tenant')->group(function () {
 
     Route::middleware('auth:tenant')->group(function () {
         Route::post('logout', [TenantLogoutController::class, 'store']);
+        Route::post('impersonation/exit', [ImpersonationExitController::class, 'store']);
 
         Route::middleware(['active.tenant.user', 'device.limit'])->group(function () {
             Route::get('auth/change-password', [ChangePasswordController::class, 'show']);
-            Route::post('auth/change-password', [ChangePasswordController::class, 'update']);
+            Route::post('auth/change-password', [ChangePasswordController::class, 'update'])->middleware(BlockWhileImpersonating::class);
 
             // Proof-of-payment screenshots. Signed (short-lived, tamper-evident) and
             // additionally authorised per viewer inside the controller — a valid
@@ -266,7 +278,7 @@ Route::middleware('require.tenant')->group(function () {
                     Route::post('students/{student}/consents/{consent}/withdraw', [StudentConsentsController::class, 'withdraw']);
                     Route::get('students/{student}/data', [StudentDataController::class, 'show']);
                     Route::get('students/{student}/data/export', [StudentDataController::class, 'export']);
-                    Route::delete('students/{student}/data', [StudentDataController::class, 'erase']);
+                    Route::delete('students/{student}/data', [StudentDataController::class, 'erase'])->middleware(BlockWhileImpersonating::class);
 
                     Route::get('settings', [ManageSettingsController::class, 'show']);
                     Route::patch('settings', [ManageSettingsController::class, 'update']);

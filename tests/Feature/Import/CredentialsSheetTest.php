@@ -16,7 +16,7 @@ function sheetFixture(): array
         ->post("http://{$domain}/users/import", ['file' => csvUploadFile($csv)]);
     $token = $preview->viewData('token');
 
-    $confirm = test()->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", ['token' => $token]);
+    $confirm = test()->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", ['token' => $token, 'guardian_consent' => '1']);
     $sheetToken = $confirm->getSession()->get('import_sheet_token');
 
     return [$tenant, $domain, $owner, $sheetToken];
@@ -85,7 +85,7 @@ test('the WhatsApp link only appears for rows with a phone, formatted 91XXXXXXXX
 
     $preview = $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import", ['file' => csvUploadFile($csv)]);
     $token = $preview->viewData('token');
-    $confirm = $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", ['token' => $token]);
+    $confirm = $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", ['token' => $token, 'guardian_consent' => '1']);
     $sheetToken = $confirm->getSession()->get('import_sheet_token');
 
     $response = $this->actingAs($owner, 'tenant')->get("http://{$domain}/users/import/sheet/{$sheetToken}");
@@ -102,7 +102,7 @@ test('CSV download from the sheet is formula-safe', function () {
 
     $preview = $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import", ['file' => csvUploadFile($csv)]);
     $token = $preview->viewData('token');
-    $confirm = $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", ['token' => $token]);
+    $confirm = $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", ['token' => $token, 'guardian_consent' => '1']);
     $sheetToken = $confirm->getSession()->get('import_sheet_token');
 
     $download = $this->actingAs($owner, 'tenant')->get("http://{$domain}/users/import/sheet/{$sheetToken}/download");

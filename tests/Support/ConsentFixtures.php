@@ -37,7 +37,7 @@ class ConsentFixtures
     public const ERASED_NAME = 'Deleted Student';
 
     /** How bulk-import consents are recorded: one file-level method for the file. */
-    public const IMPORT_METHOD = 'guardian_in_person';
+    public const IMPORT_METHOD = 'owner_attested';
 
     /** Every consent purpose, in the order the creation form renders them. */
     public const PURPOSES = [

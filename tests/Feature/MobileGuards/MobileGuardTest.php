@@ -78,7 +78,7 @@ test('the credentials sheet is mobile-safe', function () {
     $preview = $this->actingAs($owner, 'tenant')
         ->post("http://{$domain}/users/import", ['file' => csvUploadFile("name,phone,email\nAsha Rao,9876543210,\n")]);
     $token = $preview->viewData('token');
-    $confirm = $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", ['token' => $token]);
+    $confirm = $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", ['token' => $token, 'guardian_consent' => '1']);
     $sheetToken = $confirm->getSession()->get('import_sheet_token');
 
     $sheet = $this->actingAs($owner, 'tenant')->get("http://{$domain}/users/import/sheet/{$sheetToken}");

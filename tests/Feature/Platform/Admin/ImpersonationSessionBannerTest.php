@@ -53,6 +53,7 @@ test('a normal owner session shows no impersonation banner, while the impersonat
     $this->get("{$origin}/dashboard")->assertSee(__('impersonation.exit'), false);
 
     freshRequestCycle();
+    $this->flushSession();
 
     $response = $this->actingAs($owner, 'tenant')->get('http://impersonate.coaching.test/dashboard');
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\AdminAuditLog;
+use App\Models\PlatformAdmin;
 use App\Support\TenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,7 +37,7 @@ class PlatformAdminLoginController extends Controller
             abort(429);
         }
 
-        if (! Auth::guard('platform_admin')->attempt($data)) {
+        if (! Auth::guard('platform_admin')->validate($data)) {
             RateLimiter::hit($key, 60);
 
             return back()->withErrors(['email' => __('auth.failed')]);
@@ -44,9 +45,19 @@ class PlatformAdminLoginController extends Controller
 
         RateLimiter::clear($key);
 
+        // An admin with a TOTP secret proves the password here but is not logged in until
+        // the second factor passes (PlatformAdminTwoFactorController::verify).
+        $admin = PlatformAdmin::where('email', $data['email'])->firstOrFail();
+
+        if ($admin->hasTwoFactor()) {
+            $request->session()->put('admin_2fa_pending', ['admin_id' => $admin->id, 'at' => now()->timestamp]);
+
+            return redirect('/admin/two-factor');
+        }
+
+        Auth::guard('platform_admin')->login($admin);
         $request->session()->regenerate();
 
-        $admin = Auth::guard('platform_admin')->user();
         $admin->forceFill(['last_login_at' => now()])->save();
 
         // Phase 13: every privileged session start lands in the audit trail.

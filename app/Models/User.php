@@ -47,6 +47,15 @@ class User extends Authenticatable
     }
 
     /**
+     * An erased student keeps the reserved @removed.invalid sentinel email (see
+     * StudentDataController::erase). Such a row must never be re-enabled or reset.
+     */
+    public function isErased(): bool
+    {
+        return str_ends_with((string) $this->email, '@removed.invalid');
+    }
+
+    /**
      * @return HasMany<UserDevice, $this>
      */
     public function devices(): HasMany

@@ -33,6 +33,21 @@ return [
         'guardian_whatsapp' => 'Guardian agreed on WhatsApp',
         'guardian_in_person' => 'Guardian agreed in person',
         'guardian_signed_form' => 'Guardian signed the consent form',
+        'owner_attested' => 'Owner attests the guardian gave consent (bulk import)',
+    ],
+
+    'import' => [
+        'guardian_consent_label' => 'I hold guardian consent for these students',
+        'guardian_consent_required' => 'Tick the box to confirm you hold guardian consent for these students.',
+    ],
+
+    'guardian_gap' => [
+        'title' => 'Students with no guardian details',
+        'help' => 'Add a guardian name or phone on each student\'s page.',
+    ],
+
+    'erasure' => [
+        'file_warning' => 'The student was erased, but some payment screenshot files could not be deleted automatically. The owner has been notified in the audit log.',
     ],
 
     'purposes' => [

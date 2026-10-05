@@ -13,6 +13,9 @@ enum ConsentMethod: string
     case GuardianInPerson = 'guardian_in_person';
     case GuardianSignedForm = 'guardian_signed_form';
 
+    /** The owner attests, on the guardian's behalf, that consent was given (bulk import). */
+    case OwnerAttested = 'owner_attested';
+
     /**
      * Every value as a plain list, for validation rules.
      *

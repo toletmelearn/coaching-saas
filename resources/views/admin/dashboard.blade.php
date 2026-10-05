@@ -1,6 +1,19 @@
 @extends('layouts.app')
 
 @section('content')
+    @if (session('recovery_codes'))
+        <div class="ui-alert" style="margin-bottom: 1.25rem;">
+            <div>
+                <p class="ui-h2" style="margin: 0 0 0.375rem;">{{ __('admin_2fa.recovery.heading') }}</p>
+                <p style="margin: 0 0 0.5rem;">{{ __('admin_2fa.recovery.help') }}</p>
+                <ul class="font-mono" style="list-style: none;">
+                    @foreach (session('recovery_codes') as $recoveryCode)
+                        <li>{{ $recoveryCode }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+    @endif
     <x-page-header :title="__('platform.admin.dashboard.heading')" />
 
     <div class="grid grid-cols-2 gap-4 mb-6">

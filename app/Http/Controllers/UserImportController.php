@@ -142,6 +142,13 @@ class UserImportController extends Controller
     public function confirm(Request $request): RedirectResponse
     {
         $user = $this->authorizeImport();
+
+        // DPDP: the owner must attest the guardian gave consent before any student is created.
+        // Refused here, before the token is read, so nothing is created or consumed.
+        $request->validate(
+            ['guardian_consent' => ['accepted']],
+            ['guardian_consent.accepted' => __('consents.import.guardian_consent_required')],
+        );
         $tenant = app(TenantContext::class)->get();
 
         $token = (string) $request->input('token', '');
@@ -202,7 +209,7 @@ class UserImportController extends Controller
                         $consent->forceFill([
                             'user_id' => $student->id,
                             'purpose' => $purpose,
-                            'method' => ConsentMethod::GuardianInPerson->value,
+                            'method' => ConsentMethod::OwnerAttested->value,
                             'notice_version' => Consent::NOTICE_VERSION,
                             'granted_at' => now(),
                             'recorded_by' => $user->id,

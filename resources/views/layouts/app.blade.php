@@ -46,6 +46,18 @@
 
 <a href="#main-content" class="ui-skip">Skip to content</a>
 
+@if ($tenant && $tenantUser && session('impersonation'))
+    <div class="ui-alert" role="alert" style="border-radius: 0; justify-content: center;">
+        <div class="ui-shell" style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; justify-content: space-between; width: 100%;">
+            <strong>{{ __('impersonation.banner', ['name' => $tenantUser->name]) }}</strong>
+            <form method="POST" action="{{ url('/impersonation/exit') }}">
+                @csrf
+                <button type="submit" class="ui-btn ui-btn-sm">{{ __('impersonation.exit') }}</button>
+            </form>
+        </div>
+    </div>
+@endif
+
 <header class="ui-header">
     <div class="ui-shell ui-header-inner">
         @if ($tenant)

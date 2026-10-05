@@ -93,6 +93,10 @@ class UserPolicy
      */
     public function enable(User $actor, User $target): bool
     {
+        if ($target->isErased()) {
+            return false;
+        }
+
         if ($actor->role === UserRole::Owner) {
             return true;
         }
@@ -106,6 +110,10 @@ class UserPolicy
 
     public function resetPassword(User $actor, User $target): bool
     {
+        if ($target->isErased()) {
+            return false;
+        }
+
         if ($actor->role === UserRole::Owner) {
             return true;
         }

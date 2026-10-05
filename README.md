@@ -1,5 +1,7 @@
 # Coaching-SaaS
 
+[![CI](https://github.com/toletmelearn/coaching-saas/actions/workflows/ci.yml/badge.svg)](https://github.com/toletmelearn/coaching-saas/actions/workflows/ci.yml)
+
 Multi-tenant SaaS for coaching institutes, built on Laravel 13 / PHP 8.3. Single codebase,
 single database, tenant isolation enforced at the schema and application layer. See
 [ARCHITECTURE.md](ARCHITECTURE.md), [TENANCY.md](TENANCY.md), [SECURITY.md](SECURITY.md),
@@ -83,9 +85,9 @@ gate:
 
 | Gate | Command | Result (as verified) |
 |------|---------|----------------------|
-| Unit + feature tests (SQLite) | `composer test` | **1032 tests, 1031 passed, 1 skipped** (the skip is the documented MySQL-only preflight test) |
-| Tenancy/auth/etc. on real MySQL | `composer test:mysql` | **1000 / 1000 passed** |
-| JS unit tests (Node, no browser) | `composer test:js` | **29 / 29 passed** |
+| Unit + feature tests (SQLite) | `composer test` | all passing; one MySQL-only preflight test is skipped on SQLite by design |
+| Tenancy/auth/etc. on real MySQL | `composer test:mysql` | all passing (the CI badge above shows the latest run) |
+| JS unit tests (Node, no browser) | `composer test:js` | all passing |
 | Formatting | `composer lint` | **clean** (Pint reports no changes needed) |
 | Static analysis | `composer analyse` | **0 errors** at Larastan level 5 |
 
@@ -170,7 +172,7 @@ Cloudflare).
    `docs/specs/`. Non-obvious decisions carry their reasoning *next to the code* (see the
    middleware-priority comment in `bootstrap/app.php`). There are **zero
    `TODO`/`FIXME`/`HACK` markers** in the codebase.
-3. **Test-to-code ratio is ~2:1** (22,553 test lines vs 11,630 app lines), with security
+3. **Test-to-code ratio is ~2:1**, with security
    behaviour tested explicitly — cross-tenant login rejection, session replay, token-key
    cross-tenant misuse, secrets never in HTML or logs, CSV formula injection, rate limits.
 4. **All five quality gates are green** — tests on both SQLite *and* real MySQL, JS tests,
@@ -221,10 +223,8 @@ Cloudflare).
      `TENANCY.md`).
    - **RESOLVED in `cc6bed7`:** this README's own counts were re-synced to HEAD — the gate
      table, test lines, routes, `lang/en` and `tests/Feature` file counts, including the
-     `composer test:mysql` line that once described only `tests/Feature/Tenancy` (20
-     suites / 793 tests at that commit; **21 suites / 875 tests** after Phase 12, **932
-     tests** after Phase 13, **950 tests** after Phase 12.1, **951 tests** after Phase
-     13.1, **22 suites / 1000 tests** after Phase 15, and the counts above re-synced
+     `composer test:mysql` line that once described only `tests/Feature/Tenancy` (the test suite at that commit; the test suite after Phase 12, the test suite after Phase 13, the test suite after Phase 12.1, the test suite after Phase
+     13.1, the test suite after Phase 15, and the counts above re-synced
      again with each).
 5. **`.env` has drifted from `.env.example`.** The local `.env` carries
    `SESSION_LIFETIME=120` while `.env.example` specifies `43200` (the Phase 8 30-day decision
@@ -565,8 +565,8 @@ into `C:\Windows\System32\drivers\etc\hosts` instead of typing them by hand.
 |--------------------------|-------------------------------------------------------------------|
 | `composer setup`         | One-shot install: `composer install`, copy `.env`, `key:generate`, `migrate`, `npm install`, `npm run build`. |
 | `composer dev`           | Run the Laravel dev stack (`php artisan dev`).                    |
-| `composer test`          | Run the full Pest suite (1032 tests) against an in-memory SQLite database. |
-| `composer test:mysql`    | Run the MySQL variant of the suite — 22 suites / 1000 tests: every `tests/Feature/` directory plus the schema- and security-relevant `tests/Unit/` directories — against the real `coaching_saas_test` database (set `DB_TEST_*` in `.env`). Excludes only `tests/Feature/ExampleTest.php`, `tests/Feature/ErrorPagesTest.php` and four `tests/Unit/` files that need no database. |
+| `composer test`          | Run the full Pest suite against an in-memory SQLite database. |
+| `composer test:mysql`    | Run the MySQL variant of the suite — the test suite: every `tests/Feature/` directory plus the schema- and security-relevant `tests/Unit/` directories — against the real `coaching_saas_test` database (set `DB_TEST_*` in `.env`). Excludes only `tests/Feature/ExampleTest.php`, `tests/Feature/ErrorPagesTest.php` and four `tests/Unit/` files that need no database. |
 | `composer test:js`       | Run the Node test-runner suite for `resources/js/{sw,progress-tracker}.js` (no browser needed). |
 | `composer lint`          | Format code with Laravel Pint (`vendor/bin/pint --test` to check without writing). |
 | `composer analyse`       | Static analysis with Larastan (PHPStan) at level 5.                |

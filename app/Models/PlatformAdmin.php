@@ -12,7 +12,12 @@ class PlatformAdmin extends Authenticatable
 
     protected $fillable = ['name', 'email', 'password', 'status', 'last_login_at'];
 
-    protected $hidden = ['password', 'remember_token'];
+    public function hasTwoFactor(): bool
+    {
+        return $this->totp_secret !== null;
+    }
+
+    protected $hidden = ['password', 'remember_token', 'totp_secret', 'recovery_codes'];
 
     protected function casts(): array
     {
@@ -20,6 +25,11 @@ class PlatformAdmin extends Authenticatable
             'password' => 'hashed',
             'status' => PlatformAdminStatus::class,
             'last_login_at' => 'datetime',
+            // Encrypted at rest: a database dump alone must not yield a usable TOTP seed.
+            'totp_secret' => 'encrypted',
+            'totp_enabled_at' => 'datetime',
+            // Bcrypt hashes of the unused recovery codes; each is removed once used.
+            'recovery_codes' => 'array',
         ];
     }
 }

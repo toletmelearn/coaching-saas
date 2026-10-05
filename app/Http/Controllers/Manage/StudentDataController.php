@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Manage;
 
+use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Consent;
 use App\Models\ConsentAuditLog;
@@ -15,8 +16,11 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Throwable;
 
 /**
  * Phase 15 — the student-data screen: JSON export of one student's data and
@@ -107,7 +111,9 @@ class StudentDataController extends Controller
 
         $actor = $request->user('tenant');
 
-        DB::transaction(function () use ($student, $actor) {
+        $screenshotPaths = [];
+
+        DB::transaction(function () use ($student, $actor, &$screenshotPaths) {
             $enrolments = DB::table('enrolments')
                 ->where('tenant_id', $student->tenant_id)
                 ->where('user_id', $student->id)
@@ -122,6 +128,8 @@ class StudentDataController extends Controller
                 ->where('tenant_id', $student->tenant_id)
                 ->whereIn('enrolment_id', $enrolments->pluck('id'))
                 ->get();
+
+            $screenshotPaths = $payments->pluck('screenshot_path')->filter()->values()->all();
 
             // Snapshot everything that is about to disappear — the payments
             // first: they leave with their enrolment (ON DELETE CASCADE), and
@@ -174,8 +182,37 @@ class StudentDataController extends Controller
                 'guardian_phone' => null,
                 'guardian_email' => null,
                 'remember_token' => null,
+                // Erased rows can never be used to sign in again: disabled, and given a
+                // random password nobody holds (the cast hashes it on assignment).
+                'status' => UserStatus::Disabled,
+                'password' => Str::random(64),
             ])->save();
         });
+
+        // Files go only after the commit above: a rollback must never leave rows pointing at
+        // deleted evidence. A file that cannot be deleted is recorded and reported, not fatal.
+        $failedPaths = [];
+
+        foreach ($screenshotPaths as $path) {
+            try {
+                Storage::disk('local')->delete($path);
+            } catch (Throwable) {
+                $failedPaths[] = $path;
+            }
+        }
+
+        if ($failedPaths !== []) {
+            $log = new ConsentAuditLog;
+            $log->forceFill([
+                'tenant_id' => $student->tenant_id,
+                'user_id' => $student->id,
+                'actor_id' => $actor->id,
+                'action' => ConsentAuditLog::ACTION_SCREENSHOT_DELETE_FAILED,
+                'metadata' => ['paths' => $failedPaths],
+            ])->save();
+
+            return redirect()->route('users.index')->with('erasure_warning', __('consents.erasure.file_warning'));
+        }
 
         return redirect()->route('users.index');
     }

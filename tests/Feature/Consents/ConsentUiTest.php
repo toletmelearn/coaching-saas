@@ -32,7 +32,7 @@ test('the student creation form shows the consent notice, the guardian fields an
             ->assertSee(__('consents.purpose_descriptions.'.$purpose));
     }
 
-    foreach (['guardian_whatsapp', 'guardian_in_person', 'guardian_signed_form'] as $method) {
+    foreach (['guardian_whatsapp', 'guardian_in_person', 'guardian_signed_form', 'owner_attested'] as $method) {
         $response->assertSee(__('consents.methods.'.$method));
     }
 });

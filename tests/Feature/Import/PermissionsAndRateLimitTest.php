@@ -76,6 +76,7 @@ test('staff-created import rows are always role student, even if a role column/p
     $token = $preview->viewData('token');
     $this->actingAs($staff, 'tenant')->post("http://{$domain}/users/import/confirm", [
         'token' => $token,
+        'guardian_consent' => '1',
         'role' => 'owner',
     ]);
 
@@ -99,6 +100,7 @@ test('owner-created import rows are also always role student, even if a role col
     $token = $preview->viewData('token');
     $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", [
         'token' => $token,
+        'guardian_consent' => '1',
         'role' => 'staff',
     ]);
 

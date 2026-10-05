@@ -47,6 +47,13 @@
     <form method="POST" action="{{ url('/users/import/confirm') }}">
         @csrf
         <input type="hidden" name="token" value="{{ $token }}">
+        <label class="flex items-start gap-2 mb-4 text-sm">
+            <input type="checkbox" name="guardian_consent" value="1" required class="mt-1">
+            <span>{{ __('consents.import.guardian_consent_label') }}</span>
+        </label>
+        @error('guardian_consent')
+            <p class="mb-4 text-sm text-red-600">{{ $message }}</p>
+        @enderror
         <x-button>{{ __('import.preview.confirm', ['count' => $ok]) }}</x-button>
     </form>
 @endsection

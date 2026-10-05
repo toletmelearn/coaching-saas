@@ -25,7 +25,7 @@ test('confirm creates only the OK rows: role student, active, must_change_passwo
     $token = previewToken($domain, $owner, $csv);
 
     $this->actingAs($owner, 'tenant')
-        ->post("http://{$domain}/users/import/confirm", ['token' => $token])
+        ->post("http://{$domain}/users/import/confirm", ['token' => $token, 'guardian_consent' => '1'])
         ->assertRedirect();
 
     inTenant($tenant, function () {
@@ -45,6 +45,7 @@ test('guarded fields cannot be set from the confirm request', function () {
 
     $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", [
         'token' => $token,
+        'guardian_consent' => '1',
         'role' => 'owner',
         'status' => 'disabled',
         'must_change_password' => false,
@@ -64,8 +65,8 @@ test('the token is consumed atomically — a second confirm creates nothing and 
     $csv = "name,phone,email\nAsha Rao,9876543210,\n";
     $token = previewToken($domain, $owner, $csv);
 
-    $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", ['token' => $token])->assertRedirect();
-    $second = $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", ['token' => $token]);
+    $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", ['token' => $token, 'guardian_consent' => '1'])->assertRedirect();
+    $second = $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", ['token' => $token, 'guardian_consent' => '1']);
 
     $second->assertSessionHas('error', __('import.already_processed'));
     inTenant($tenant, fn () => expect(User::where('role', 'student')->count())->toBe(1));
@@ -78,7 +79,7 @@ test('another user cannot confirm someone else\'s import token', function () {
     $token = previewToken($domain, $owner, $csv);
 
     $this->actingAs($staff, 'tenant')
-        ->post("http://{$domain}/users/import/confirm", ['token' => $token])
+        ->post("http://{$domain}/users/import/confirm", ['token' => $token, 'guardian_consent' => '1'])
         ->assertStatus(404);
 
     inTenant($tenant, fn () => expect(User::where('role', 'student')->count())->toBe(0));
@@ -92,7 +93,7 @@ test('an expired token is refused', function () {
     $this->travel(20)->minutes();
 
     $this->actingAs($owner, 'tenant')
-        ->post("http://{$domain}/users/import/confirm", ['token' => $token])
+        ->post("http://{$domain}/users/import/confirm", ['token' => $token, 'guardian_consent' => '1'])
         ->assertStatus(404);
 
     inTenant($tenant, fn () => expect(User::where('role', 'student')->count())->toBe(0));
@@ -109,7 +110,7 @@ test('another tenant\'s session cannot see or confirm this token', function () {
     $ownerB = inTenant($tenantB, fn () => User::factory()->owner()->create());
 
     $this->actingAs($ownerB, 'tenant')
-        ->post("http://{$domainB}/users/import/confirm", ['token' => $token])
+        ->post("http://{$domainB}/users/import/confirm", ['token' => $token, 'guardian_consent' => '1'])
         ->assertStatus(404);
 });
 
@@ -128,7 +129,7 @@ test('the whole batch rolls back if creation fails partway through', function ()
     // number for this tenant between preview and confirm.
     inTenant($tenant, fn () => User::factory()->student()->create(['phone' => '9123456780']));
 
-    $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", ['token' => $token]);
+    $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", ['token' => $token, 'guardian_consent' => '1']);
 
     inTenant($tenant, function () {
         // Only the pre-existing collision remains — the first row must NOT have been
@@ -147,6 +148,7 @@ test('confirm enrols created students in the chosen published course', function 
 
     $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", [
         'token' => $token,
+        'guardian_consent' => '1',
         'course_id' => $course->id,
     ]);
 
@@ -177,6 +179,7 @@ test('ends_at from import enrolment is end-of-day Asia/Kolkata, defaulting from 
 
     $this->actingAs($owner, 'tenant')->post("http://{$domain}/users/import/confirm", [
         'token' => $token,
+        'guardian_consent' => '1',
         'course_id' => $course->id,
     ]);
 
