@@ -89,6 +89,15 @@
         <testsuite name="Config">
             <directory>tests/Unit/Config</directory>
         </testsuite>
+        <testsuite name="Dpdp">
+            <directory>tests/Feature/Dpdp</directory>
+        </testsuite>
+        <testsuite name="Docs">
+            <directory>tests/Feature/Docs</directory>
+        </testsuite>
+        <testsuite name="AdminAuth">
+            <directory>tests/Unit/Support/Auth</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>
