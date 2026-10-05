@@ -138,6 +138,10 @@ class PlatformAdminTwoFactorController extends Controller
         return is_array($pending) ? $pending : null;
     }
 
+    /**
+     * The lock counts `two_factor_failed` rows in admin_audit_logs for this admin within the last hour.
+     * Any retention job for that table must keep rows newer than one hour, or the lock silently lifts early.
+     */
     private function locked(PlatformAdmin $admin): bool
     {
         $failures = AdminAuditLog::query()

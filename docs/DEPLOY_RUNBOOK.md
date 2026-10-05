@@ -1597,14 +1597,27 @@ shipped but never applied locally) is why this check exists.
 
 ## Platform admin two-factor and session encryption (Phase 16.1)
 
-Before the first production login, set `SESSION_ENCRYPT=true` in `.env` (`.env.example` ships it on;
-`app:preflight` fails in production otherwise). Then each platform admin signs in, is sent to
-`/admin/two-factor/setup`, scans the QR code or enters the key in an authenticator app, confirms a
-code, and saves the eight recovery codes shown once. `php artisan app:preflight --require-production`
-fails while any platform admin lacks two-factor sign-in. If an admin loses both the authenticator and
-the recovery codes, run `php artisan platform-admin:reset-2fa {email}` on the server; they will be
-asked to enrol again. Twenty failed codes within an hour lock that admin's two-factor sign-in for an
-hour (see SECURITY.md for the trade-off).
+Set `SESSION_ENCRYPT=true` in `.env` before the first production request (`.env.example` ships it on;
+`app:preflight` fails in production otherwise).
+
+**First-deploy order for platform-admin 2FA.** `php artisan app:preflight --require-production` fails
+on the `admin_2fa` check until every platform admin has enrolled, so enrolment has to happen after the
+site is reachable and before tenant #1 goes live:
+
+1. **Deploy with the site reachable.** Run the normal deploy steps above with `APP_ENV=production`
+   and `SESSION_ENCRYPT=true`. Do not invite tenant #1 yet. Preflight will report `admin_2fa` as failing
+   at this point, and that is expected.
+2. **Every platform admin signs in and enrols.** Each admin signs in at `/admin/login`, is sent to
+   `/admin/two-factor/setup`, adds the key to an authenticator app, confirms a code, and saves the eight
+   recovery codes shown once. Nobody can reach any other admin page in production until they have done so.
+3. **Re-run preflight and confirm it passes.** `php artisan app:preflight --require-production` must
+   pass, with no `admin_2fa` failure, before tenant #1 is set up or goes live.
+
+If an admin loses both the authenticator and the recovery codes, an operator with server access runs
+`php artisan platform-admin:reset-2fa {email}`; that admin is then asked to enrol again, and preflight
+fails again until they do. Twenty failed codes within an hour lock that admin's two-factor sign-in for
+an hour (see SECURITY.md for the trade-off). Retention jobs for `admin_audit_logs` must keep rows newer
+than one hour, because the lock counts `two_factor_failed` rows there.
 
 *Removed from this list on 2026-10-02 (both now closed): the backup compressor defect — fixed
 in `c859e74`, full write-up preserved in §1.8 — and the uncommitted
