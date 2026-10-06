@@ -36,7 +36,7 @@
                     @else
                         <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-800">{{ __('platform.admin.health.fail') }}</span>
 
-                        @if (in_array($outcome['id'], ['video_driver', 'jitsi'], true))
+                        @if (in_array($outcome['id'], ['video_driver'], true))
                             <a href="{{ url('/admin/settings/services') }}" class="ui-btn ui-btn-ghost ui-btn-sm">{{ __('platform.admin.health.set_credentials') }}</a>
                         @endif
 

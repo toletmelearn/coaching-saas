@@ -54,6 +54,16 @@ gate-output table and the drift rows that quote it to **983 / 951 / 29**; the pr
 below is unchanged. Standing lesson for deploys: a green suite cannot see an un-migrated
 target database — run `php artisan migrate --status` (step 5) rather than trusting tests.
 
+**Batch 5 corrections, 2026-10-06.** `JITSI_APP_ID` and `JITSI_APP_SECRET` are no longer
+required or read by the application — the JaaS integration was removed and live classes now
+accept any HTTPS meeting URL (Google Meet, Zoom, Jitsi, Whereby, etc.) pasted into the
+`meeting_url` field. `LIVE_CLASSES_ENABLED` now defaults to `true` in `.env.example`. The
+`app:preflight` command no longer checks for JaaS keys at all; a passing preflight with
+`LIVE_CLASSES_ENABLED=true` requires no third-party credentials. §4.4 below is updated:
+the two `JITSI_*` rows are removed and `LIVE_CLASSES_ENABLED` defaults to `true`.
+Performance indexes were also added (migration `2026_10_11_000001`) — run
+`php artisan migrate` at step 5 to apply them.
+
 ---
 
 ## How to use this runbook
@@ -709,9 +719,7 @@ Edit `.env`. Nothing here can be left to defaults.
 | `MAIL_MAILER` | `log` | keep `log` unless you have real SMTP — see the note below | — |
 | `VIDEO_DRIVER` | `fake` (since `9173eb9`) | **change to** `VIDEO_DRIVER=bunny` | yes (`fake` is refused in production) |
 | `BUNNY_STREAM_ACCOUNT_API_KEY` | empty (since `9173eb9`) | **set** `BUNNY_STREAM_ACCOUNT_API_KEY=<BUNNY_ACCOUNT_KEY>` | yes |
-| `LIVE_CLASSES_ENABLED` | `false` | leave `false`, **or** `true` + the two `JITSI_*` keys below (Phase 12 — docs/DEPLOY.md §3b) | when `true`: both JaaS keys become required |
-| `JITSI_APP_ID` | empty | only if enabling live classes: the JaaS (8x8.vc) app id | yes, when `LIVE_CLASSES_ENABLED=true` |
-| `JITSI_APP_SECRET` | empty | only if enabling live classes: the JaaS signing secret | yes, when `LIVE_CLASSES_ENABLED=true` |
+| `LIVE_CLASSES_ENABLED` | `true` | `true` to allow teachers to paste any meeting URL (Google Meet, Zoom, Jitsi, Whereby, etc.); `false` to hide all live-class UI and 404 all live-class routes | no third-party keys required |
 | `LIVE_CLASSES_RECORDING_ENABLED` | `false` | leave `false` (JaaS recording is a paid add-on) | — |
 | `DB_TEST_*` | set | leave, unless you created `coaching_saas_test` (§3) | — |
 
@@ -930,7 +938,7 @@ The first column quotes the command's real output verbatim.
 | `The GD PHP extension is not loaded…` / `…was built without FreeType support…` | site's PHP has no `gd`, or a build without FreeType | CloudPanel → site → PHP Settings → enable `gd`; re-check with §2.3's `php -r` line |
 | `VIDEO_DRIVER=fake is never allowed in production.` | `.env.example` ships `VIDEO_DRIVER=fake` (the local default) and the production `.env` never overrode it | set `VIDEO_DRIVER=bunny` (§4.4) |
 | `VIDEO_DRIVER=bunny but BUNNY_STREAM_ACCOUNT_API_KEY is not set.` | the key line wasn't added | add `BUNNY_STREAM_ACCOUNT_API_KEY=<BUNNY_ACCOUNT_KEY>` (§4.4) |
-| `Live classes are enabled but the Jitsi (JaaS) keys JITSI_APP_ID / JITSI_APP_SECRET are missing — set both or turn LIVE_CLASSES_ENABLED off.` | `LIVE_CLASSES_ENABLED=true` with one or both JaaS keys unset (Phase 12) | add both keys (§4.4) or set `LIVE_CLASSES_ENABLED=false` — the feature can't be half-enabled: with the flag off, every live-class route 404s and preflight stops asking (docs/DEPLOY.md §3b) |
+| ~~`Live classes are enabled but the Jitsi (JaaS) keys JITSI_APP_ID / JITSI_APP_SECRET are missing…`~~ | **Removed — Batch 5.** This preflight check no longer exists. `LIVE_CLASSES_ENABLED=true` requires no third-party keys; paste any HTTPS meeting URL. | n/a |
 
 ---
 
