@@ -23,14 +23,14 @@ test('the health page renders every preflight check', function () {
     $response->assertSee('Database reachable');
     $response->assertSee('GD FreeType');
 
-    // 13 fixed checks plus one row per configured writable path.
+    // 12 fixed checks plus one row per configured writable path (jitsi removed in batch-5).
     $response->assertViewHas('outcomes', function (array $outcomes): bool {
         $ids = array_column($outcomes, 'id');
 
-        return count($outcomes) >= 13
+        return count($outcomes) >= 12
             && in_array('debug', $ids, true)
             && in_array('video_driver', $ids, true)
-            && in_array('jitsi', $ids, true);
+            && ! in_array('jitsi', $ids, true);
     });
 });
 
