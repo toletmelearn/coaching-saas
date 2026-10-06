@@ -43,7 +43,7 @@ test('the academic year end default is only ever a starting point; the teacher c
 
     [$owner, $course, $student] = inTenant($tenant, function () {
         $owner = User::factory()->owner()->create();
-        $course = Course::factory()->published()->create();
+        $course = Course::factory()->published()->create(['enrolment_duration' => 'lifetime']);
         $student = User::factory()->student()->create();
 
         return [$owner, $course, $student];

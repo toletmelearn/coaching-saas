@@ -13,7 +13,7 @@ test('owner can enrol multiple students in one request; already-enrolled student
 
     [$owner, $course, $studentA, $studentB, $alreadyEnrolled] = inTenant($tenant, function () {
         $owner = User::factory()->owner()->create();
-        $course = Course::factory()->published()->create();
+        $course = Course::factory()->published()->create(['enrolment_duration' => 'lifetime']);
         $studentA = User::factory()->student()->create();
         $studentB = User::factory()->student()->create();
         $alreadyEnrolled = User::factory()->student()->create();
@@ -42,7 +42,7 @@ test('only active students can be enrolled; staff, owner and disabled ids are re
 
     [$owner, $course, $validStudent, $staff, $otherOwner, $disabledStudent] = inTenant($tenant, function () {
         $owner = User::factory()->owner()->create();
-        $course = Course::factory()->published()->create();
+        $course = Course::factory()->published()->create(['enrolment_duration' => 'lifetime']);
         $validStudent = User::factory()->student()->create();
         $staff = User::factory()->staff()->create();
         $otherOwner = User::factory()->owner()->create();
@@ -112,7 +112,7 @@ test('cannot enrol into a draft or archived course', function () {
 
     [$owner, $publishedCourse, $draftCourse, $archivedCourse, $student1, $student2, $student3] = inTenant($tenant, function () {
         $owner = User::factory()->owner()->create();
-        $publishedCourse = Course::factory()->published()->create();
+        $publishedCourse = Course::factory()->published()->create(['enrolment_duration' => 'lifetime']);
         $draftCourse = Course::factory()->draft()->create();
         $archivedCourse = Course::factory()->archived()->create();
         $student1 = User::factory()->student()->create();

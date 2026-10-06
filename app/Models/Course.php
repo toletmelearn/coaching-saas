@@ -18,7 +18,9 @@ class Course extends Model
 {
     use BelongsToTenant, HasFactory;
 
-    protected $fillable = ['title', 'slug', 'description', 'class_level', 'subject', 'fee_paise'];
+    public const DURATIONS = ['1_day', '1_week', '1_month', '3_months', '6_months', 'session', 'lifetime'];
+
+    protected $fillable = ['title', 'slug', 'description', 'class_level', 'subject', 'fee_paise', 'enrolment_duration'];
 
     protected $attributes = [
         'status' => 'draft',

@@ -329,6 +329,7 @@ Route::middleware('require.tenant')->group(function () {
                     Route::post('courses/{course}/enrolments', [ManageEnrolmentController::class, 'store']);
                     Route::post('enrolments/{enrolment}/revoke', [ManageEnrolmentController::class, 'revoke']);
                     Route::post('enrolments/{enrolment}/reenrol', [ManageEnrolmentController::class, 'reenrol']);
+                    Route::patch('courses/{course}/enrolments/{enrolment}/extend', [ManageEnrolmentController::class, 'extend']);
 
                     Route::get('courses/{course}/progress', [ManageCourseProgressController::class, 'index']);
                     Route::get('courses/{course}/progress/export', [ManageCourseProgressController::class, 'export']);

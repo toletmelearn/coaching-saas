@@ -8,6 +8,7 @@ use App\Enums\EnrolmentStatus;
 use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
+use App\Models\AdminAuditLog;
 use App\Models\Course;
 use App\Models\Enrolment;
 use App\Models\User;
@@ -72,7 +73,7 @@ class EnrolmentController extends Controller
             'ends_at.after' => __('courses.manage.validation.end_after_start'),
         ]);
 
-        $validator->after(function ($validator) use ($request) {
+        $validator->after(function ($validator) use ($request, $course) {
             foreach ((array) $request->input('user_ids', []) as $userId) {
                 $user = User::where('id', $userId)->first();
 
@@ -80,19 +81,20 @@ class EnrolmentController extends Controller
                     $validator->errors()->add('user_ids', __('courses.manage.enrolment_ineligible'));
                 }
             }
+
+            // ends_at is required when the course has no default duration.
+            if (empty($request->input('ends_at')) && $course->enrolment_duration === null) {
+                $validator->errors()->add('ends_at', __('courses.manage.validation.ends_at_required'));
+            }
         });
 
         $data = $validator->validate();
 
-        // A date-only "Ends" value (whether pre-filled from the institute's academic
-        // year end or typed in directly) means the enrolment is valid through the end
-        // of that day in India, not from midnight at its start. An empty string (the
-        // teacher explicitly cleared the pre-filled value) means no expiry at all —
-        // normalized to null rather than left as '' (Carbon::parse('') means "now",
-        // not "no value").
-        $data['ends_at'] = empty($data['ends_at'])
-            ? null
-            : Carbon::parse($data['ends_at'], 'Asia/Kolkata')->endOfDay()->utc();
+        $data['ends_at'] = $this->resolveEndsAt(
+            $data['starts_at'],
+            $data['ends_at'] ?? null,
+            $course,
+        );
 
         $actor = $request->user('tenant');
         $enrolled = 0;
@@ -146,5 +148,69 @@ class EnrolmentController extends Controller
         ])->save();
 
         return redirect("/manage/courses/{$enrolment->course_id}/enrolments");
+    }
+
+    public function extend(Request $request, Course $course, Enrolment $enrolment): RedirectResponse
+    {
+        Gate::authorize('extend', $enrolment);
+
+        abort_if($enrolment->status === EnrolmentStatus::Revoked, 403);
+
+        $request->validate([
+            'duration' => ['nullable', 'in:' . implode(',', Course::DURATIONS)],
+            'new_ends_at' => ['nullable', 'date', 'after:today'],
+        ]);
+
+        if ($request->filled('new_ends_at')) {
+            $newEndsAt = Carbon::parse($request->input('new_ends_at'), 'Asia/Kolkata')->endOfDay()->utc();
+        } else {
+            $duration = $request->input('duration');
+            $base = $enrolment->ends_at?->copy() ?? now();
+            if ($base->lt(now())) {
+                $base = now();
+            }
+            $newEndsAt = match ($duration) {
+                '1_day' => $base->addDay(),
+                '1_week' => $base->addWeek(),
+                '1_month' => $base->addMonth(),
+                '3_months' => $base->addMonths(3),
+                '6_months', 'session' => $base->addMonths(6),
+                'lifetime' => null,
+                default => null,
+            };
+        }
+
+        $enrolment->ends_at = $newEndsAt;
+        $enrolment->save();
+
+        AdminAuditLog::record(
+            action: 'enrolment_extended',
+            targetType: 'Enrolment',
+            targetId: $enrolment->id,
+        );
+
+        return redirect("/manage/courses/{$course->id}/enrolments");
+    }
+
+    private function resolveEndsAt(string $startsAt, ?string $rawEndsAt, Course $course): ?Carbon
+    {
+        if (!empty($rawEndsAt)) {
+            return Carbon::parse($rawEndsAt, 'Asia/Kolkata')->endOfDay()->utc();
+        }
+
+        if ($course->enrolment_duration === null || $course->enrolment_duration === 'lifetime') {
+            return null;
+        }
+
+        $base = Carbon::parse($startsAt, 'Asia/Kolkata');
+
+        return match ($course->enrolment_duration) {
+            '1_day' => $base->addDay()->endOfDay()->utc(),
+            '1_week' => $base->addWeek()->endOfDay()->utc(),
+            '1_month' => $base->addMonth()->endOfDay()->utc(),
+            '3_months' => $base->addMonths(3)->endOfDay()->utc(),
+            '6_months', 'session' => $base->addMonths(6)->endOfDay()->utc(),
+            default => null,
+        };
     }
 }

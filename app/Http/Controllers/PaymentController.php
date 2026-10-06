@@ -8,6 +8,8 @@ use App\Models\Payment;
 use App\Support\Payments\AmountResolver;
 use App\Support\Payments\PaymentScreenshotService;
 use App\Support\TenantContext;
+use Endroid\QrCode\QrCode;
+use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -39,15 +41,34 @@ class PaymentController extends Controller
 
         $amount = AmountResolver::forEnrolment($enrolment);
         $payment = $this->latestPayment($enrolment);
+        $tenant = app(TenantContext::class)->get();
+        $upiId = $tenant->upi_id;
+
+        $upiString = null;
+        $qrBase64 = null;
+
+        if ($upiId && $amount > 0) {
+            $feeRupees = number_format($amount / 100, 2, '.', '');
+            $upiString = 'upi://pay?pa=' . rawurlencode($upiId)
+                . '&pn=' . rawurlencode($tenant->name ?? '')
+                . '&am=' . $feeRupees
+                . '&cu=INR'
+                . '&tn=Course+fee';
+
+            $result = (new PngWriter())->write(
+                QrCode::create($upiString)->setSize(200)->setMargin(10)
+            );
+            $qrBase64 = base64_encode($result->getString());
+        }
 
         return view('payments.show', [
             'enrolment' => $enrolment,
             'course' => $enrolment->course,
             'amount' => $amount,
-            'upiId' => app(TenantContext::class)->get()->upi_id,
+            'upiId' => $upiId,
+            'upiString' => $upiString,
+            'qrBase64' => $qrBase64,
             'payment' => $payment,
-            // One submission may wait for review at a time; a rejection re-opens the
-            // form, an approval closes it for good.
             'canSubmit' => $amount > 0 && ($payment === null || $payment->status === PaymentStatus::Rejected),
         ]);
     }

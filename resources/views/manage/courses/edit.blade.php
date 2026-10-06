@@ -17,12 +17,26 @@
             @method('PATCH')
 
             <x-field
-                name="fee_paise"
+                name="fee"
                 type="number"
                 :label="__('courses.manage.fee_paise')"
                 :hint="__('courses.manage.fee_paise_hint')"
-                :value="$course->fee_paise"
+                :value="$course->fee_paise !== null ? $course->fee_paise / 100 : ''"
             />
+
+            <div class="mb-5">
+                <label for="enrolment_duration" class="ui-label">{{ __('courses.manage.enrolment_duration') }}</label>
+                <select name="enrolment_duration" id="enrolment_duration" class="ui-input">
+                    <option value="">{{ __('courses.manage.no_default_duration') }}</option>
+                    <option value="1_day" @selected(old('enrolment_duration', $course->enrolment_duration) === '1_day')>1 Day</option>
+                    <option value="1_week" @selected(old('enrolment_duration', $course->enrolment_duration) === '1_week')>1 Week</option>
+                    <option value="1_month" @selected(old('enrolment_duration', $course->enrolment_duration) === '1_month')>1 Month</option>
+                    <option value="3_months" @selected(old('enrolment_duration', $course->enrolment_duration) === '3_months')>3 Months</option>
+                    <option value="6_months" @selected(old('enrolment_duration', $course->enrolment_duration) === '6_months')>6 Months</option>
+                    <option value="session" @selected(old('enrolment_duration', $course->enrolment_duration) === 'session')>Session (6 months)</option>
+                    <option value="lifetime" @selected(old('enrolment_duration', $course->enrolment_duration) === 'lifetime')>Lifetime (no expiry)</option>
+                </select>
+            </div>
 
             <x-button variant="secondary">{{ __('courses.manage.save_fee') }}</x-button>
         </form>

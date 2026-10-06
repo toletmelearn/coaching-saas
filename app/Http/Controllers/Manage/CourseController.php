@@ -8,6 +8,7 @@ use App\Models\Course;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class CourseController extends Controller
@@ -38,8 +39,13 @@ class CourseController extends Controller
             'description' => ['nullable', 'string'],
             'class_level' => ['nullable', 'string', 'max:20'],
             'subject' => ['nullable', 'string', 'max:60'],
-            'fee_paise' => ['nullable', 'integer', 'min:0'],
+            'fee' => ['nullable', 'numeric', 'min:0'],
+            'enrolment_duration' => ['nullable', Rule::in(Course::DURATIONS)],
         ]);
+
+        $fee = $data['fee'] ?? null;
+        unset($data['fee']);
+        $data['fee_paise'] = ($fee !== null) ? (int) round((float) $fee * 100) : null;
 
         $course = new Course($data);
         $course->forceFill(['created_by' => $request->user('tenant')->id]);
@@ -67,10 +73,15 @@ class CourseController extends Controller
             'description' => ['nullable', 'string'],
             'class_level' => ['nullable', 'string', 'max:20'],
             'subject' => ['nullable', 'string', 'max:60'],
-            // The fee drives every payment amount server-side, so it is a plain
-            // non-negative integer of paise — never a float, never a currency string.
-            'fee_paise' => ['nullable', 'integer', 'min:0'],
+            'fee' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'enrolment_duration' => ['sometimes', 'nullable', Rule::in(Course::DURATIONS)],
         ]);
+
+        if (array_key_exists('fee', $data)) {
+            $fee = $data['fee'];
+            unset($data['fee']);
+            $data['fee_paise'] = ($fee !== null) ? (int) round((float) $fee * 100) : null;
+        }
 
         $course->update($data);
 

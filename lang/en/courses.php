@@ -20,8 +20,11 @@ return [
         'class_level' => 'Class',
         'subject' => 'Subject',
         'fee_heading' => 'Course fee',
-        'fee_paise' => 'Fee (paise)',
-        'fee_paise_hint' => '100 paise = 1 rupee, so 49900 charges 499.00. Leave it empty while the course is free or unpriced.',
+        'fee_paise' => 'Fee (₹)',
+        'fee_paise_hint' => 'Enter the fee in rupees (e.g. 499). Leave empty for a free course.',
+        'enrolment_duration' => 'Default enrolment duration',
+        'enrolment_duration_hint' => 'When enrolling students without specifying an end date, this default is applied automatically.',
+        'no_default_duration' => 'No default (end date required)',
         'save_fee' => 'Save fee',
         'status' => 'Status',
         'publish' => 'Publish',
@@ -67,6 +70,7 @@ return [
         'validation' => [
             'select_student' => 'Select at least one student.',
             'end_after_start' => 'End date must be after the start date.',
+            'ends_at_required' => 'End date is required when the course has no default duration.',
         ],
         'no_expiry' => 'No expiry',
         'enrolment_statuses' => [

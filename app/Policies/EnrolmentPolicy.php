@@ -16,4 +16,9 @@ class EnrolmentPolicy
     {
         return $actor->role->isOwner();
     }
+
+    public function extend(User $actor, Enrolment $enrolment): bool
+    {
+        return $actor->role->isOwner();
+    }
 }

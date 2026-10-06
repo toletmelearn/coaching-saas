@@ -73,12 +73,12 @@ test('the owner can set a course fee from the course editor', function () {
     $this->actingAs($f['owner'], 'tenant')
         ->get("http://{$f['domain']}/manage/courses/{$f['course']->id}")
         ->assertOk()
-        ->assertSee('name="fee_paise"', false);
+        ->assertSee('name="fee"', false);
 
     $this->actingAs($f['owner'], 'tenant')
         ->patch("http://{$f['domain']}/manage/courses/{$f['course']->id}", [
             'title' => $f['course']->title,
-            'fee_paise' => 123456,
+            'fee' => 1234.56,
         ])
         ->assertRedirect();
 

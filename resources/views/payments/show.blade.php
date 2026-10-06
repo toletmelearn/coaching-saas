@@ -28,6 +28,18 @@
             <p class="ui-label" style="margin: 1.25rem 0 0.375rem;">{{ __('payments.page.amount') }}</p>
             <p class="ui-h2" style="margin: 0;">{{ __('payments.amount_format', ['amount' => number_format($amount / 100, 2)]) }}</p>
             <p class="ui-subtle" style="margin-top: 0.875rem;">{{ __('payments.page.instructions') }}</p>
+
+            @if ($upiString)
+                <a href="{{ $upiString }}" class="ui-btn ui-btn-primary" style="display: inline-block; margin-top: 1rem;">
+                    Pay via UPI app
+                </a>
+            @endif
+
+            @if ($qrBase64)
+                <div style="margin-top: 1rem;">
+                    <img src="data:image/png;base64,{{ $qrBase64 }}" alt="UPI QR code" style="max-width: 200px;">
+                </div>
+            @endif
         @else
             {{-- Nothing to charge yet: the form is not rendered at all, and there is no --}}
             {{-- client-side amount to fall back on either. --}}
