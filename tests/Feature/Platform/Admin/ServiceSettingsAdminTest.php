@@ -40,13 +40,13 @@ test('saving service settings encrypts secrets at rest and never renders them ba
     expect(ServiceSettings::get('bunny_account_api_key'))->toBe('bunny-secret-key-123');
     expect(ServiceSettings::get('jitsi_app_secret'))->toBe('jitsi-secret-456');
 
-    // The form never echoes the secrets back — only the public app id.
+    // The form never echoes secrets back. The jitsi fields are removed from the
+    // UI (Batch 2.5) so myjitsi-app no longer appears in the page source.
     $this->actingAs($admin, 'platform_admin')
         ->get('http://coaching.test/admin/settings/services')
         ->assertOk()
         ->assertDontSee('bunny-secret-key-123')
         ->assertDontSee('jitsi-secret-456')
-        ->assertSee('myjitsi-app')
         ->assertSee(__('platform.admin.services.configured'));
 
     // One audit row per key that actually changed.
@@ -135,28 +135,12 @@ test('the bunny test button asks for a key when none is configured', function ()
         ->assertSessionHas('bunny_test', 'missing');
 });
 
-test('the jitsi test button round-trips the saved app id and secret', function () {
+test('2.5 the test-jitsi route no longer exists and returns 404', function () {
     $admin = PlatformAdmin::factory()->create();
 
     $this->actingAs($admin, 'platform_admin')
-        ->post('http://coaching.test/admin/settings/services', [
-            'jitsi_app_id' => 'conn-test-app',
-            'jitsi_app_secret' => 'conn-test-secret',
-        ])
-        ->assertSessionHas('status');
-
-    $this->actingAs($admin, 'platform_admin')
         ->post('http://coaching.test/admin/settings/services/test-jitsi')
-        ->assertSessionHas('jitsi_test', 'ok');
-});
-
-test('the jitsi test button asks for keys when only the app id is set', function () {
-    $admin = PlatformAdmin::factory()->create();
-    ServiceSettings::set('jitsi_app_id', 'only-app-id');
-
-    $this->actingAs($admin, 'platform_admin')
-        ->post('http://coaching.test/admin/settings/services/test-jitsi')
-        ->assertSessionHas('jitsi_test', 'missing');
+        ->assertNotFound();
 });
 
 test('a token signed with one secret does not verify against another', function () {

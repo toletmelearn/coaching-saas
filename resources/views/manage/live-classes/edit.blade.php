@@ -23,13 +23,13 @@
 
         <x-field name="description" type="textarea" :label="__('live_classes.manage.description')" :value="$liveClass->description" />
 
-        <x-field name="starts_at" type="datetime-local" :label="__('live_classes.manage.starts_at')" :value="$liveClass->starts_at->format('Y-m-d\TH:i')" required />
+        <x-field name="starts_at" type="datetime-local" :label="__('live_classes.manage.starts_at')" :value="\App\Support\LiveClasses\IstDateTime::toFormValue($liveClass->starts_at)" :hint="'IST'" required />
 
         <x-field
             name="ends_at"
             type="datetime-local"
             :label="__('live_classes.manage.ends_at')"
-            :value="$liveClass->ends_at?->format('Y-m-d\TH:i')"
+            :value="$liveClass->ends_at !== null ? \App\Support\LiveClasses\IstDateTime::toFormValue($liveClass->ends_at) : null"
             :hint="__('live_classes.manage.ends_at_hint', ['minutes' => (int) config('coaching.live_class_default_duration_minutes', 90)])"
         />
 

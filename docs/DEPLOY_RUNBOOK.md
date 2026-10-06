@@ -1619,6 +1619,42 @@ fails again until they do. Twenty failed codes within an hour lock that admin's 
 an hour (see SECURITY.md for the trade-off). Retention jobs for `admin_audit_logs` must keep rows newer
 than one hour, because the lock counts `two_factor_failed` rows there.
 
+## Backups: archive password and APP_KEY (Batch 1 E)
+
+- **`BACKUP_ARCHIVE_PASSWORD` is required in production.** `app:preflight` fails while it is empty,
+  because an empty password writes unencrypted archives. Keep it in the password manager, not in the
+  repository or in the backup itself.
+- **What an archive holds.** The private disk (`storage/app/private`), which includes lesson attachments
+  and payment screenshots. Archives are verified after they are written (`verify_backup`).
+- **The env-editor copies are excluded.** The admin env editor keeps timestamped copies of `.env` under
+  `storage/app/private/env-backups`. They contain `APP_KEY` and other secrets, so the archive leaves that
+  folder out (`config/backup.php`, `files.exclude`). The copies stay on the server only.
+- **Keep `APP_KEY` apart from the backups.** Encrypted columns (2FA secrets, encrypted sessions and
+  any encrypted field) cannot be read without the exact `APP_KEY` that wrote them. Store a copy in the
+  password manager, separate from the archive password. A restored archive with a different key cannot
+  decrypt those columns, so the two-factor secrets would be lost and every admin would re-enrol.
+
+## Scheduled tasks and times
+
+The platform runs in UTC (`config/app.php`, `timezone` is `UTC`). Times below are UTC, with the
+Indian Standard Time equivalent in brackets. Scheduler times follow the app timezone.
+
+| Task | Schedule (UTC) | IST |
+|---|---|---|
+| `backup:clean` | daily 01:30 | 07:00 |
+| `backup:run` | daily 02:00 | 07:30 |
+| `videos:sync` | every minute | every minute |
+| `live-classes:update-status` | every minute | every minute |
+| `live-classes:close-stale-attendance` | every minute | every minute |
+| `devices:prune` | daily 00:00 | 05:30 |
+
+**Timezone decision (Batch 1 C, closed).** The app timezone stays UTC. Stored datetimes are UTC
+instants throughout. Live-class scheduling is the one UI surface that assumes IST wall time: the
+manage forms send bare `datetime-local` strings (no timezone), which `ManageLiveClassController`
+parses as `Asia/Kolkata` and converts to UTC before storage. Display everywhere converts back to IST
+through `App\Support\LiveClasses\IstDateTime`. Do not change `APP_TIMEZONE` on a server that already
+holds data — existing rows written as UTC would shift by 5.5 hours.
+
 *Removed from this list on 2026-10-02 (both now closed): the backup compressor defect — fixed
 in `c859e74`, full write-up preserved in §1.8 — and the uncommitted
 `tests/Feature/Video/EmbedTokenPlaybackTest.php` flake fix — committed as `b9063a3`.*

@@ -31,8 +31,8 @@
                 @forelse ($attendance as $row)
                     <tr>
                         <td style="font-weight: 650;">{{ $row->user?->name }}</td>
-                        <td>{{ $row->joined_at?->format('d M Y, H:i') }}</td>
-                        <td>{{ $row->left_at?->format('d M Y, H:i') ?? __('live_classes.report.still_in') }}</td>
+                        <td>{{ $row->joined_at !== null ? \App\Support\LiveClasses\IstDateTime::display($row->joined_at) : '' }}</td>
+                        <td>{{ $row->left_at !== null ? \App\Support\LiveClasses\IstDateTime::display($row->left_at) : __('live_classes.report.still_in') }}</td>
                         <td>{{ (int) round((int) $row->duration_seconds / 60) }}</td>
                     </tr>
                 @empty

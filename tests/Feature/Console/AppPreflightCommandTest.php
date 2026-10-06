@@ -30,6 +30,7 @@ function passingPreflightConfig(): array
         // GD/FreeType — see config/preflight.php.
         'preflight.gd_extension_loaded' => true,
         'preflight.gd_freetype_supported' => true,
+        'backup.backup.password' => 'test-archive-password',
     ];
 }
 

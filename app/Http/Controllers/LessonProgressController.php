@@ -6,6 +6,7 @@ use App\Enums\VideoStatus;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Models\User;
+use App\Support\Access\ContentAccessGate;
 use App\Support\LessonAccess;
 use App\Support\ProgressRecorder;
 use Carbon\Carbon;
@@ -19,7 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class LessonProgressController extends Controller
 {
-    public function heartbeat(Request $request, Lesson $lesson, LessonAccess $access, ProgressRecorder $recorder): JsonResponse|Response
+    public function heartbeat(Request $request, Lesson $lesson, LessonAccess $access, ContentAccessGate $gate, ProgressRecorder $recorder): JsonResponse|Response
     {
         /** @var ?User $user */
         $user = $request->user('tenant');
@@ -30,7 +31,7 @@ class LessonProgressController extends Controller
 
         abort_if($user === null, Response::HTTP_UNAUTHORIZED);
 
-        $this->authorizeRecordable($access, $user, $lesson);
+        $this->authorizeRecordable($access, $gate, $user, $lesson);
         $this->throttle('heartbeat', $lesson, $user);
 
         $data = $request->validate([
@@ -55,7 +56,7 @@ class LessonProgressController extends Controller
         ]);
     }
 
-    public function completion(Request $request, Lesson $lesson, LessonAccess $access): JsonResponse|Response
+    public function completion(Request $request, Lesson $lesson, LessonAccess $access, ContentAccessGate $gate): JsonResponse|Response
     {
         /** @var ?User $user */
         $user = $request->user('tenant');
@@ -66,7 +67,7 @@ class LessonProgressController extends Controller
 
         abort_if($user === null, Response::HTTP_UNAUTHORIZED);
 
-        $this->authorizeRecordable($access, $user, $lesson);
+        $this->authorizeRecordable($access, $gate, $user, $lesson);
         $this->throttle('completion', $lesson, $user);
 
         $data = $request->validate([
@@ -110,14 +111,15 @@ class LessonProgressController extends Controller
         ]);
     }
 
-    private function authorizeRecordable(LessonAccess $access, User $user, Lesson $lesson): void
+    private function authorizeRecordable(LessonAccess $access, ContentAccessGate $gate, User $user, Lesson $lesson): void
     {
-        $result = $access->lessonAccess($user, $lesson);
+        $result = $gate->lessonState($user, $lesson);
 
         if ($result === 'not_found') {
             abort(Response::HTTP_NOT_FOUND);
         }
 
+        // payment_needed and consent_withdrawn refuse progress just as forbidden does.
         if ($result !== 'ok') {
             abort(Response::HTTP_FORBIDDEN);
         }

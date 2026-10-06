@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\LiveClass;
+use App\Rules\MeetingUrl;
+use App\Support\LiveClasses\IstDateTime;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -55,12 +57,17 @@ class LiveClassController extends Controller
         $this->ensureEnabled();
         Gate::authorize('manageLiveClasses', $course);
 
+        // datetime-local inputs carry no timezone — interpret as IST wall time and
+        // convert to UTC before validation so after:now compares UTC against UTC.
+        $this->convertIstInputs($request);
+
         $data = $request->validate([
             'title' => ['required', 'string', 'max:150'],
             'description' => ['nullable', 'string'],
             'starts_at' => ['required', 'date', 'after:now'],
             'ends_at' => ['nullable', 'date', 'after:starts_at'],
             'lesson_id' => $this->lessonRule($course),
+            'meeting_url' => ['nullable', 'string', new MeetingUrl],
         ]);
 
         $class = new LiveClass;
@@ -70,6 +77,7 @@ class LiveClassController extends Controller
             'starts_at' => $data['starts_at'],
             'ends_at' => $data['ends_at'] ?? null,
             'lesson_id' => $data['lesson_id'] ?? null,
+            'meeting_url' => $data['meeting_url'] ?? null,
         ]);
         // Server-owned: the route's course and the authenticated teacher —
         // a posted jitsi_room_name/status/tenant_id/created_by never reaches fill().
@@ -108,12 +116,15 @@ class LiveClassController extends Controller
                 ->withErrors(['live_class' => __('live_classes.cannot_edit_cancelled')]);
         }
 
+        $this->convertIstInputs($request);
+
         $data = $request->validate([
             'title' => ['sometimes', 'string', 'max:150'],
             'description' => ['nullable', 'string'],
             'starts_at' => ['sometimes', 'date'],
             'ends_at' => ['nullable', 'date', 'after:starts_at'],
             'lesson_id' => $this->lessonRule($course),
+            'meeting_url' => ['nullable', 'string', new MeetingUrl],
         ]);
 
         $liveClass->fill($data);
@@ -140,6 +151,32 @@ class LiveClassController extends Controller
         $liveClass->delete();
 
         return redirect("/manage/courses/{$course->id}/live-classes");
+    }
+
+    /**
+     * Rewrite datetime-local values (bare "Y-m-d\TH:i" strings) back into the
+     * request as UTC strings. The form inputs carry IST wall time; if we leave
+     * them as-is, Carbon/validation would interpret them as UTC (the app timezone),
+     * off by 5h 30m from the intended instant.
+     */
+    private function convertIstInputs(Request $request): void
+    {
+        $overrides = [];
+
+        foreach (['starts_at', 'ends_at'] as $field) {
+            $raw = $request->input($field);
+            if (! is_string($raw) || $raw === '') {
+                continue;
+            }
+            $utc = IstDateTime::fromInput($raw);
+            if ($utc !== null) {
+                $overrides[$field] = $utc;
+            }
+        }
+
+        if ($overrides !== []) {
+            $request->merge($overrides);
+        }
     }
 
     /**

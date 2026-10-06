@@ -35,6 +35,7 @@ use App\Http\Controllers\Manage\LessonController as ManageLessonController;
 use App\Http\Controllers\Manage\LessonVideoController as ManageLessonVideoController;
 use App\Http\Controllers\Manage\LiveClassAttendanceController as ManageLiveClassAttendanceController;
 use App\Http\Controllers\Manage\LiveClassController as ManageLiveClassController;
+use App\Http\Controllers\Manage\ManualLiveClassAttendanceController;
 use App\Http\Controllers\Manage\LiveClassOverviewController as ManageLiveClassOverviewController;
 use App\Http\Controllers\Manage\PaymentController as ManagePaymentController;
 use App\Http\Controllers\Manage\SettingsController as ManageSettingsController;
@@ -116,8 +117,6 @@ foreach (config('tenancy.central_domains', []) as $centralDomain) {
                 Route::get('settings/services', [ServiceSettingsController::class, 'show']);
                 Route::post('settings/services', [ServiceSettingsController::class, 'store']);
                 Route::post('settings/services/test-bunny', [ServiceSettingsController::class, 'testBunny'])
-                    ->middleware('throttle:10,60');
-                Route::post('settings/services/test-jitsi', [ServiceSettingsController::class, 'testJitsi'])
                     ->middleware('throttle:10,60');
 
                 Route::get('settings/system', [SystemEnvController::class, 'show']);
@@ -354,6 +353,11 @@ Route::middleware('require.tenant')->group(function () {
                         Route::post('live-classes', [ManageLiveClassController::class, 'store']);
                         Route::get('live-classes/{liveClass}/attendance', [ManageLiveClassAttendanceController::class, 'index']);
                         Route::get('live-classes/{liveClass}/attendance/export', [ManageLiveClassAttendanceController::class, 'export']);
+                        // withoutScopedBindings: {user} would otherwise try to resolve
+                        // as $liveClass->users() which doesn't exist. The controller
+                        // checks $liveClass->course_id === $course->id explicitly.
+                        Route::post('live-classes/{liveClass}/attendance/{user}/mark', [ManualLiveClassAttendanceController::class, 'mark'])->withoutScopedBindings();
+                        Route::delete('live-classes/{liveClass}/attendance/{user}/mark', [ManualLiveClassAttendanceController::class, 'unmark'])->withoutScopedBindings();
                         Route::get('live-classes/{liveClass}/edit', [ManageLiveClassController::class, 'edit']);
                         Route::patch('live-classes/{liveClass}', [ManageLiveClassController::class, 'update']);
                         Route::post('live-classes/{liveClass}/cancel', [ManageLiveClassController::class, 'cancel']);

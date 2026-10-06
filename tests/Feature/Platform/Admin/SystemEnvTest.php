@@ -54,9 +54,9 @@ test('an allowlisted key is written to the env file and audited', function () {
 
     $content = file_get_contents($tmp);
     expect($content)->toContain('# Coaching platform environment');
-    // Spaces in a value force dotenv quoting — pinned here so the quoting
-    // behaviour is intentional, not accidental.
-    expect($content)->toContain('APP_NAME="New Brand"');
+    // Spaces without an apostrophe use single quotes (Dotenv-safe, no $-interpolation) —
+    // pinned here so the quoting behaviour is intentional, not accidental.
+    expect($content)->toContain("APP_NAME='New Brand'");
     expect($content)->toContain('SESSION_LIFETIME=120');
     expect($content)->toContain('APP_DEBUG=true');
     expect($content)->not->toContain('APP_NAME=Coaching');

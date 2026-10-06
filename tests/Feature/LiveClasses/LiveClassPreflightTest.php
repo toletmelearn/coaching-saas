@@ -24,6 +24,7 @@ function jitsiPreflightConfig(): array
         'services.bunny.account_api_key' => 'test-account-key',
         'preflight.gd_extension_loaded' => true,
         'preflight.gd_freetype_supported' => true,
+        'backup.backup.password' => 'test-archive-password',
     ];
 }
 

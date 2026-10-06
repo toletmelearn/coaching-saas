@@ -13,6 +13,8 @@ return [
         'help' => 'Add this account to an authenticator app (Google Authenticator, Authy, 1Password), then enter the 6-digit code it shows.',
         'secret' => 'Or enter this key manually',
         'submit' => 'Turn on two-factor sign-in',
+        'replace_help' => 'Two-factor sign-in is already on. To replace it, enter a current code from your authenticator app or one unused recovery code first.',
+        'current_code' => 'Current code or recovery code',
     ],
 
     'recovery' => [

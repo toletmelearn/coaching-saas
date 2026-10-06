@@ -40,11 +40,11 @@
                 @elseif ($nextClass)
                     @php
                         // A start time is announced as a clock time when it lands
-                        // today, and carries its date otherwise — a class tomorrow
-                        // must not read as if it were this afternoon.
-                        $nextAt = $nextClass->starts_at->isToday()
-                            ? $nextClass->starts_at->format('g:i A')
-                            : $nextClass->starts_at->format('D d M, g:i A');
+                        // today in IST, and carries its date otherwise — a class
+                        // tomorrow in IST must not read as if it were this afternoon.
+                        $nextAt = \App\Support\LiveClasses\IstDateTime::isToday($nextClass->starts_at)
+                            ? \App\Support\LiveClasses\IstDateTime::clock($nextClass->starts_at)
+                            : \App\Support\LiveClasses\IstDateTime::dateAndClock($nextClass->starts_at);
                     @endphp
                     <p style="margin: 0; font-weight: 650;">
                         {{ $manage

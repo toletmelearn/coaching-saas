@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\LessonVideo;
-use App\Support\LessonAccess;
+use App\Support\Access\ContentAccessGate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -18,11 +18,11 @@ class LessonVideoStreamController extends Controller
      * the meantime. BinaryFileResponse (via response()->file()) handles Range requests
      * (206 Partial Content) automatically.
      */
-    public function show(LessonVideo $lessonVideo, LessonAccess $access): BinaryFileResponse
+    public function show(LessonVideo $lessonVideo, ContentAccessGate $gate): BinaryFileResponse
     {
         $user = Auth::guard('tenant')->user();
 
-        if ($access->lessonAccess($user, $lessonVideo->lesson) !== 'ok') {
+        if ($gate->lessonState($user, $lessonVideo->lesson) !== 'ok') {
             abort(Response::HTTP_FORBIDDEN);
         }
 

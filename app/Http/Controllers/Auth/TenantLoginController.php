@@ -34,9 +34,8 @@ class TenantLoginController extends Controller
             abort(429);
         }
 
-        $user = str_contains($identifier, '@')
-            ? User::query()->where('email', strtolower($identifier))->first()
-            : User::query()->where('phone', User::normalizePhone($identifier))->first();
+        $canonical = User::normalizeLoginIdentifier($identifier);
+        $user = User::query()->where(str_contains($canonical, '@') ? 'email' : 'phone', $canonical)->first();
 
         if ($user === null || $user->status !== UserStatus::Active || ! Hash::check($data['password'], $user->password)) {
             LoginRateLimiter::hit($tenant->id, $identifier, $request->ip());

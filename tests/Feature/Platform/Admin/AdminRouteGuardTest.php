@@ -24,7 +24,6 @@ function p13GuardRoutes(Tenant $tenant): array
         ['post', '/admin/health/fix'],
         ['post', '/admin/settings/services'],
         ['post', '/admin/settings/services/test-bunny'],
-        ['post', '/admin/settings/services/test-jitsi'],
         ['post', '/admin/settings/system'],
         ['post', '/admin/settings/system/clear-cache'],
         ['post', '/admin/settings/system/optimize'],
