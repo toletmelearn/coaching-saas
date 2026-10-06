@@ -20,6 +20,10 @@
 
     <form method="POST" action="{{ url('/admin/two-factor/setup') }}">
         @csrf
+        @if ($replacing)
+            <p class="mb-4 text-sm text-gray-700">{{ __('admin_2fa.setup.replace_help') }}</p>
+            <x-field name="current_code" :label="__('admin_2fa.setup.current_code')" required />
+        @endif
         <x-field name="code" :label="__('admin_2fa.challenge.heading')" required />
         <x-button>{{ __('admin_2fa.setup.submit') }}</x-button>
     </form>

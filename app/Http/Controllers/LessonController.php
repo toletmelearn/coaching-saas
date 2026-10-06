@@ -8,7 +8,7 @@ use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\LessonProgress;
 use App\Models\User;
-use App\Support\ConsentAccess;
+use App\Support\Access\ContentAccessGate;
 use App\Support\LessonAccess;
 use App\Support\Payments\PaymentStateResolver;
 use App\Support\ProgressRecorder;
@@ -19,11 +19,13 @@ use Symfony\Component\HttpFoundation\Response;
 
 class LessonController extends Controller
 {
-    public function show(Course $course, Lesson $lesson, LessonAccess $access, VideoProvider $videoProvider, ProgressRecorder $recorder): View|Response
+    public function show(Course $course, Lesson $lesson, LessonAccess $access, ContentAccessGate $gate, VideoProvider $videoProvider, ProgressRecorder $recorder): View|Response
     {
         $user = Auth::guard('tenant')->user();
 
-        $result = $access->lessonAccess($user, $lesson);
+        // One shared answer for payment and consent (ContentAccessGate). Withdrawn consent refuses
+        // the page; a payment that is not yet approved renders the "Payment needed" state below.
+        $result = $gate->lessonState($user, $lesson);
 
         if ($result === 'not_found') {
             abort(Response::HTTP_NOT_FOUND);
@@ -33,10 +35,7 @@ class LessonController extends Controller
             return redirect('/login');
         }
 
-        // Phase 15 — withdrawn course_delivery consent refuses the lesson page
-        // at the controller level (LessonAccess itself is locked and keeps its
-        // own concerns). A student with no consent row at all is unaffected.
-        if (ConsentAccess::courseDeliveryWithdrawn($user)) {
+        if ($result === 'consent_withdrawn') {
             abort(Response::HTTP_FORBIDDEN);
         }
 
@@ -50,27 +49,10 @@ class LessonController extends Controller
             ], Response::HTTP_FORBIDDEN);
         }
 
-        // Part B — a paid course stays locked until the student's payment is
-        // approved: the page renders a "Payment needed" state instead of the
-        // video player. The check lives here in the controller (never inside
-        // LessonAccess — that file is locked) and applies only to an enrolled,
-        // active student of a course with a fee: staff, guests and free-preview
-        // viewers are untouched.
-        $paymentNeeded = false;
-        $paymentAmount = null;
-
-        if ($user !== null
-            && ! $access->isStaffOrOwner($user)
-            && $enrolment !== null
-            && $enrolment->isValidNow()
-            && ($course->fee_paise ?? 0) > 0) {
-            $state = PaymentStateResolver::forEnrolment($enrolment);
-
-            if ($state['state'] !== PaymentStateResolver::APPROVED) {
-                $paymentNeeded = true;
-                $paymentAmount = $state['amount'];
-            }
-        }
+        // Part B — a paid course stays locked until the student's payment is approved: the page
+        // renders a "Payment needed" state instead of the video player.
+        $paymentNeeded = $result === 'payment_needed';
+        $paymentAmount = $paymentNeeded ? PaymentStateResolver::forEnrolment($enrolment)['amount'] : null;
 
         $lesson->load('attachments');
         $lesson->loadMissing('video');

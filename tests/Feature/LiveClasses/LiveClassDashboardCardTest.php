@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\LiveClasses\IstDateTime;
 use Carbon\CarbonInterface;
 use Tests\Support\LiveClassFixtures;
 
@@ -17,16 +18,15 @@ use Tests\Support\LiveClassFixtures;
 
 /**
  * The ":time" the card prints for a scheduled class — the same expression the
- * dashboard partial uses, so the assertion is the copy's contract rather than a
- * re-worded paraphrase of it. Today-only keeps "at 5:00 PM"; a start on another
- * day carries its date so a 24-hour-away class is never announced as a bare
- * clock time.
+ * dashboard partial uses (IstDateTime), so the assertion is the copy's contract
+ * rather than a re-worded paraphrase of it. The time is always shown in IST;
+ * today-only shows only the clock "5:00 PM IST"; another day carries its date.
  */
 function overviewCardTime(CarbonInterface $time): string
 {
-    return $time->isToday()
-        ? $time->format('g:i A')
-        : $time->format('D d M, g:i A');
+    return IstDateTime::isToday($time)
+        ? IstDateTime::clock($time)
+        : IstDateTime::dateAndClock($time);
 }
 
 // === Owner / staff ===

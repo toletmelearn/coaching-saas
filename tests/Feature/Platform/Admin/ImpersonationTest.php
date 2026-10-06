@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AdminAuditLog;
 use App\Models\PlatformAdmin;
 use App\Models\Tenant;
 use App\Models\User;
@@ -88,9 +89,11 @@ test('the link cannot be replayed after first use', function () {
 
     $this->get($location)->assertForbidden();
 
-    // The single-use burn happened before any login, so the replay audit count
-    // stays at exactly one (the original consumption).
-    $this->assertDatabaseCount('admin_audit_logs', 1);
+    // First use: one `impersonate` row. Replay: the impersonation middleware blocks
+    // /admin/impersonate (not in ALLOWED_READS) and writes one `impersonation_blocked` row.
+    expect(AdminAuditLog::where('action', 'impersonate')->count())->toBe(1);
+    expect(AdminAuditLog::where('action', 'impersonation_blocked')->count())->toBe(1);
+    $this->assertDatabaseCount('admin_audit_logs', 2);
 });
 
 test('an expired link is rejected', function () {

@@ -17,7 +17,13 @@ use Illuminate\Support\Carbon;
  * Action vocabulary (docs/specs/phase-13-admin-panel.md): the five required
  * actions — login, create_tenant, reset_password, update_setting, impersonate —
  * plus backup_run / backup_delete / clear_cache / optimize for the operational
- * buttons on /admin/backups and /admin/settings/system. For update_setting the
+ * buttons on /admin/backups and /admin/settings/system. Two-factor actions:
+ * two_factor_failed, two_factor_locked, two_factor_enrolled, two_factor_replaced.
+ * Impersonation actions: impersonate, impersonation_blocked, impersonation_exit,
+ * impersonation_expired. Rows never carry a secret, a code or a payload.
+ *
+ * Retention: the two-factor lock counts two_factor_failed rows for the last hour, so a
+ * retention job must keep at least the last hour of those rows (see SECURITY.md). For update_setting the
  * target_type carries the exact subject ("env:SESSION_LIFETIME",
  * "setting:jitsi_app_secret", "health_fix:APP_DEBUG") so the trail says what
  * actually changed without a schema deviation from the spec.

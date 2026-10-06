@@ -15,7 +15,7 @@
     <div class="ui-card ui-rise" style="margin-bottom: 1.25rem;">
         <p class="ui-subtle" style="margin: 0 0 0.25rem;">
             {{ __('live_classes.page.when') }}:
-            {{ $liveClass->starts_at->timezone(config('app.timezone'))->format('D, d M Y, H:i') }}
+            {{ \App\Support\LiveClasses\IstDateTime::display($liveClass->starts_at) }}
         </p>
         @if ($liveClass->ends_at)
             <p class="ui-subtle" style="margin: 0;">
