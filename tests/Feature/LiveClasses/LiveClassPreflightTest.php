@@ -28,10 +28,10 @@ function jitsiPreflightConfig(): array
     ];
 }
 
-test('app:preflight refuses production without the JaaS keys when live classes are on, passes with them, and never needs them when off', function () {
+test('app:preflight passes with live classes on and no JaaS keys (paste-URL approach needs no keys)', function () {
     app()->instance('env', 'production');
 
-    // Branch 1 — enabled but unconfigured: must refuse AND say Jitsi in the output
+    // Live classes on, no JaaS keys — must pass (we no longer use JaaS).
     config(jitsiPreflightConfig());
     config([
         'coaching.live_classes_enabled' => true,
@@ -39,23 +39,12 @@ test('app:preflight refuses production without the JaaS keys when live classes a
         'services.jitsi.app_secret' => null,
     ]);
 
-    $this->artisan('app:preflight')
-        ->expectsOutputToContain('Jitsi')
-        ->assertFailed();
+    $this->artisan('app:preflight')->assertSuccessful();
+});
 
-    // Branch 2 — enabled and configured: passes, and the check is visible
-    config(jitsiPreflightConfig());
-    config([
-        'coaching.live_classes_enabled' => true,
-        'services.jitsi.app_id' => 'jitsi-app-id',
-        'services.jitsi.app_secret' => 'jitsi-app-secret',
-    ]);
+test('app:preflight passes with live classes off and no JaaS keys', function () {
+    app()->instance('env', 'production');
 
-    $this->artisan('app:preflight')
-        ->expectsOutputToContain('Jitsi')
-        ->assertSuccessful();
-
-    // Branch 3 — feature off: the JaaS keys are simply not required
     config(jitsiPreflightConfig());
     config([
         'coaching.live_classes_enabled' => false,

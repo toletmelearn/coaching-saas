@@ -25,6 +25,13 @@
                         <p class="ui-subtle" style="margin-top: 0.125rem;">
                             {{ __('live_classes.status.'.$liveClass->status->value) }}
                         </p>
+                        @if ($liveClass->meeting_url)
+                            <p style="margin-top: 0.25rem;">
+                                <a href="{{ $liveClass->meeting_url }}" target="_blank" rel="noopener noreferrer" class="ui-link">
+                                    {{ __('live_classes.manage.join_meeting') }}
+                                </a>
+                            </p>
+                        @endif
                     </div>
                     <div style="flex: none; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
                         <x-link href="{{ url('/manage/courses/'.$course->id.'/live-classes/'.$liveClass->id.'/edit') }}" size="sm">

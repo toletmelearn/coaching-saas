@@ -102,7 +102,6 @@ class PreflightChecks
             config('coaching.video_driver') === 'fake' ? ['key' => 'VIDEO_DRIVER', 'value' => 'bunny'] : null,
         );
         $add($this->checkGdFreetype(), 'gd', 'GD FreeType');
-        $add($this->checkJitsiConfig(), 'jitsi', 'Jitsi (JaaS) keys');
 
         return $outcomes;
     }
@@ -341,25 +340,4 @@ class PreflightChecks
         return null;
     }
 
-    /**
-     * Decision A (docs/specs/phase-12-live-classes.md): JaaS free tier, one app id +
-     * secret per deployment, used solely to sign the short-lived join JWT. Without both
-     * keys every join would 500 in production while the UI still advertised "Join", so a
-     * deployment that switched LIVE_CLASSES_ENABLED on must also configure the keys —
-     * or switch the flag back off. The literal "Jitsi" in the failure message is part of
-     * the LiveClassPreflightTest contract.
-     */
-    private function checkJitsiConfig(): ?string
-    {
-        if (! (bool) config('coaching.live_classes_enabled')) {
-            return null;
-        }
-
-        if (! ServiceSettings::isConfigured('jitsi_app_id') || ! ServiceSettings::isConfigured('jitsi_app_secret')) {
-            return 'Live classes are enabled but the Jitsi (JaaS) keys JITSI_APP_ID / JITSI_APP_SECRET '
-                .'are missing — set both or turn LIVE_CLASSES_ENABLED off.';
-        }
-
-        return null;
-    }
 }

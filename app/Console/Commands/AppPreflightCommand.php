@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Support\Admin\ServiceSettings;
 use App\Support\Preflight\PreflightChecks;
 use Illuminate\Console\Command;
 
@@ -46,14 +45,6 @@ class AppPreflightCommand extends Command
 
         if ($failures === []) {
             $this->components->info('All preflight checks passed.');
-
-            if ((bool) config('coaching.live_classes_enabled')) {
-                // Visible proof the check actually saw the configured app id
-                // (LiveClassPreflightTest requires "Jitsi" in a passing run too).
-                $this->components->info(
-                    'Jitsi live classes enabled — JaaS app id '.ServiceSettings::get('jitsi_app_id').' configured.'
-                );
-            }
 
             return self::SUCCESS;
         }

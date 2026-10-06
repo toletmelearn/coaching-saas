@@ -57,15 +57,14 @@ return [
     |--------------------------------------------------------------------------
     |
     | LIVE_CLASSES_ENABLED gates everything: the routes 404, the dashboard and
-    | course-page sections render nothing, and app:preflight demands the JaaS
-    | keys. Recording is a separate, default-off flag (Decision B): when it is
-    | off, nothing in the UI claims a class is being recorded — only the
-    | opt-in "may be recorded" disclosure renders when a JaaS recording add-on
-    | is actually attached.
+    | course-page sections render nothing. The feature uses a paste-any-URL
+    | approach (Google Meet, Zoom, Jitsi, Whereby, etc.) — no JaaS keys are
+    | required. Recording is a separate, default-off flag (Decision B): when
+    | it is off, nothing in the UI claims a class is being recorded.
     |
     */
 
-    'live_classes_enabled' => env('LIVE_CLASSES_ENABLED', false),
+    'live_classes_enabled' => env('LIVE_CLASSES_ENABLED', true),
     'live_classes_recording_enabled' => env('LIVE_CLASSES_RECORDING_ENABLED', false),
 
     // Students may open the room this many minutes before starts_at (and the

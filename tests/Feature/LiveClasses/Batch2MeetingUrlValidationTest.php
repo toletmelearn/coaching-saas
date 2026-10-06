@@ -12,9 +12,9 @@ use Tests\Support\LiveClassFixtures;
  *    returned, so assertSessionHasErrors('meeting_url') fails).
  */
 
-// ---- Allowed hosts accepted ----------------------------------------------------------------
+// ---- https URLs accepted -------------------------------------------------------------------
 
-test('2.1 allowed: all six listed hosts are accepted and meeting_url is stored', function (string $url) {
+test('2.1 allowed: https meeting URLs are accepted and stored', function (string $url) {
     $f = LiveClassFixtures::setup();
     $data = [
         'title' => 'Test class',
@@ -29,12 +29,11 @@ test('2.1 allowed: all six listed hosts are accepted and meeting_url is stored',
     // The column must exist and the URL must be stored.
     $this->assertDatabaseHas('live_classes', ['meeting_url' => $url]);
 })->with([
-    'Google Meet'       => ['https://meet.google.com/abc-defg-hij'],
-    'zoom.us'           => ['https://zoom.us/j/123456789'],
-    'teams'             => ['https://teams.microsoft.com/l/meetup-join/test'],
-    'us02web.zoom.us'   => ['https://us02web.zoom.us/j/987654321'],
-    'us04web.zoom.us'   => ['https://us04web.zoom.us/j/987654321'],
-    'us05web.zoom.us'   => ['https://us05web.zoom.us/j/987654321'],
+    'Google Meet'  => ['https://meet.google.com/abc-defg-hij'],
+    'zoom.us'      => ['https://zoom.us/j/123456789'],
+    'Jitsi'        => ['https://meet.jit.si/MyRoom'],
+    'Whereby'      => ['https://whereby.com/my-class'],
+    'Teams'        => ['https://teams.microsoft.com/l/meetup-join/test'],
 ]);
 
 test('2.1 allowed: null meeting_url is accepted (field is optional)', function () {
@@ -84,18 +83,21 @@ test('2.1 rejected: http:// URL is refused (https required)', function () {
         ->assertSessionHasErrors('meeting_url');
 });
 
-// ---- unlisted host rejected ----------------------------------------------------------------
+// ---- any https host accepted (host allow-list removed) ------------------------------------
 
-test('2.1 rejected: a host not on the allow-list is refused', function () {
+test('2.1 allowed: an arbitrary https host is now accepted (any provider allowed)', function () {
     $f = LiveClassFixtures::setup();
+    $url = 'https://whereby.com/my-room';
 
     $this->actingAs($f['owner'], 'tenant')
         ->post("http://{$f['domain']}/manage/courses/{$f['course']->id}/live-classes", [
-            'title' => 'Evil URL class',
+            'title' => 'Whereby class',
             'starts_at' => now()->addHour()->format('Y-m-d H:i:s'),
-            'meeting_url' => 'https://evil.com/meeting/steal',
+            'meeting_url' => $url,
         ])
-        ->assertSessionHasErrors('meeting_url');
+        ->assertRedirect();
+
+    $this->assertDatabaseHas('live_classes', ['meeting_url' => $url]);
 });
 
 // ---- data: scheme rejected -----------------------------------------------------------------
@@ -114,7 +116,7 @@ test('2.1 rejected: data: URL is refused', function () {
 
 // ---- edit (update) also validates ----------------------------------------------------------
 
-test('2.1 update: editing a class with a bad meeting_url is rejected', function () {
+test('2.1 update: editing a class with a bad meeting_url (http://) is rejected', function () {
     $f = LiveClassFixtures::setup();
     $class = LiveClassFixtures::liveClass($f['course'], $f['owner'], [
         'starts_at' => now()->addHour(),
@@ -122,7 +124,7 @@ test('2.1 update: editing a class with a bad meeting_url is rejected', function 
 
     $this->actingAs($f['owner'], 'tenant')
         ->patch("http://{$f['domain']}/manage/courses/{$f['course']->id}/live-classes/{$class->id}", [
-            'meeting_url' => 'https://notallowed.example.com/meeting',
+            'meeting_url' => 'http://zoom.us/j/insecure',
         ])
         ->assertSessionHasErrors('meeting_url');
 });

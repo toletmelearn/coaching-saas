@@ -33,6 +33,8 @@
             :hint="__('live_classes.manage.ends_at_hint', ['minutes' => (int) config('coaching.live_class_default_duration_minutes', 90)])"
         />
 
+        <x-field name="meeting_url" type="url" :label="__('live_classes.manage.meeting_url')" :value="$liveClass->meeting_url" :hint="__('live_classes.manage.meeting_url_hint')" />
+
         <div class="mb-5">
             <label for="lesson_id" class="ui-label">{{ __('live_classes.manage.lesson') }}</label>
             <select name="lesson_id" id="lesson_id" class="ui-input">
