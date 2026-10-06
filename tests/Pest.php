@@ -10,6 +10,14 @@ use Tests\TestCase;
 pest()->extend(TestCase::class)->use(RefreshDatabase::class)->in('Feature');
 pest()->extend(TestCase::class)->in('Unit');
 
+// toHaveAtLeast / toHaveAtMost — not in Pest 4.7.x core; added here as thin wrappers.
+expect()->extend('toHaveAtLeast', function (int $count, string $message = '') {
+    return expect(count((array) $this->value))->toBeGreaterThanOrEqual($count, $message);
+});
+expect()->extend('toHaveAtMost', function (int $count, string $message = '') {
+    return expect(count((array) $this->value))->toBeLessThanOrEqual($count, $message);
+});
+
 // Phase 5 video tests talk to Bunny Stream exclusively through Http::fake(); a real
 // network call escaping a fake() setup must fail loudly, not silently hit the internet.
 pest()->beforeEach(function () {

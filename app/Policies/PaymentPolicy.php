@@ -34,6 +34,11 @@ class PaymentPolicy
         return $actor->role->isOwner();
     }
 
+    public function viewFeeReport(User $actor): bool
+    {
+        return $actor->role->canManageCourses();
+    }
+
     public function viewOwnPayment(User $actor, Payment $payment): bool
     {
         // Resolved without the global tenant scope: this method is a pure decision

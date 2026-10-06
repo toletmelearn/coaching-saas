@@ -37,6 +37,7 @@ use App\Http\Controllers\Manage\LiveClassAttendanceController as ManageLiveClass
 use App\Http\Controllers\Manage\LiveClassController as ManageLiveClassController;
 use App\Http\Controllers\Manage\ManualLiveClassAttendanceController;
 use App\Http\Controllers\Manage\LiveClassOverviewController as ManageLiveClassOverviewController;
+use App\Http\Controllers\Manage\FeeReportController as ManageFeeReportController;
 use App\Http\Controllers\Manage\PaymentController as ManagePaymentController;
 use App\Http\Controllers\Manage\SettingsController as ManageSettingsController;
 use App\Http\Controllers\Manage\StudentConsentsController;
@@ -290,6 +291,10 @@ Route::middleware('require.tenant')->group(function () {
                     Route::get('payments/{payment}', [ManagePaymentController::class, 'show']);
                     Route::post('payments/{payment}/approve', [ManagePaymentController::class, 'approve']);
                     Route::post('payments/{payment}/reject', [ManagePaymentController::class, 'reject']);
+
+                    // Fee report — cross-course financial summary (owner + staff).
+                    Route::get('fee-report', [ManageFeeReportController::class, 'index']);
+                    Route::get('fee-report/export', [ManageFeeReportController::class, 'export']);
 
                     Route::get('courses', [ManageCourseController::class, 'index']);
                     Route::get('courses/create', [ManageCourseController::class, 'create']);
