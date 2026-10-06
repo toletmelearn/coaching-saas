@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\LiveClass;
+use App\Rules\MeetingUrl;
 use App\Support\LiveClasses\IstDateTime;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -66,6 +67,7 @@ class LiveClassController extends Controller
             'starts_at' => ['required', 'date', 'after:now'],
             'ends_at' => ['nullable', 'date', 'after:starts_at'],
             'lesson_id' => $this->lessonRule($course),
+            'meeting_url' => ['nullable', 'string', new MeetingUrl],
         ]);
 
         $class = new LiveClass;
@@ -75,6 +77,7 @@ class LiveClassController extends Controller
             'starts_at' => $data['starts_at'],
             'ends_at' => $data['ends_at'] ?? null,
             'lesson_id' => $data['lesson_id'] ?? null,
+            'meeting_url' => $data['meeting_url'] ?? null,
         ]);
         // Server-owned: the route's course and the authenticated teacher —
         // a posted jitsi_room_name/status/tenant_id/created_by never reaches fill().
@@ -121,6 +124,7 @@ class LiveClassController extends Controller
             'starts_at' => ['sometimes', 'date'],
             'ends_at' => ['nullable', 'date', 'after:starts_at'],
             'lesson_id' => $this->lessonRule($course),
+            'meeting_url' => ['nullable', 'string', new MeetingUrl],
         ]);
 
         $liveClass->fill($data);

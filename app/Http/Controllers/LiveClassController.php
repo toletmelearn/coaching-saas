@@ -7,6 +7,7 @@ use App\Models\LiveClass;
 use App\Models\LiveClassAttendance;
 use App\Models\User;
 use App\Support\Admin\ServiceSettings;
+use App\Support\LessonAccess;
 use App\Support\LiveClasses\JitsiJoinUrl;
 use App\Support\LiveClasses\JitsiJwt;
 use Illuminate\Http\RedirectResponse;
@@ -48,11 +49,21 @@ class LiveClassController extends Controller
             || ($status === LiveClassStatus::Scheduled
                 && $minutesUntilStart <= (int) config('coaching.live_class_join_window_minutes', 15));
 
+        // meeting_url is shown when set: staff/owner always; students only while
+        // the class is live or within the pre-join window (canJoin). The URL is
+        // only ever rendered after the view policy has already been satisfied,
+        // so a blocked student never reaches this code path.
+        $isStaffOrOwner = app(LessonAccess::class)->isStaffOrOwner($user);
+        $meetingUrl = $liveClass->meeting_url !== null && ($isStaffOrOwner || $canJoin)
+            ? $liveClass->meeting_url
+            : null;
+
         return view('live-classes.show', [
             'liveClass' => $liveClass,
             'status' => $status,
             'minutesUntilStart' => max(0, $minutesUntilStart),
             'canJoin' => $canJoin,
+            'meetingUrl' => $meetingUrl,
             'hasAttended' => LiveClassAttendance::where('live_class_id', $liveClass->id)
                 ->where('user_id', $user->id)
                 ->exists(),

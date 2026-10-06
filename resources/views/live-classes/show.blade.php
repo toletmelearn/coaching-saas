@@ -65,6 +65,17 @@
         @endif
     </div>
 
+    @if ($meetingUrl)
+        {{-- meeting_url is only passed when the current user is authorised to see
+             it (staff/owner always; students only when canJoin is true). The URL
+             is a plain href — the JaaS room is a separate join path. --}}
+        <div class="ui-card ui-rise" style="margin-bottom: 1.25rem;">
+            <a href="{{ $meetingUrl }}" target="_blank" rel="noopener noreferrer" class="ui-link">
+                {{ __('live_classes.meeting_url_button') }}
+            </a>
+        </div>
+    @endif
+
     @if ($recordingEnabled)
         <x-alert tone="warning">{{ __('live_classes.recording_notice') }}</x-alert>
     @endif

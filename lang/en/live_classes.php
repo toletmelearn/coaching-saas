@@ -65,6 +65,9 @@ return [
         'cancelled' => 'Cancelled',
     ],
 
+    // Button label for the external meeting URL (Batch 2.1 / 2.2).
+    'meeting_url_button' => 'Join class',
+
     'manage' => [
         'heading' => 'Live classes',
         'schedule' => 'Schedule a live class',
@@ -76,6 +79,11 @@ return [
         'ends_at_hint' => 'Leave empty for the default :minutes-minute length.',
         'lesson' => 'Linked lesson (optional)',
         'lesson_none' => 'No lesson link',
+        'meeting_url' => 'Meeting link (optional)',
+        'meeting_url_hint' => 'Paste a Google Meet, Zoom, or Teams link. Leave empty to use the built-in JaaS room.',
+        'meeting_url_invalid' => 'The meeting link must be a valid URL (max 2048 characters).',
+        'meeting_url_https_required' => 'The meeting link must use https://.',
+        'meeting_url_host_not_allowed' => 'The meeting link must be from Google Meet, Zoom, or Microsoft Teams.',
         'save' => 'Save class',
         'save_changes' => 'Save changes',
         'cancel_class' => 'Cancel class',

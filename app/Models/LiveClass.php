@@ -21,7 +21,7 @@ class LiveClass extends Model
 {
     use BelongsToTenant;
 
-    protected $fillable = ['course_id', 'lesson_id', 'title', 'description', 'starts_at', 'ends_at'];
+    protected $fillable = ['course_id', 'lesson_id', 'title', 'description', 'starts_at', 'ends_at', 'meeting_url'];
 
     protected $attributes = [
         'status' => 'scheduled',
