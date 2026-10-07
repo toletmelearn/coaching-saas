@@ -18,6 +18,7 @@
                 <tr>
                     <th scope="col">{{ __('courses.manage.title') }}</th>
                     <th scope="col">{{ __('courses.manage.status') }}</th>
+                    <th scope="col"></th>
                 </tr>
             </thead>
             <tbody>
@@ -30,10 +31,13 @@
                         @php $status = __('courses.manage.course_statuses.'.$course->status->value); @endphp
                         <x-badge :tone="$course->status->value === 'published' ? 'success' : 'neutral'">{{ $status }}</x-badge>
                     </td>
+                    <td>
+                        <x-link href="{{ url('/manage/courses/'.$course->id) }}" size="sm">{{ __('courses.manage.edit') }}</x-link>
+                    </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="2" style="color: var(--ink-subtle);">{{ __('courses.index.empty') }}</td>
+                    <td colspan="3" style="color: var(--ink-subtle);">{{ __('courses.index.empty') }}</td>
                 </tr>
             @endforelse
             </tbody>

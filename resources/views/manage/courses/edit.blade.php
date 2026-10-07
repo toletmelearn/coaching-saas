@@ -1,9 +1,44 @@
 @extends('layouts.app')
 
 @section('content')
-    <x-page-header :title="$course->title" />
+    <x-page-header :title="$course->title">
+        <x-slot:actions>
+            <span class="inline-block rounded-full px-3 py-1 text-xs font-medium {{ $course->status->value === 'published' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700' }}">
+                {{ __('courses.manage.course_statuses.'.$course->status->value) }}
+            </span>
+        </x-slot:actions>
+    </x-page-header>
 
-    <p class="mb-4 text-sm text-gray-600">{{ __('courses.manage.status') }}: {{ __('courses.manage.course_statuses.'.$course->status->value) }}</p>
+    @if (session('status'))
+        <div class="mb-6 rounded-md border border-green-300 bg-green-50 p-3 text-sm text-green-800">{{ session('status') }}</div>
+    @endif
+
+    {{-- Course details (title, class, subject, description) --}}
+    <div class="ui-card ui-rise" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+        <div class="ui-section-title">
+            <h2 class="ui-h2">{{ __('courses.manage.course_details_heading') }}</h2>
+        </div>
+
+        <form method="POST" action="{{ url('/manage/courses/'.$course->id) }}">
+            @csrf
+            @method('PATCH')
+
+            @if ($errors->any())
+                <x-alert tone="danger" style="margin-bottom: 1rem;">
+                    @foreach ($errors->all() as $error)
+                        <p>{{ $error }}</p>
+                    @endforeach
+                </x-alert>
+            @endif
+
+            <x-field name="title" :label="__('courses.manage.title')" :value="old('title', $course->title)" required />
+            <x-field name="class_level" :label="__('courses.manage.class_level')" :value="old('class_level', $course->class_level)" />
+            <x-field name="subject" :label="__('courses.manage.subject')" :value="old('subject', $course->subject)" />
+            <x-field name="description" type="textarea" :label="__('courses.manage.description')" :value="old('description', $course->description)" />
+
+            <x-button variant="secondary">{{ __('courses.manage.save_details') }}</x-button>
+        </form>
+    </div>
 
     {{-- What a place on this course costs. The figure is only ever read server-side --}}
     {{-- when a payment is created, so nothing posted alongside it can change the price. --}}

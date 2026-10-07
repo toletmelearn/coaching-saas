@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Manage;
 
+use App\Enums\CourseStatus;
 use App\Enums\LiveClassStatus;
 use App\Http\Controllers\Controller;
+use App\Models\Course;
 use App\Models\LiveClass;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -48,9 +50,16 @@ class LiveClassOverviewController extends Controller
         // a past list read top-down should begin with what just happened.
         $query->orderBy('starts_at', $filter === 'past' ? 'desc' : 'asc');
 
+        // Courses for the "schedule a class" picker — only published/draft ones
+        // that the teacher can actually schedule into (archived courses are excluded).
+        $courses = Course::whereIn('status', [CourseStatus::Published->value, CourseStatus::Draft->value])
+            ->orderBy('title')
+            ->get(['id', 'title']);
+
         return view('manage.live-classes.overview', [
             'liveClasses' => $query->get(),
             'filter' => $filter,
+            'courses' => $courses,
         ]);
     }
 }

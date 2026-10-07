@@ -85,7 +85,7 @@ class CourseController extends Controller
 
         $course->update($data);
 
-        return redirect("/manage/courses/{$course->id}");
+        return redirect("/manage/courses/{$course->id}")->with('status', __('courses.manage.details_saved'));
     }
 
     public function publish(Course $course): RedirectResponse

@@ -152,6 +152,9 @@ return [
     'list' => [
         'heading' => 'Live classes',
         'subtitle' => 'Every live class across your courses.',
+        'schedule_heading' => 'Schedule a new class',
+        'schedule_hint' => 'Pick a course below to schedule a live class for it. Add your Google Meet, Zoom, or any meeting link on the next screen.',
+        'no_courses' => 'No courses yet. Create a course first, then come back here to schedule a class.',
         'columns' => [
             'course' => 'Course',
             'title' => 'Title',

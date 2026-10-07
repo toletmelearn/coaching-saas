@@ -3,6 +3,27 @@
 @section('content')
     <x-page-header :title="__('live_classes.list.heading')" :subtitle="__('live_classes.list.subtitle')" />
 
+    {{-- Schedule a new class — pick a course and go straight to its schedule page --}}
+    <div class="ui-card ui-rise" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+        <div class="ui-section-title">
+            <h2 class="ui-h2">{{ __('live_classes.list.schedule_heading') }}</h2>
+        </div>
+        <p class="text-sm text-gray-600" style="margin-bottom: 1rem;">{{ __('live_classes.list.schedule_hint') }}</p>
+
+        @if ($courses->isEmpty())
+            <p class="text-sm text-gray-500">{{ __('live_classes.list.no_courses') }}</p>
+        @else
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                @foreach ($courses as $course)
+                    <a href="{{ url('/manage/courses/'.$course->id.'/live-classes/create') }}"
+                       class="ui-btn ui-btn-secondary ui-btn-sm">
+                        {{ $course->title }}
+                    </a>
+                @endforeach
+            </div>
+        @endif
+    </div>
+
     {{-- Filters. The controller normalises ?filter= to upcoming/past/all, so the
          active chip can never be "none of these" — an unrecognised value simply
          lands on All. Wrapped for horizontal scroll: at 360px the three chips
