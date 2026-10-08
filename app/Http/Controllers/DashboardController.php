@@ -103,13 +103,11 @@ class DashboardController extends Controller
 
         // Live classes (Phase 12): what this student's enrolled courses are
         // running right now, and what starts inside the announcement window.
-        // Scoped to their own enrolments — a course they are not enrolled in
-        // never appears on their dashboard.
-        //
-        // Uses a broader filter than $active so students enrolled in a future
-        // cohort (starts_at > now) still see scheduled classes for their
-        // course. $active (which also checks starts_at via isValidNow()) is
-        // kept for progress and payment state which require current access.
+        // Scoped to active, non-expired enrolments — including future-dated ones
+        // (starts_at > now) so a student enrolled in an upcoming cohort still
+        // sees scheduled classes for their course. Revoked and expired enrolments
+        // are excluded; $active (which also checks starts_at) is kept for progress
+        // and payment state which require current access.
         $liveClassCourseIds = $enrolments->filter(
             fn (Enrolment $e) => $e->status === EnrolmentStatus::Active
                 && ($e->ends_at === null || $e->ends_at->gt(now()))
