@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\EnrolmentStatus;
 use App\Enums\LiveClassStatus;
 use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
@@ -104,7 +105,16 @@ class DashboardController extends Controller
         // running right now, and what starts inside the announcement window.
         // Scoped to their own enrolments — a course they are not enrolled in
         // never appears on their dashboard.
-        $live = $this->liveClassSummary($active->pluck('course_id'));
+        //
+        // Uses a broader filter than $active so students enrolled in a future
+        // cohort (starts_at > now) still see scheduled classes for their
+        // course. $active (which also checks starts_at via isValidNow()) is
+        // kept for progress and payment state which require current access.
+        $liveClassCourseIds = $enrolments->filter(
+            fn (Enrolment $e) => $e->status === EnrolmentStatus::Active
+                && ($e->ends_at === null || $e->ends_at->gt(now()))
+        )->pluck('course_id');
+        $live = $this->liveClassSummary($liveClassCourseIds);
 
         // Phase 15 (Part B): per-enrolment payment status for the status card.
         // Only paid courses (fee > 0) carry a payment state; the amounts come

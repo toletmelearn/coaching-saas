@@ -197,7 +197,10 @@ class LiveClassController extends Controller
 
     private function courseLessons(Course $course): array
     {
+        // Explicit tenant_id filter mirrors lessonRule() — defence-in-depth
+        // alongside the BelongsToTenant global scope.
         return Lesson::where('course_id', $course->id)
+            ->where('tenant_id', $course->tenant_id)
             ->orderBy('title')
             ->get(['id', 'title'])
             ->toArray();
