@@ -31,7 +31,7 @@ function fakeImageUpload(int $width, int $height, string $format = 'png', string
 
 function fakeTextUpload(string $content, string $originalName, ?string $mime = 'text/plain'): UploadedFile
 {
-    $path = tempnam(sys_get_temp_dir(), 'upload');
+    $path = tempnam(sys_get_temp_dir(), 'upl');
     file_put_contents($path, $content);
 
     return new UploadedFile($path, $originalName, $mime, null, true);
@@ -98,7 +98,10 @@ test('a GIF renamed to .png is rejected', function () {
 test('a PHP file renamed to .png is rejected', function () {
     [$tenant, $domain, $owner] = settingsOwnerAndDomain();
 
-    $php = fakeTextUpload('<?php system($_GET["c"]); ?>', 'logo.png', 'image/png');
+    // Use benign PHP content — the webshell pattern triggers Windows Defender,
+    // which briefly locks the temp file and causes finfo::file() to fail.
+    // The rejection depends on MIME type (text/x-php ≠ image/png), not the payload.
+    $php = fakeTextUpload('<?php echo "not an image"; ?>', 'logo.png', 'image/png');
 
     $this->actingAs($owner, 'tenant')
         ->post("http://{$domain}/manage/settings/logo", ['logo' => $php])

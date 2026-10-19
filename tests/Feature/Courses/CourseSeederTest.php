@@ -108,11 +108,9 @@ test('the full DatabaseSeeder (php artisan db:seed) seeds courses through model 
 test('demo courses are not seeded when environment is production', function () {
     app()->instance('env', 'production');
 
+    // TenantSeeder now refuses entirely in production, so no tenant — and therefore
+    // no courses — are created.
     app(TenantSeeder::class)->run();
 
-    $tenant = Tenant::query()->where('name', 'Demo Institute')->firstOrFail();
-
-    $courseCount = app(TenantContext::class)->runAs($tenant, fn () => Course::count());
-
-    expect($courseCount)->toBe(0);
+    expect(Tenant::query()->count())->toBe(0);
 });

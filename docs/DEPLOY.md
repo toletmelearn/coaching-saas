@@ -50,6 +50,13 @@ between major versions), but the approach itself is standard Nginx and will work
    vhost files, not this one, so it should survive panel updates, but confirm after any
    major CloudPanel version upgrade.
 
+> **Do NOT enable CloudPanel's Varnish cache.** When Varnish is enabled, PHP sees
+> `REMOTE_ADDR = 127.0.0.1` (Varnish is a local reverse proxy in front of Nginx/PHP-FPM).
+> This breaks the Cloudflare IP-trust logic in `config/cloudflare.php`: 127.0.0.1 is not a
+> Cloudflare IP, so `X-Forwarded-For` and `X-Forwarded-Proto` are ignored, causing
+> `request()->ip()` to always return 127.0.0.1 and rate limiting or geo-filtering to stop
+> working. Leave Varnish disabled; Cloudflare's own edge caching is sufficient.
+
 ## 1. Cloudflare
 
 1. **DNS** (orange-clouded / proxied, not grey/DNS-only):

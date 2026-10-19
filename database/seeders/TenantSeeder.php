@@ -24,6 +24,12 @@ class TenantSeeder extends Seeder
 {
     public function run(): void
     {
+        if (app()->isProduction()) {
+            $this->command?->error('TenantSeeder refused: demo data must not be seeded in production.');
+
+            return;
+        }
+
         $tenant = Tenant::query()->firstOrCreate(
             ['name' => 'Demo Institute'],
             ['status' => TenantStatus::Active],

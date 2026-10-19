@@ -43,7 +43,7 @@ test('the seeder creates a demo owner and student in the testing environment', f
         ->and($users)->toContain('student@demo.coaching.test');
 });
 
-test('demo seeder creates no users when environment is production', function () {
+test('TenantSeeder refuses to run and creates nothing in production', function () {
     app()->instance('env', 'production');
 
     // Invoke the seeder directly (rather than via the `db:seed` artisan command through
@@ -51,12 +51,8 @@ test('demo seeder creates no users when environment is production', function () 
     // confirmation prompt for console commands — a separate, unrelated concern.
     app(TenantSeeder::class)->run();
 
-    // The tenant/domain are still seeded; only the demo user credentials are skipped.
-    $tenant = Tenant::query()->where('name', 'Demo Institute')->firstOrFail();
-
-    $userCount = app(TenantContext::class)->runAs($tenant, fn () => User::query()->count());
-
-    expect($userCount)->toBe(0);
+    // The guard bails out before any inserts — no tenant, no domain, no users.
+    expect(Tenant::query()->count())->toBe(0);
 });
 
 test('DatabaseSeeder refuses to run and creates nothing in production', function () {

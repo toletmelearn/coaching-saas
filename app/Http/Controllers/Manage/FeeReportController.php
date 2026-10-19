@@ -10,7 +10,6 @@ use App\Support\Csv\CsvFormulaGuard;
 use App\Support\TenantContext;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -59,9 +58,6 @@ class FeeReportController extends Controller
         ]);
     }
 
-    /**
-     * @return array{0: Collection, 1: Collection}
-     */
     private function buildData(): array
     {
         $tenantId = app(TenantContext::class)->id();
@@ -92,16 +88,18 @@ class FeeReportController extends Controller
         $courses = Course::query()
             ->orderBy('title')
             ->get()
-            ->map(function ($course) use ($paidStats, $enrolmentTotals) {
+            ->map(function (Course $course) use ($paidStats, $enrolmentTotals): \stdClass {
                 $stats = $paidStats->get($course->id);
                 $totals = $enrolmentTotals->get($course->id);
 
-                $course->paid_count = $stats ? (int) $stats->paid_count : 0;
-                $course->total_paise = $stats ? (int) $stats->total_paise : 0;
-                $totalEnrolments = $totals ? (int) $totals->total : 0;
-                $course->unpaid_count = $totalEnrolments - $course->paid_count;
+                $paid_count = $stats ? (int) $stats->paid_count : 0;
 
-                return $course;
+                return (object) [
+                    'title' => $course->title,
+                    'paid_count' => $paid_count,
+                    'total_paise' => $stats ? (int) $stats->total_paise : 0,
+                    'unpaid_count' => ($totals ? (int) $totals->total : 0) - $paid_count,
+                ];
             });
 
         // Monthly collections grouped by IST calendar month.

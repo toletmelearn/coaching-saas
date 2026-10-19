@@ -6,6 +6,12 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
+echo "==> Putting the app into maintenance mode"
+php artisan down --retry=15
+
+# Ensure the app comes back up even if the script exits mid-deploy due to an error.
+trap 'echo "==> Bringing the app back up"; php artisan up' EXIT
+
 echo "==> Pulling latest code"
 git pull
 
