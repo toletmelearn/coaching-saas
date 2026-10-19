@@ -18,6 +18,12 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        if (app()->isProduction()) {
+            $this->command?->error('DatabaseSeeder refused: the demo seeder must never run in production (APP_ENV=production).');
+
+            return;
+        }
+
         $this->call(TenantSeeder::class);
     }
 }

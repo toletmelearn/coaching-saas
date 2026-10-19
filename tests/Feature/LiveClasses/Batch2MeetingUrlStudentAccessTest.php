@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PaymentStatus;
 use App\Models\Consent;
 use App\Models\Course;
 use App\Models\Enrolment;
@@ -19,7 +20,6 @@ use Tests\Support\PaymentFixtures;
  * would resolve to the key string — choose a concrete sentinel instead and also
  * assert it via the key once the lang file is updated.
  */
-
 const MEETING_URL_SENTINEL = 'https://zoom.us/j/batch2test999';
 const JOIN_CLASS_TEXT = 'Join class';
 
@@ -114,7 +114,7 @@ test('2.2 unpaid student on a paid course cannot see the meeting_url in the page
     inTenant($f['tenant'], fn () => Course::query()->whereKey($f['course']->id)->update(['fee_paise' => 49900]));
 
     // Student is enrolled but has no approved payment.
-    PaymentFixtures::payment($f['tenant'], inTenant($f['tenant'], fn () => Enrolment::query()->where('user_id', $f['student']->id)->firstOrFail()), ['status' => \App\Enums\PaymentStatus::Pending]);
+    PaymentFixtures::payment($f['tenant'], inTenant($f['tenant'], fn () => Enrolment::query()->where('user_id', $f['student']->id)->firstOrFail()), ['status' => PaymentStatus::Pending]);
 
     $class = LiveClassFixtures::liveClass($f['course'], $f['owner'], [
         'starts_at' => now()->subMinutes(5),

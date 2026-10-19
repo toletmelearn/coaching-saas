@@ -29,11 +29,11 @@ test('2.1 allowed: https meeting URLs are accepted and stored', function (string
     // The column must exist and the URL must be stored.
     $this->assertDatabaseHas('live_classes', ['meeting_url' => $url]);
 })->with([
-    'Google Meet'  => ['https://meet.google.com/abc-defg-hij'],
-    'zoom.us'      => ['https://zoom.us/j/123456789'],
-    'Jitsi'        => ['https://meet.jit.si/MyRoom'],
-    'Whereby'      => ['https://whereby.com/my-class'],
-    'Teams'        => ['https://teams.microsoft.com/l/meetup-join/test'],
+    'Google Meet' => ['https://meet.google.com/abc-defg-hij'],
+    'zoom.us' => ['https://zoom.us/j/123456789'],
+    'Jitsi' => ['https://meet.jit.si/MyRoom'],
+    'Whereby' => ['https://whereby.com/my-class'],
+    'Teams' => ['https://teams.microsoft.com/l/meetup-join/test'],
 ]);
 
 test('2.1 allowed: null meeting_url is accepted (field is optional)', function () {

@@ -40,9 +40,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('enrolments', function (Blueprint $table) {
-            $table->index(['tenant_id', 'user_id'],   'enrolments_tenant_id_user_id_index');
+            $table->index(['tenant_id', 'user_id'], 'enrolments_tenant_id_user_id_index');
             $table->index(['tenant_id', 'course_id'], 'enrolments_tenant_id_course_id_index');
-            $table->index(['tenant_id', 'ends_at'],   'enrolments_tenant_id_ends_at_index');
+            $table->index(['tenant_id', 'ends_at'], 'enrolments_tenant_id_ends_at_index');
         });
 
         Schema::table('payments', function (Blueprint $table) {

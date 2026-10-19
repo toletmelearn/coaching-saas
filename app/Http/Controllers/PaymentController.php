@@ -49,13 +49,13 @@ class PaymentController extends Controller
 
         if ($upiId && $amount > 0) {
             $feeRupees = number_format($amount / 100, 2, '.', '');
-            $upiString = 'upi://pay?pa=' . rawurlencode($upiId)
-                . '&pn=' . rawurlencode($tenant->name ?? '')
-                . '&am=' . $feeRupees
-                . '&cu=INR'
-                . '&tn=Course+fee';
+            $upiString = 'upi://pay?pa='.rawurlencode($upiId)
+                .'&pn='.rawurlencode($tenant->name ?? '')
+                .'&am='.$feeRupees
+                .'&cu=INR'
+                .'&tn=Course+fee';
 
-            $result = (new PngWriter())->write(
+            $result = (new PngWriter)->write(
                 QrCode::create($upiString)->setSize(200)->setMargin(10)
             );
             $qrBase64 = base64_encode($result->getString());

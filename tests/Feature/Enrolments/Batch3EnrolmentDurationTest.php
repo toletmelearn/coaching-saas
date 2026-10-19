@@ -16,7 +16,6 @@ use Illuminate\Support\Carbon;
  * even when the course has no duration default — assertSessionHasErrors('ends_at')
  * returns false on current code.
  */
-
 test('3.1 course saves enrolment_duration lifetime', function () {
     $tenant = Tenant::factory()->create();
     $tenant->domains()->create(['domain' => 'b3dur.coaching.test', 'type' => 'subdomain']);

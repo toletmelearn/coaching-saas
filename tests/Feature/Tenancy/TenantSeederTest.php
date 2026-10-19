@@ -4,6 +4,7 @@ use App\Models\Tenant;
 use App\Models\TenantDomain;
 use App\Models\User;
 use App\Support\TenantContext;
+use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\TenantSeeder;
 
 test('the seeder creates one demo tenant with a verified subdomain', function () {
@@ -56,4 +57,13 @@ test('demo seeder creates no users when environment is production', function () 
     $userCount = app(TenantContext::class)->runAs($tenant, fn () => User::query()->count());
 
     expect($userCount)->toBe(0);
+});
+
+test('DatabaseSeeder refuses to run and creates nothing in production', function () {
+    app()->instance('env', 'production');
+
+    app(DatabaseSeeder::class)->run();
+
+    // The top-level guard bails out before calling TenantSeeder, so no demo tenant exists.
+    expect(Tenant::query()->count())->toBe(0);
 });

@@ -21,10 +21,10 @@ function feeReportFixture(): array
     $tenant->domains()->create(['domain' => $domain, 'type' => 'subdomain']);
 
     [$owner, $staff, $student, $course, $enrolment] = inTenant($tenant, function () {
-        $owner     = User::factory()->owner()->create();
-        $staff     = User::factory()->staff()->create();
-        $student   = User::factory()->student()->create();
-        $course    = Course::factory()->published()->create(['title' => 'Math 101']);
+        $owner = User::factory()->owner()->create();
+        $staff = User::factory()->staff()->create();
+        $student = User::factory()->student()->create();
+        $course = Course::factory()->published()->create(['title' => 'Math 101']);
         $enrolment = Enrolment::factory()->for($course)->for($student, 'user')->active()->create();
 
         return [$owner, $staff, $student, $course, $enrolment];
@@ -40,23 +40,23 @@ test('4.1 owner sees correct paid_count and total_collected_inr per course', fun
 
     // First approved payment: 50 000 paise = ₹500.00
     PaymentFixtures::payment($f['tenant'], $f['enrolment'], [
-        'status'       => PaymentStatus::Approved,
+        'status' => PaymentStatus::Approved,
         'amount_paise' => 50000,
-        'reviewed_at'  => now(),
+        'reviewed_at' => now(),
     ]);
 
     // Second student with an approved payment: 30 000 paise = ₹300.00
     $extra = inTenant($f['tenant'], function () use ($f) {
-        $student2   = User::factory()->student()->create();
+        $student2 = User::factory()->student()->create();
         $enrolment2 = Enrolment::factory()->for($f['course'])->for($student2, 'user')->active()->create();
 
         return compact('student2', 'enrolment2');
     });
 
     PaymentFixtures::payment($f['tenant'], $extra['enrolment2'], [
-        'status'       => PaymentStatus::Approved,
+        'status' => PaymentStatus::Approved,
         'amount_paise' => 30000,
-        'reviewed_at'  => now(),
+        'reviewed_at' => now(),
     ]);
 
     $response = $this->actingAs($f['owner'], 'tenant')
@@ -74,26 +74,26 @@ test('4.1 enrolments with no payment or non-approved payment count as unpaid', f
 
     // Second student: REJECTED payment → still unpaid
     $extra2 = inTenant($f['tenant'], function () use ($f) {
-        $student2   = User::factory()->student()->create();
+        $student2 = User::factory()->student()->create();
         $enrolment2 = Enrolment::factory()->for($f['course'])->for($student2, 'user')->active()->create();
 
         return compact('student2', 'enrolment2');
     });
     PaymentFixtures::payment($f['tenant'], $extra2['enrolment2'], [
-        'status'       => PaymentStatus::Rejected,
+        'status' => PaymentStatus::Rejected,
         'amount_paise' => 50000,
-        'reviewed_at'  => now(),
+        'reviewed_at' => now(),
     ]);
 
     // Third student: PENDING payment → still unpaid
     $extra3 = inTenant($f['tenant'], function () use ($f) {
-        $student3   = User::factory()->student()->create();
+        $student3 = User::factory()->student()->create();
         $enrolment3 = Enrolment::factory()->for($f['course'])->for($student3, 'user')->active()->create();
 
         return compact('student3', 'enrolment3');
     });
     PaymentFixtures::payment($f['tenant'], $extra3['enrolment3'], [
-        'status'       => PaymentStatus::Pending,
+        'status' => PaymentStatus::Pending,
         'amount_paise' => 50000,
     ]);
 
@@ -115,23 +115,23 @@ test('4.2 IST-crossing payment (Dec 31 23:30 UTC) appears under January not Dece
 
     // Dec 31 23:30 UTC = Jan 1 05:00 IST (UTC+5:30) → must appear under "January 2026"
     PaymentFixtures::payment($f['tenant'], $f['enrolment'], [
-        'status'       => PaymentStatus::Approved,
+        'status' => PaymentStatus::Approved,
         'amount_paise' => 50000,
-        'reviewed_at'  => Carbon::create(2025, 12, 31, 23, 30, 0, 'UTC'),
+        'reviewed_at' => Carbon::create(2025, 12, 31, 23, 30, 0, 'UTC'),
     ]);
 
     // Second student: approved payment clearly in December IST
     $extra = inTenant($f['tenant'], function () use ($f) {
-        $student2   = User::factory()->student()->create();
+        $student2 = User::factory()->student()->create();
         $enrolment2 = Enrolment::factory()->for($f['course'])->for($student2, 'user')->active()->create();
 
         return compact('student2', 'enrolment2');
     });
     // Dec 1 04:30 UTC = Dec 1 10:00 IST → December 2025
     PaymentFixtures::payment($f['tenant'], $extra['enrolment2'], [
-        'status'       => PaymentStatus::Approved,
+        'status' => PaymentStatus::Approved,
         'amount_paise' => 30000,
-        'reviewed_at'  => Carbon::create(2025, 12, 1, 4, 30, 0, 'UTC'),
+        'reviewed_at' => Carbon::create(2025, 12, 1, 4, 30, 0, 'UTC'),
     ]);
 
     $response = $this->actingAs($f['owner'], 'tenant')
@@ -184,9 +184,9 @@ test('4.4 CSV export has correct headers and one data row per course', function 
 
     // 49 900 paise = ₹499.00
     PaymentFixtures::payment($f['tenant'], $f['enrolment'], [
-        'status'       => PaymentStatus::Approved,
+        'status' => PaymentStatus::Approved,
         'amount_paise' => 49900,
-        'reviewed_at'  => now(),
+        'reviewed_at' => now(),
     ]);
 
     $response = $this->actingAs($f['owner'], 'tenant')

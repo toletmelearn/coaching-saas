@@ -76,5 +76,4 @@ class ServiceSettingsController extends Controller
 
         return redirect('/admin/settings/services')->with('bunny_test', $ok ? 'ok' : 'fail');
     }
-
 }

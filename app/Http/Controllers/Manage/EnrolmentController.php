@@ -157,7 +157,7 @@ class EnrolmentController extends Controller
         abort_if($enrolment->status === EnrolmentStatus::Revoked, 403);
 
         $request->validate([
-            'duration' => ['nullable', 'in:' . implode(',', Course::DURATIONS)],
+            'duration' => ['nullable', 'in:'.implode(',', Course::DURATIONS)],
             'new_ends_at' => ['nullable', 'date', 'after:today'],
         ]);
 
@@ -194,7 +194,7 @@ class EnrolmentController extends Controller
 
     private function resolveEndsAt(string $startsAt, ?string $rawEndsAt, Course $course): ?Carbon
     {
-        if (!empty($rawEndsAt)) {
+        if (! empty($rawEndsAt)) {
             return Carbon::parse($rawEndsAt, 'Asia/Kolkata')->endOfDay()->utc();
         }
 

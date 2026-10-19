@@ -339,5 +339,4 @@ class PreflightChecks
 
         return null;
     }
-
 }

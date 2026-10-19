@@ -13,7 +13,6 @@ use Tests\Support\LiveClassFixtures;
  *
  * Every test fails on old code because those routes return 404.
  */
-
 function b2ManualAttendanceMarkUrl(array $f, object $class, object $user): string
 {
     return "http://{$f['domain']}/manage/courses/{$f['course']->id}/live-classes/{$class->id}/attendance/{$user->id}/mark";

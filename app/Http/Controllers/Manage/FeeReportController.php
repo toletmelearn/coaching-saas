@@ -8,11 +8,11 @@ use App\Models\Course;
 use App\Models\Payment;
 use App\Support\Csv\CsvFormulaGuard;
 use App\Support\TenantContext;
+use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 class FeeReportController extends Controller
@@ -54,7 +54,7 @@ class FeeReportController extends Controller
         fclose($handle);
 
         return response($csv, 200, [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
     }
@@ -71,7 +71,7 @@ class FeeReportController extends Controller
         $paidStats = DB::table('payments as p')
             ->join('enrolments as e', function ($join) {
                 $join->on('p.enrolment_id', '=', 'e.id')
-                     ->on('p.tenant_id', '=', 'e.tenant_id');
+                    ->on('p.tenant_id', '=', 'e.tenant_id');
             })
             ->where('p.tenant_id', $tenantId)
             ->where('p.status', PaymentStatus::Approved->value)
@@ -118,9 +118,9 @@ class FeeReportController extends Controller
             ->groupBy(fn ($p) => Carbon::parse($p->reviewed_at)->timezone('Asia/Kolkata')->format('Y-m'))
             ->map(function ($group, $key) {
                 return (object) [
-                    'month'      => Carbon::parse($group->first()->reviewed_at)->timezone('Asia/Kolkata')->format('F Y'),
+                    'month' => Carbon::parse($group->first()->reviewed_at)->timezone('Asia/Kolkata')->format('F Y'),
                     'total_paise' => (int) $group->sum('amount_paise'),
-                    'month_key'  => $key,
+                    'month_key' => $key,
                 ];
             })
             ->sortByDesc('month_key')

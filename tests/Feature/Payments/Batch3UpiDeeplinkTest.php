@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Tenant;
 use App\Models\User;
 use Tests\Support\PaymentFixtures;
 
@@ -19,7 +18,6 @@ use Tests\Support\PaymentFixtures;
  *
  * Note: bacon/bacon-qr-code is NOT currently installed. Step 2 will add it.
  */
-
 test('3.4 payment page shows UPI deep-link when upi_id is set and fee > 0', function () {
     $f = PaymentFixtures::setup(['fee_paise' => 49900]);
     $f['tenant']->forceFill(['upi_id' => 'testpayee@ybl'])->save();

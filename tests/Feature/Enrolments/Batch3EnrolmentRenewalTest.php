@@ -16,7 +16,6 @@ use Illuminate\Support\Carbon;
  * Tests that expect 403 (revoked enrolment, student access) fail because the
  * actual response is 404 (route not found), not 403 (policy denial).
  */
-
 test('3.2 owner can extend an active enrolment by duration (1_month adds 1 month)', function () {
     $tenant = Tenant::factory()->create();
     $domain = 'b3renew.coaching.test';

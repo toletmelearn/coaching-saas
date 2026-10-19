@@ -326,3 +326,88 @@ blank (`.env.example` ships `BACKUP_NOTIFY_EMAIL=` empty, plus `MAIL_FROM_ADDRES
 to actually receive these alerts you need **both**: a real SMTP transport in `.env`, and
 `BACKUP_NOTIFY_EMAIL` set to an address you read. Until then, treat the absence of a backup
 file as the alert — see docs/DEPLOY_RUNBOOK.md §1.7 item 5.
+
+## 9. Server hardening
+
+### 9.1 Firewall
+
+Allow only what must be reachable from the internet. With `ufw` (Ubuntu default):
+
+```bash
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow 80/tcp    # HTTP (Cloudflare → origin; Cloudflare redirects clients to HTTPS)
+ufw allow 443/tcp   # HTTPS (Cloudflare → origin)
+ufw allow 22/tcp    # SSH — further restricted to your IP below
+ufw enable
+```
+
+**Restrict SSH to your own IP** (replace `YOUR_IP` with your static admin IP; re-run this
+command each time your IP changes):
+
+```bash
+ufw delete allow 22/tcp
+ufw allow from YOUR_IP to any port 22 proto tcp
+```
+
+**CloudPanel admin port** (default 8443): restrict to your admin IP:
+
+```bash
+ufw allow from YOUR_IP to any port 8443 proto tcp
+```
+
+Do **not** open 8443 to `0.0.0.0/0` — the CloudPanel UI has full server control and must
+never be internet-accessible. Confirm the current port via `netstat -tlnp | grep cloudpanel`
+or CloudPanel's own docs if it differs from 8443.
+
+Verify the resulting ruleset:
+
+```bash
+ufw status numbered
+```
+
+### 9.2 SSH key authentication (disable password login)
+
+1. Add your public key to `~/.ssh/authorized_keys` on the server and confirm you can log
+   in with it from a **new terminal** before the next step.
+2. Edit `/etc/ssh/sshd_config`:
+   ```
+   PasswordAuthentication no
+   PubkeyAuthentication yes
+   PermitRootLogin prohibit-password
+   ```
+3. Reload sshd: `systemctl reload sshd`
+4. Verify in a new terminal (do **not** close the existing session until confirmed working).
+
+### 9.3 Cloudflare "only allow Cloudflare IPs" (optional belt-and-braces)
+
+If you want to ensure the origin only accepts connections through Cloudflare (preventing
+direct-IP access that could bypass Cloudflare's WAF/DDoS protection), add an `ufw` rule
+allowing 443/80 only from Cloudflare's IP ranges and deny the rest:
+
+```bash
+# Remove the broad allow first
+ufw delete allow 80/tcp
+ufw delete allow 443/tcp
+
+# Add Cloudflare IPv4 ranges (from https://www.cloudflare.com/ips-v4 — refresh periodically)
+for ip in \
+  173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 \
+  141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 \
+  197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 \
+  104.24.0.0/14 172.64.0.0/13 131.0.72.0/22; do
+    ufw allow from $ip to any port 80,443 proto tcp
+done
+
+# Add Cloudflare IPv6 ranges (from https://www.cloudflare.com/ips-v6)
+for ip in \
+  2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 \
+  2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32; do
+    ufw allow from $ip to any port 80,443 proto tcp
+done
+
+ufw reload
+```
+
+This mirrors `config/cloudflare.php` (the list this app's code trusts for proxy headers) —
+keep both in sync when Cloudflare rotates ranges.

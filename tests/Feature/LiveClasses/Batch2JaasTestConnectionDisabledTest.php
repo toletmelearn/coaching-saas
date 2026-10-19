@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Http;
  * Both tests fail on old code because the old endpoint returned 302 (redirect),
  * not 404.
  */
-
 test('2.5 the test-jitsi route no longer exists and returns 404', function () {
     Http::fake(['api.bunny.net/*' => Http::response(['libraries' => []], 200)]);
 

@@ -15,7 +15,6 @@ use App\Models\User;
  * Tests 4–5 fail because there is no validation rule for the fee field yet.
  * Test 6 fails because the form still uses name="fee_paise", not name="fee".
  */
-
 test('3.3 teacher posts fee in rupees and course stores it as paise', function () {
     $tenant = Tenant::factory()->create();
     $domain = 'b3fee.coaching.test';
