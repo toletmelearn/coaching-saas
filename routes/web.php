@@ -46,6 +46,7 @@ use App\Http\Controllers\Manage\UserDeviceController as ManageUserDeviceControll
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentScreenshotController;
 use App\Http\Controllers\PlatformAdminDashboardController;
+use App\Http\Controllers\LegalController;
 use App\Http\Controllers\PlatformHomeController;
 use App\Http\Controllers\PwaController;
 use App\Http\Controllers\UserController;
@@ -63,6 +64,8 @@ foreach (config('tenancy.central_domains', []) as $centralDomain) {
     Route::domain($centralDomain)->group(function () {
         Route::get('/', [PlatformHomeController::class, 'show']);
         Route::post('demo-requests', [DemoRequestController::class, 'store']);
+        Route::get('privacy', [LegalController::class, 'privacy']);
+        Route::get('terms', [LegalController::class, 'terms']);
 
         // No ->name() on any route in this loop: Route::domain() runs this same
         // registration once per central domain, so a shared route name would be
@@ -179,6 +182,9 @@ Route::middleware('require.tenant')->group(function () {
     Route::get('branding/logo', [PwaController::class, 'logo']);
     Route::get('sw.js', [PwaController::class, 'serviceWorker']);
     Route::get('offline', [PwaController::class, 'offline']);
+
+    Route::get('privacy', [LegalController::class, 'privacy']);
+    Route::get('terms', [LegalController::class, 'terms']);
 
     // Public catalogue and free-preview lessons — no login required. Both middleware are
     // no-ops for guests (they check for a resolved tenant user first), so a guest still
