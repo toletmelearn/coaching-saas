@@ -208,8 +208,8 @@
         <div style="border-top: 1px solid var(--line); padding-top: 1.25rem; display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; justify-content: space-between; font-size: 0.8125rem; color: var(--ink-muted);">
             <span>{{ config('app.name', 'Coaching SaaS') }}</span>
             <div style="display: flex; gap: 1rem;">
-                <a href="{{ url('/privacy') }}" style="color: inherit;">Privacy</a>
-                <a href="{{ url('/terms') }}" style="color: inherit;">Terms</a>
+                <a href="{{ url('/privacy') }}" style="color: inherit;">{{ __('legal.nav_privacy') }}</a>
+                <a href="{{ url('/terms') }}" style="color: inherit;">{{ __('legal.nav_terms') }}</a>
             </div>
             <span>{{ now()->year }}</span>
         </div>

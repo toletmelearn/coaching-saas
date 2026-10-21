@@ -105,7 +105,7 @@
     {{-- Footer --}}
     <footer style="padding-block: 1.5rem; border-top: 1px solid var(--line); text-align: center; font-size: 0.875rem; color: var(--ink-subtle);">
         {{ config('app.name', 'Coaching SaaS') }} — {{ __('platform.home.footer.text') }}
-        &nbsp;·&nbsp;<a href="{{ url('/privacy') }}" style="color: inherit;">Privacy</a>
-        &nbsp;·&nbsp;<a href="{{ url('/terms') }}" style="color: inherit;">Terms</a>
+        &nbsp;·&nbsp;<a href="{{ url('/privacy') }}" style="color: inherit;">{{ __('legal.nav_privacy') }}</a>
+        &nbsp;·&nbsp;<a href="{{ url('/terms') }}" style="color: inherit;">{{ __('legal.nav_terms') }}</a>
     </footer>
 @endsection

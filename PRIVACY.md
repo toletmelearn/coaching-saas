@@ -115,3 +115,32 @@ and erasure all exist now (Phase 15). Still outstanding, by design or by legal p
   runs before display. The file on disk is unchanged.
 - **Admin audit log.** Still records IP addresses for admin actions. Retention for that log needs a
   decision and is not yet set (open).
+
+## Operator confirmations required before go-live
+
+The privacy notice (`resources/legal/notices/v1.0-2026-10-04.md`), Platform Terms
+(`resources/views/legal/platform-terms.blade.php`), and Student Terms of Use
+(`resources/views/legal/student-terms.blade.php`) all carry `[TO BE CONFIRMED BY OPERATOR]`
+placeholders that must be replaced with real details before the pages go live. Items:
+
+- **Operator identity** — company/registered name, address, CIN or registration number
+  (privacy notice, platform terms, student terms)
+- **Grievance officer** — name and contact details as required by DPDP Rules 2025
+  (privacy notice)
+- **Sub-processor list** — full list of sub-processors with data-transfer agreements
+  (privacy notice; also needed for the sub-processor register under DPDP Rules 2025)
+- **Post-enrolment retention period** — how long student records are kept after enrolment
+  ends (privacy notice)
+- **Tax/legal retention for financial records** — specific period before payment rows can
+  be finally deleted (privacy notice; also the open tension noted in the erasure section
+  above)
+- **Subscription pricing and billing** — plan tiers, billing cycle, trial period, refund
+  policy, payment methods (platform terms)
+- **Liability cap** — maximum liability amount or formula (platform terms)
+- **Notice period for term changes** — specific days before material changes take effect
+  (platform terms)
+- **Termination notice period** — days required for standard (non-breach) termination
+  (platform terms)
+- **Governing court jurisdiction** — specific city or court (platform terms, student terms)
+- **Refund and fee-dispute process** — student-facing refund policy (student terms)
+- **Operator support contact** — email and dispute-resolution contact (platform terms)

@@ -12,18 +12,22 @@ class LegalController extends Controller
     {
         $tenant = app(TenantContext::class)->has() ? app(TenantContext::class)->get() : null;
 
-        return view('legal.privacy', [
-            'noticeVersion' => Consent::NOTICE_VERSION,
-            'tenant' => $tenant,
-        ]);
+        $noticeVersion = Consent::NOTICE_VERSION;
+        $noticePath = resource_path('legal/notices/'.$noticeVersion.'.md');
+        $noticeText = is_file($noticePath) ? file_get_contents($noticePath) : null;
+
+        return view('legal.privacy', compact('noticeVersion', 'noticeText', 'tenant'));
     }
 
-    public function terms(): View
+    public function platformTerms(): View
+    {
+        return view('legal.platform-terms');
+    }
+
+    public function studentTerms(): View
     {
         $tenant = app(TenantContext::class)->has() ? app(TenantContext::class)->get() : null;
 
-        return view('legal.terms', [
-            'tenant' => $tenant,
-        ]);
+        return view('legal.student-terms', compact('tenant'));
     }
 }
