@@ -23,7 +23,7 @@ class Consent extends Model
     use BelongsToTenant;
 
     /** The notice version stamped on every consent recorded by this codebase. */
-    public const NOTICE_VERSION = 'v1.0-2026-10-04';
+    public const NOTICE_VERSION = 'v1.1-2026-10-21';
 
     /**
      * @var array<string, string>

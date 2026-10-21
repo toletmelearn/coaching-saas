@@ -65,6 +65,8 @@ foreach (config('tenancy.central_domains', []) as $centralDomain) {
         Route::get('/', [PlatformHomeController::class, 'show']);
         Route::post('demo-requests', [DemoRequestController::class, 'store']);
         Route::get('privacy', [LegalController::class, 'privacy']);
+        Route::get('privacy/{version}', [LegalController::class, 'privacyArchive'])
+            ->where('version', 'v\d+\.\d+-\d{4}-\d{2}-\d{2}');
         Route::get('terms', [LegalController::class, 'platformTerms']);
 
         // No ->name() on any route in this loop: Route::domain() runs this same
@@ -184,6 +186,9 @@ Route::middleware('require.tenant')->group(function () {
     Route::get('offline', [PwaController::class, 'offline']);
 
     Route::get('privacy', [LegalController::class, 'privacy']);
+    Route::get('privacy/{version}', [LegalController::class, 'privacyArchive'])
+        ->where('version', 'v\d+\.\d+-\d{4}-\d{2}-\d{2}');
+    Route::get('consents/withdraw', [LegalController::class, 'consentWithdrawInfo']);
     Route::get('terms', [LegalController::class, 'studentTerms']);
 
     // Public catalogue and free-preview lessons — no login required. Both middleware are

@@ -31,7 +31,7 @@ use Illuminate\Support\Str;
 class ConsentFixtures
 {
     /** The notice version every consent row must be stamped with (per the brief). */
-    public const NOTICE_VERSION = 'v1.0-2026-10-04';
+    public const NOTICE_VERSION = Consent::NOTICE_VERSION;
 
     /** The fixed name an erased student's row is renamed to (per the brief). */
     public const ERASED_NAME = 'Deleted Student';

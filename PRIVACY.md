@@ -28,8 +28,8 @@ treated as fact until confirmed.
     them later from the student's consent screen.
   - A `consents` table recording: **who** gave consent (guardian or the student, once of
     age), **when** (`granted_at`), **method** (`guardian_whatsapp`, `guardian_in_person`
-    or `guardian_signed_form`), **notice version** shown at the time
-    (`v1.0-2026-10-04`), and **`withdrawn_at` + reason** if consent is later withdrawn.
+    or `guardian_signed_form`), **notice version** stamped at the time, and
+    **`withdrawn_at` + reason** if consent is later withdrawn.
     The four purposes are `course_delivery`, `progress_tracking`, `communication` and
     `media_processing`.
   - A student is not created until all four purposes are consented to: the creation form
@@ -116,9 +116,24 @@ and erasure all exist now (Phase 15). Still outstanding, by design or by legal p
 - **Admin audit log.** Still records IP addresses for admin actions. Retention for that log needs a
   decision and is not yet set (open).
 
+## Notice versioning
+
+The current notice is **v1.1-2026-10-21** (`resources/legal/notices/v1.1-2026-10-21.md`).
+A Hindi draft exists at `resources/legal/notices/v1.1-2026-10-21.hi.md` — **this Hindi file
+has not been legally reviewed and must not be shown as authoritative** until a qualified
+translator confirms it; it is marked as draft within the file itself.
+
+`v1.0-2026-10-04.md` is the initial implementation draft. **Dev consents (seeded or recorded
+during development) carry `notice_version = v1.0-2026-10-04`. Those consent rows predate any
+real guardian ever being shown a notice on a live site. Do not describe v1.0-2026-10-04 as
+text that a real guardian agreed to.**
+
+Old versions are permanently preserved on disk and render at `/privacy/{version}` as stable
+archive URLs (e.g. `/privacy/v1.0-2026-10-04`).
+
 ## Operator confirmations required before go-live
 
-The privacy notice (`resources/legal/notices/v1.0-2026-10-04.md`), Platform Terms
+The privacy notice (`resources/legal/notices/v1.1-2026-10-21.md`), Platform Terms
 (`resources/views/legal/platform-terms.blade.php`), and Student Terms of Use
 (`resources/views/legal/student-terms.blade.php`) all carry `[TO BE CONFIRMED BY OPERATOR]`
 placeholders that must be replaced with real details before the pages go live. Items:
@@ -144,3 +159,7 @@ placeholders that must be replaced with real details before the pages go live. I
 - **Governing court jurisdiction** — specific city or court (platform terms, student terms)
 - **Refund and fee-dispute process** — student-facing refund policy (student terms)
 - **Operator support contact** — email and dispute-resolution contact (platform terms)
+- **DPBI complaint procedure** — complaint portal URL, exact procedure, and timelines under
+  DPDP Rules 2025 (privacy notice)
+- **Hindi notice legal review** — the Hindi draft at `v1.1-2026-10-21.hi.md` requires review
+  by a qualified Hindi legal translator before it can be shown as anything other than a draft
