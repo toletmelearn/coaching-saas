@@ -1,0 +1,18 @@
+{
+  "_note": "SHA-256 of each file WITH placeholders intact. Any change to a listed file must update this manifest and bump Consent::NOTICE_VERSION (or add a new version file) — never silently edit a published file.",
+  "files": {
+    "v1.0-2026-10-04.md": {
+      "sha256": "91e86725bc1ae937439b117e27b1d32eba8560c3b140c4ecfbd8b9a90273f9b3",
+      "status": "published"
+    },
+    "v1.1-2026-10-21.md": {
+      "sha256": "d2b746f7a5868ce6ad393bc1a16602f06af98ed0ca7dbfe3f646f0f6fbdd0f25",
+      "status": "published"
+    },
+    "v1.1-2026-10-21.hi.md": {
+      "sha256": "9aefc6660a1e6a0855f76bbca9d5bbfab7f00c75fddd5da250605b5806712548",
+      "status": "draft",
+      "note": "Hindi translation not yet legally reviewed — draft only"
+    }
+  }
+}

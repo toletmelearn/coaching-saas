@@ -3,7 +3,6 @@
 @section('content')
 @php
     $fiduciary = $tenant ? $tenant->name : config('app.name', 'Coaching SaaS');
-    $platform  = config('app.name', 'Coaching SaaS');
 @endphp
 <div class="ui-shell" style="padding-block: 2.5rem;">
     <div style="max-width: 46rem;">
@@ -42,23 +41,6 @@
             </a>
         </section>
         @endif
-
-        {{-- Who this notice is for (structural context using dynamic tenant name) --}}
-        <section style="margin-bottom: 2rem;">
-            <h2 class="ui-h2" style="margin-bottom: 0.625rem;">Who this notice is for</h2>
-            <p style="line-height: 1.7; color: var(--ink-text);">
-                @if ($tenant)
-                    <strong>{{ $tenant->name }}</strong> is the <em>Data Fiduciary</em> for its
-                    students' data under the DPDP Act — it decides what data is collected and why.
-                    {{ $platform }} operates the platform as a <em>Data Processor</em> on the
-                    institute's behalf.
-                @else
-                    Each coaching institute that uses {{ $platform }} is the <em>Data Fiduciary</em>
-                    for its own students' data. {{ $platform }} operates as a <em>Data Processor</em>
-                    — it processes personal data on each institute's behalf and under their instructions.
-                @endif
-            </p>
-        </section>
 
         {{-- Data inventory table (rendered from config/privacy.php) --}}
         <section style="margin-bottom: 2rem;">

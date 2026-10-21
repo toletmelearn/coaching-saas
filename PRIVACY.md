@@ -116,20 +116,37 @@ and erasure all exist now (Phase 15). Still outstanding, by design or by legal p
 - **Admin audit log.** Still records IP addresses for admin actions. Retention for that log needs a
   decision and is not yet set (open).
 
-## Notice versioning
+## Notice versioning and immutability
 
 The current notice is **v1.1-2026-10-21** (`resources/legal/notices/v1.1-2026-10-21.md`).
 A Hindi draft exists at `resources/legal/notices/v1.1-2026-10-21.hi.md` — **this Hindi file
 has not been legally reviewed and must not be shown as authoritative** until a qualified
 translator confirms it; it is marked as draft within the file itself.
 
-`v1.0-2026-10-04.md` is the initial implementation draft. **Dev consents (seeded or recorded
-during development) carry `notice_version = v1.0-2026-10-04`. Those consent rows predate any
-real guardian ever being shown a notice on a live site. Do not describe v1.0-2026-10-04 as
-text that a real guardian agreed to.**
+`v1.0-2026-10-04.md` is the initial implementation draft, created in commit `6324b7d` and
+**never edited since**. No revert is needed or was applied.
+
+**Dev consents (seeded or recorded during development) carry `notice_version = v1.0-2026-10-04`.
+Those consent rows predate any real guardian ever being shown a notice on a live site. Do not
+describe v1.0-2026-10-04 as text that a real guardian agreed to.**
 
 Old versions are permanently preserved on disk and render at `/privacy/{version}` as stable
 archive URLs (e.g. `/privacy/v1.0-2026-10-04`).
+
+### Published files are immutable
+
+`resources/legal/notices/manifest.json` pins the SHA-256 of every published notice file. A
+guard test fails if any pinned file's hash changes. To update a published notice:
+1. Create a new version file (`v{major}.{minor+1}-{date}.md`).
+2. Bump `Consent::NOTICE_VERSION`.
+3. Add the new file's hash to `manifest.json`.
+4. Document the change here.
+
+Never edit a file that has already been used to record real consents — those rows reference
+the hash-pinned text as their authoritative record.
+
+Placeholders `{INSTITUTE_NAME}` and `{PLATFORM_NAME}` in v1.1+ files are substituted at render
+time by `LegalController`. The hashes in `manifest.json` are of the raw files with placeholders.
 
 ## Operator confirmations required before go-live
 

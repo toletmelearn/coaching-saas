@@ -12,10 +12,13 @@ class LegalController extends Controller
     public function privacy(Request $request): View
     {
         $tenant = app(TenantContext::class)->has() ? app(TenantContext::class)->get() : null;
+        $fiduciary = $tenant !== null ? $tenant->name : '[the coaching institute]';
+        $platform = config('app.name', 'Coaching SaaS');
 
         $noticeVersion = Consent::NOTICE_VERSION;
         $locale = $this->resolvedLocale($request, $noticeVersion);
-        $noticeText = $this->loadNoticeText($noticeVersion, $locale);
+        $raw = $this->loadNoticeText($noticeVersion, $locale);
+        $noticeText = $raw !== null ? $this->fillPlaceholders($raw, $fiduciary, $platform) : null;
         $hasHindi = is_file(resource_path('legal/notices/'.$noticeVersion.'.hi.md'));
         $dataCategories = config('privacy.data_categories', []);
 
@@ -28,15 +31,19 @@ class LegalController extends Controller
             abort(404);
         }
 
-        $locale = $this->resolvedLocale($request, $version);
-        $noticeText = $this->loadNoticeText($version, $locale);
+        $tenant = app(TenantContext::class)->has() ? app(TenantContext::class)->get() : null;
+        $fiduciary = $tenant !== null ? $tenant->name : '[the coaching institute]';
+        $platform = config('app.name', 'Coaching SaaS');
 
-        if ($noticeText === null) {
+        $locale = $this->resolvedLocale($request, $version);
+        $raw = $this->loadNoticeText($version, $locale);
+
+        if ($raw === null) {
             abort(404);
         }
 
+        $noticeText = $this->fillPlaceholders($raw, $fiduciary, $platform);
         $hasHindi = is_file(resource_path('legal/notices/'.$version.'.hi.md'));
-        $tenant = app(TenantContext::class)->has() ? app(TenantContext::class)->get() : null;
 
         return view('legal.privacy-archive', compact('version', 'noticeText', 'locale', 'hasHindi', 'tenant'));
     }
@@ -58,6 +65,11 @@ class LegalController extends Controller
         $tenant = app(TenantContext::class)->has() ? app(TenantContext::class)->get() : null;
 
         return view('legal.consent-withdraw', compact('tenant'));
+    }
+
+    private function fillPlaceholders(string $text, string $fiduciary, string $platform): string
+    {
+        return str_replace(['{INSTITUTE_NAME}', '{PLATFORM_NAME}'], [$fiduciary, $platform], $text);
     }
 
     private function resolvedLocale(Request $request, string $version): string
