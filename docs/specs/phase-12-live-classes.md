@@ -48,12 +48,11 @@ one switch. When false: every live-class controller's first statement is
 `abort_unless(..., 404)` (so routes, dashboard widgets and course sections all behave as if
 the feature doesn't exist), and `app:preflight` neither requires nor mentions Jitsi.
 
-When true, `app:preflight` **fails** (exit 1) unless both `services.jitsi.app_id` and
-`services.jitsi.app_secret` are set, and prints a success line containing `Jitsi` on a
-green run. The literal word `Jitsi` in both outputs is part of the
-`LiveClassPreflightTest` contract. This is Decision A's deploy-time half: a deployment
-that flips the flag on without keys would otherwise 500 on every join while the UI still
-advertised a Join button.
+When true, `app:preflight` passes without requiring JaaS keys — a deployment running
+`meeting_url`-only (Google Meet, Zoom, etc.) works with the flag on and no JaaS credentials.
+JaaS keys are needed only for the built-in `/live-classes/{id}/join` redirect; if the keys
+are absent, that action redirects back to the class page with a friendly flash error instead
+of a broken 8x8.vc URL. `LiveClassPreflightTest` locks in the no-keys-required behavior.
 
 ## Schema
 
