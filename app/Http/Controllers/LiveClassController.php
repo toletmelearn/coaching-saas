@@ -86,13 +86,18 @@ class LiveClassController extends Controller
                 ->withErrors(['live_class' => __('live_classes.'.$refusal)]);
         }
 
+        $appId  = (string) ServiceSettings::get('jitsi_app_id');
+        $secret = (string) ServiceSettings::get('jitsi_app_secret');
+
+        if (trim($appId) === '' || trim($secret) === '') {
+            return redirect("/live-classes/{$liveClass->id}")
+                ->withErrors(['live_class' => __('live_classes.service_unavailable')]);
+        }
+
         /** @var User $user */
         $user = $request->user('tenant');
 
         $this->openAttendanceSession($liveClass, $user);
-
-        $appId = (string) ServiceSettings::get('jitsi_app_id');
-        $secret = (string) ServiceSettings::get('jitsi_app_secret');
 
         $jwt = JitsiJwt::make($appId, $secret, $user->name, $user->email);
         $url = JitsiJoinUrl::build($appId, $liveClass->jitsi_room_name, $jwt);

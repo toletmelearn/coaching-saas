@@ -22,6 +22,10 @@ class JitsiJwt
 
     public static function make(string $appId, string $secret, string $name, string $email, int $ttlMinutes = self::TTL_MINUTES): string
     {
+        if (trim($appId) === '' || trim($secret) === '') {
+            throw new \InvalidArgumentException('JaaS app id and secret must not be empty.');
+        }
+
         $header = self::base64UrlEncode(json_encode([
             'alg' => 'HS256',
             'typ' => 'JWT',

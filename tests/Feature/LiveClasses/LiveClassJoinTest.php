@@ -166,3 +166,68 @@ test('the class page never exposes the Jitsi URL or the room name', function () 
         ->assertDontSee('8x8.vc')
         ->assertDontSee($class->jitsi_room_name);
 });
+
+// === Missing JaaS keys (graceful degradation) ===
+
+test('join redirects back with an error when both JaaS keys are missing', function () {
+    $f = LiveClassFixtures::setup();
+    config(['services.jitsi.app_id' => null, 'services.jitsi.app_secret' => null]);
+
+    $class = LiveClassFixtures::liveClass($f['course'], $f['owner'], [
+        'starts_at' => now()->subMinutes(5),
+        'ends_at' => now()->addHour(),
+        'status' => 'live',
+    ]);
+
+    $show = "http://{$f['domain']}/live-classes/{$class->id}";
+
+    $this->actingAs($f['student'], 'tenant')
+        ->from($show)
+        ->get("{$show}/join")
+        ->assertRedirect($show)
+        ->assertSessionHasErrors(['live_class' => __('live_classes.service_unavailable')]);
+
+    expect(inTenant($f['tenant'], fn () => LiveClassAttendance::count()))->toBe(0);
+});
+
+test('join redirects back with an error when only the JaaS app id is missing', function () {
+    $f = LiveClassFixtures::setup();
+    config(['services.jitsi.app_id' => null]);
+
+    $class = LiveClassFixtures::liveClass($f['course'], $f['owner'], [
+        'starts_at' => now()->subMinutes(5),
+        'ends_at' => now()->addHour(),
+        'status' => 'live',
+    ]);
+
+    $show = "http://{$f['domain']}/live-classes/{$class->id}";
+
+    $this->actingAs($f['student'], 'tenant')
+        ->from($show)
+        ->get("{$show}/join")
+        ->assertRedirect($show)
+        ->assertSessionHasErrors(['live_class' => __('live_classes.service_unavailable')]);
+
+    expect(inTenant($f['tenant'], fn () => LiveClassAttendance::count()))->toBe(0);
+});
+
+test('join redirects back with an error when only the JaaS secret is missing', function () {
+    $f = LiveClassFixtures::setup();
+    config(['services.jitsi.app_secret' => null]);
+
+    $class = LiveClassFixtures::liveClass($f['course'], $f['owner'], [
+        'starts_at' => now()->subMinutes(5),
+        'ends_at' => now()->addHour(),
+        'status' => 'live',
+    ]);
+
+    $show = "http://{$f['domain']}/live-classes/{$class->id}";
+
+    $this->actingAs($f['student'], 'tenant')
+        ->from($show)
+        ->get("{$show}/join")
+        ->assertRedirect($show)
+        ->assertSessionHasErrors(['live_class' => __('live_classes.service_unavailable')]);
+
+    expect(inTenant($f['tenant'], fn () => LiveClassAttendance::count()))->toBe(0);
+});

@@ -42,6 +42,16 @@ test('the signature is HMAC-SHA256 over the header and payload with the server-h
     expect($signature)->not->toBe($impostor);
 });
 
+test('make throws when the app id is empty', function () {
+    expect(fn () => JitsiJwt::make('', 'secret', 'Name', 'e@example.com'))
+        ->toThrow(InvalidArgumentException::class);
+});
+
+test('make throws when the secret is empty', function () {
+    expect(fn () => JitsiJwt::make('app-id', '', 'Name', 'e@example.com'))
+        ->toThrow(InvalidArgumentException::class);
+});
+
 test('hostile display names survive the payload round-trip and the token stays URL-safe', function () {
     $hostile = 'O\'Brien "X" <script>alert(1)</script> & Co';
     $token = JitsiJwt::make('jitsi-app-id', 'app-secret-value', $hostile, 'a+b_tag@example.com');

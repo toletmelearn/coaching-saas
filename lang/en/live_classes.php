@@ -36,6 +36,7 @@ return [
     'not_yet_open' => 'This class has not opened yet. The room opens shortly before the start time.',
     'already_ended' => 'This class has already ended.',
     'cancelled' => 'This class was cancelled.',
+    'service_unavailable' => 'The live class service is temporarily unavailable. Please try again later or contact support.',
 
     // Shown when a teacher tries to edit a cancelled class; the row stays as-is.
     'cannot_edit_cancelled' => 'A cancelled class cannot be edited.',
