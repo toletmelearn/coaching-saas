@@ -88,6 +88,5 @@ These encode the guardrails established in [TENANCY.md](TENANCY.md), [SECURITY.m
     off (`LIVE_CLASSES_ENABLED=false`, the default) means 404 everywhere. JaaS keys are
     needed only for the JaaS join redirect — teachers who paste their own `meeting_url`
     (Google Meet, Zoom, etc.) can run with the flag on without them; a missing key returns
-    a friendly error flash rather than a broken redirect. `app:preflight` still enforces
-    both keys when the flag is on; relax that check in `PreflightChecks` for
-    `meeting_url`-only deployments.
+    a friendly error flash rather than a broken redirect. `app:preflight` does **not**
+    require JaaS keys — `LIVE_CLASSES_ENABLED=true` passes preflight without them.

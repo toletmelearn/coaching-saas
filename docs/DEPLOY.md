@@ -202,9 +202,9 @@ keys are absent, the app redirects back to the class page with a friendly error 
 a broken 8x8.vc URL.
 
 To also enable the JaaS join redirect, create a free-tier application in the JaaS console
-(8x8.vc) and put its id/secret in `.env` as shown in §3.  `app:preflight` still enforces
-both keys when the flag is on (LIVE_CLASSES.md, AGENT_RULES.md invariant #21); if you run
-with `meeting_url` only, relax that check in `App\Support\Preflight\PreflightChecks`.
+(8x8.vc) and put its id/secret in `.env` as shown in §3.  `app:preflight` does **not**
+require JaaS keys — `LIVE_CLASSES_ENABLED=true` passes preflight without them, so a
+`meeting_url`-only deployment needs no extra configuration.
 Nothing else is required: rooms are created on demand by name, there is no per-tenant
 JaaS configuration, and the keys are used only to sign the short-lived join JWT
 server-side. `LIVE_CLASSES_RECORDING_ENABLED` stays `false` unless you've bought JaaS
@@ -271,9 +271,8 @@ minimum (8.0.16 / 10.2.1), a demo tenant/account exists, the local-only `demo.lo
 PWA-testing domain exists (Phase 6 — see README.md "PWA testing locally"), the GD PHP
 extension or its FreeType support is missing (Phase 6 — needed to generate the default
 institute icon and re-encode uploaded logos), `VIDEO_DRIVER=fake`, or `VIDEO_DRIVER=bunny`
-with no `BUNNY_STREAM_ACCOUNT_API_KEY` — or (Phase 12) `LIVE_CLASSES_ENABLED=true` with a
-missing `JITSI_APP_ID`/`JITSI_APP_SECRET` (either one; the failure names Jitsi). Per-tenant
-Bunny library
+with no `BUNNY_STREAM_ACCOUNT_API_KEY`. JaaS keys are never required by preflight —
+`LIVE_CLASSES_ENABLED=true` passes without them (see §3b). Per-tenant Bunny library
 credentials are *not* checked here — they don't exist yet for a tenant that has never
 uploaded video — and are instead validated lazily at first use, surfacing a teacher-facing
 error if library creation fails. Without options, outside production it's a no-op

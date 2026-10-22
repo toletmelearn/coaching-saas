@@ -14,8 +14,8 @@
   redirect (`/live-classes/{id}/join`): if a teacher pastes their own `meeting_url` (Google
   Meet, Zoom, etc.) the meeting-link button works without any JaaS credentials — a missing
   key redirects back to the class page with a friendly error instead of a broken 8x8.vc URL.
-  `app:preflight` still enforces both keys when the flag is on; if you intend to run with
-  `meeting_url` only, relax the JaaS check in `App\Support\Preflight\PreflightChecks`.
+  `app:preflight` does **not** require JaaS keys — `LIVE_CLASSES_ENABLED=true` with no keys
+  passes preflight cleanly for `meeting_url`-only deployments.
 
 ## Scheduling
 
