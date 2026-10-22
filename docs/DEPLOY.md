@@ -151,16 +151,18 @@ SESSION_DOMAIN=                   # leave EMPTY/unset — never set this (see SE
                                    # session cookie with every other tenant subdomain)
 VIDEO_DRIVER=bunny                # `fake` is refused by app:preflight in production
 BUNNY_STREAM_ACCOUNT_API_KEY=     # platform account key only — never a per-tenant key
-LIVE_CLASSES_ENABLED=false        # Phase 12 — flip to true only after setting the JaaS keys below
-JITSI_APP_ID=                     # JaaS (8x8.vc) app id — required when LIVE_CLASSES_ENABLED=true
-JITSI_APP_SECRET=                 # JaaS signing secret — required when LIVE_CLASSES_ENABLED=true
+LIVE_CLASSES_ENABLED=false        # Phase 12 — flip to true to enable live classes
+JITSI_APP_ID=                     # JaaS (8x8.vc) app id — needed for the JaaS join redirect only
+JITSI_APP_SECRET=                 # JaaS signing secret — needed for the JaaS join redirect only
+                                   # (teachers who use a meeting_url can run without these keys)
 LIVE_CLASSES_RECORDING_ENABLED=false  # JaaS recording is a paid add-on — leave false unless bought
 ```
 
 Replace `PLATFORM_DOMAIN` with your real domain throughout. `SESSION_DOMAIN` staying unset
 (host-only cookies), `SESSION_SECURE_COOKIE=true`, and the `VIDEO_DRIVER`/account-key pair
 are all checked by `php artisan app:preflight` — and if you turn `LIVE_CLASSES_ENABLED` on,
-both `JITSI_*` keys are checked too (they're signing-only; see §3b).
+both `JITSI_*` keys are checked too (they're signing-only; see §3b — keys are optional
+when teachers use a `meeting_url` instead of JaaS).
 
 ## 3a. Bunny Stream (protected lesson video)
 
@@ -191,10 +193,18 @@ creation:
 
 ## 3b. Live classes (Jitsi / JaaS — optional, Phase 12)
 
-The live-class feature ships **off**. To enable it, create a free-tier application in the
-JaaS console (8x8.vc) and put its id/secret in `.env` as shown in §3, then set
-`LIVE_CLASSES_ENABLED=true` — in that order, because `app:preflight` fails production if
-the flag is on with either key missing (LIVE_CLASSES.md, AGENT_RULES.md invariant #21).
+The live-class feature ships **off**. To enable it set `LIVE_CLASSES_ENABLED=true`.
+
+**JaaS keys are optional when teachers use their own `meeting_url`** (Google Meet, Zoom,
+Microsoft Teams, etc.) — the meeting-link button on the class page works without any JaaS
+credentials. If a student (or teacher) clicks the built-in "Join live class" button while
+keys are absent, the app redirects back to the class page with a friendly error rather than
+a broken 8x8.vc URL.
+
+To also enable the JaaS join redirect, create a free-tier application in the JaaS console
+(8x8.vc) and put its id/secret in `.env` as shown in §3.  `app:preflight` still enforces
+both keys when the flag is on (LIVE_CLASSES.md, AGENT_RULES.md invariant #21); if you run
+with `meeting_url` only, relax that check in `App\Support\Preflight\PreflightChecks`.
 Nothing else is required: rooms are created on demand by name, there is no per-tenant
 JaaS configuration, and the keys are used only to sign the short-lived join JWT
 server-side. `LIVE_CLASSES_RECORDING_ENABLED` stays `false` unless you've bought JaaS

@@ -85,5 +85,9 @@ These encode the guardrails established in [TENANCY.md](TENANCY.md), [SECURITY.m
     never rendered into a page — only a 302 leaves the server), enrolment and the join
     window are re-derived on every show/join/heartbeat, and credited attendance comes only
     from server timestamps (≤60 s per heartbeat, policy 403 before throttle 429). Feature
-    off (`LIVE_CLASSES_ENABLED=false`, the default) means 404 everywhere, and
-    `app:preflight` refuses production if the flag is on without both JaaS keys.
+    off (`LIVE_CLASSES_ENABLED=false`, the default) means 404 everywhere. JaaS keys are
+    needed only for the JaaS join redirect — teachers who paste their own `meeting_url`
+    (Google Meet, Zoom, etc.) can run with the flag on without them; a missing key returns
+    a friendly error flash rather than a broken redirect. `app:preflight` still enforces
+    both keys when the flag is on; relax that check in `PreflightChecks` for
+    `meeting_url`-only deployments.

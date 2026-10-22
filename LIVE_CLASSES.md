@@ -10,8 +10,12 @@
   unguessable room names plus our own enrolment-gated redirect, not from per-tenant apps.
 - `LIVE_CLASSES_ENABLED=false` is the default. With the flag off, every live-class route
   404s, the dashboard and course-page widgets render nothing, and `app:preflight` neither
-  requires nor mentions Jitsi. With it on, preflight **fails** unless both keys are set —
-  a deployment can't half-enable the feature.
+  requires nor mentions Jitsi. With it on, the JaaS keys are needed only for the JaaS join
+  redirect (`/live-classes/{id}/join`): if a teacher pastes their own `meeting_url` (Google
+  Meet, Zoom, etc.) the meeting-link button works without any JaaS credentials — a missing
+  key redirects back to the class page with a friendly error instead of a broken 8x8.vc URL.
+  `app:preflight` still enforces both keys when the flag is on; if you intend to run with
+  `meeting_url` only, relax the JaaS check in `App\Support\Preflight\PreflightChecks`.
 
 ## Scheduling
 
